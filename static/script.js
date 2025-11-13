@@ -6,6 +6,13 @@ let currentMaterials = [];
 let currentQuiz = [];
 let userAnswers = {};
 
+// Utility function to escape HTML to prevent XSS
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
     initTabs();
@@ -344,15 +351,15 @@ function submitQuiz() {
             resultDiv.classList.add('correct');
             resultDiv.innerHTML = `
                 <strong>✅ Question ${index + 1}: Correct!</strong><br>
-                ${question.explanation || ''}
+                ${escapeHtml(question.explanation || '')}
             `;
         } else {
             resultDiv.classList.add('incorrect');
             resultDiv.innerHTML = `
                 <strong>❌ Question ${index + 1}: Incorrect</strong><br>
-                Your answer: ${userAnswer || 'No answer'}<br>
-                Correct answer: ${question.correct_answer}<br>
-                ${question.explanation || ''}
+                Your answer: ${escapeHtml(userAnswer || 'No answer')}<br>
+                Correct answer: ${escapeHtml(question.correct_answer)}<br>
+                ${escapeHtml(question.explanation || '')}
             `;
         }
         
@@ -429,9 +436,9 @@ function addChatMessage(message, type, id = null) {
     if (id) messageDiv.id = id;
     
     if (type === 'user') {
-        messageDiv.innerHTML = `<strong>You:</strong><br>${message}`;
+        messageDiv.innerHTML = `<strong>You:</strong><br>${escapeHtml(message)}`;
     } else {
-        messageDiv.innerHTML = `<strong>AI Tutor:</strong><br>${message.replace(/\n/g, '<br>')}`;
+        messageDiv.innerHTML = `<strong>AI Tutor:</strong><br>${escapeHtml(message).replace(/\n/g, '<br>')}`;
     }
     
     messagesDiv.appendChild(messageDiv);
