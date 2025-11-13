@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Study Buddy</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎓 AI Study Buddy</h1>
+            <p class="tagline">Your AI-powered learning companion</p>
+        </header>
+
+        <nav class="tabs">
+            <button class="tab active" data-tab="upload">📤 Upload</button>
+            <button class="tab" data-tab="notes">📝 Study Notes</button>
+            <button class="tab" data-tab="quiz">❓ Quiz</button>
+            <button class="tab" data-tab="tutor">💬 AI Tutor</button>
+        </nav>
+
+        <!-- Upload Tab -->
+        <div id="upload" class="tab-content active">
+            <div class="card">
+                <h2>Upload Lecture Material</h2>
+                <p>Upload a PDF of your lecture notes to get started</p>
+                
+                <div class="upload-area" id="uploadArea">
+                    <input type="file" id="fileInput" accept=".pdf" hidden>
+                    <div class="upload-icon">📄</div>
+                    <p>Click to upload or drag and drop</p>
+                    <p class="upload-hint">PDF files only</p>
+                </div>
+                
+                <div id="uploadStatus" class="status-message"></div>
+                
+                <div id="materialsList" class="materials-list"></div>
+            </div>
+        </div>
+
+        <!-- Study Notes Tab -->
+        <div id="notes" class="tab-content">
+            <div class="card">
+                <h2>Study Notes</h2>
+                
+                <div class="select-material">
+                    <label for="notesMaterial">Select Material:</label>
+                    <select id="notesMaterial" class="material-select">
+                        <option value="">-- Select a material --</option>
+                    </select>
+                    <button id="generateNotesBtn" class="btn btn-primary">Generate Notes</button>
+                </div>
+                
+                <div id="notesLoading" class="loading hidden">
+                    <div class="spinner"></div>
+                    <p>Generating study notes...</p>
+                </div>
+                
+                <div id="notesContent" class="content-area"></div>
+            </div>
+        </div>
+
+        <!-- Quiz Tab -->
+        <div id="quiz" class="tab-content">
+            <div class="card">
+                <h2>Practice Quiz</h2>
+                
+                <div class="select-material">
+                    <label for="quizMaterial">Select Material:</label>
+                    <select id="quizMaterial" class="material-select">
+                        <option value="">-- Select a material --</option>
+                    </select>
+                    <label for="numQuestions">Number of Questions:</label>
+                    <input type="number" id="numQuestions" min="3" max="10" value="5">
+                    <button id="generateQuizBtn" class="btn btn-primary">Generate Quiz</button>
+                </div>
+                
+                <div id="quizLoading" class="loading hidden">
+                    <div class="spinner"></div>
+                    <p>Generating quiz questions...</p>
+                </div>
+                
+                <div id="quizContent" class="quiz-container"></div>
+                <div id="quizResults" class="quiz-results hidden"></div>
+                <button id="submitQuizBtn" class="btn btn-success hidden">Submit Quiz</button>
+            </div>
+        </div>
+
+        <!-- AI Tutor Tab -->
+        <div id="tutor" class="tab-content">
+            <div class="card">
+                <h2>AI Tutor Chat</h2>
+                
+                <div class="select-material">
+                    <label for="tutorMaterial">Context Material (Optional):</label>
+                    <select id="tutorMaterial" class="material-select">
+                        <option value="">-- General questions --</option>
+                    </select>
+                </div>
+                
+                <div id="chatMessages" class="chat-messages"></div>
+                
+                <div class="chat-input-area">
+                    <input type="text" id="chatInput" placeholder="Ask your question..." class="chat-input">
+                    <button id="sendChatBtn" class="btn btn-primary">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
