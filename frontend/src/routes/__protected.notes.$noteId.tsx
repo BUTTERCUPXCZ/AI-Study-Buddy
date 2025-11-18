@@ -1,10 +1,11 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, Download, Star, Calendar, Brain } from 'lucide-react'
+import { ArrowLeft, Download, Star, Calendar, Brain, Loader2 } from 'lucide-react'
 import AppLayout from '@/components/app-layout'
 import { useAuth } from '@/context/AuthContext'
 import { useNote } from '@/hooks/useNotes'
+import { useGenerateQuizFromNote } from '@/hooks/useQuiz'
 
 export const Route = createFileRoute('/__protected/notes/$noteId')({
   component: RouteComponent,
@@ -13,7 +14,36 @@ export const Route = createFileRoute('/__protected/notes/$noteId')({
 function RouteComponent() {
   const { noteId } = Route.useParams()
   const { user } = useAuth()
+  const navigate = useNavigate()
   const { data: note, isLoading, isError } = useNote(noteId, user?.id || '')
+  const { mutateAsync: generateQuiz, isPending: isGeneratingQuiz } = useGenerateQuizFromNote()
+
+  const handleGenerateQuiz = async () => {
+    if (!note || !user) {
+      alert('Unable to generate quiz. Please try again.')
+      return
+    }
+
+    try {
+      const result = await generateQuiz({
+        noteId: note.id,
+        userId: user.id,
+        noteTitle: note.title,
+        noteContent: note.content,
+      })
+
+      if (result.success && result.quizId) {
+        alert('Quiz generated successfully! Redirecting to quizzes page...')
+        // Navigate to the quiz detail page
+        navigate({ to: `/quizzes/${result.quizId}` })
+      } else {
+        alert(result.error || 'Failed to generate quiz. Please try again.')
+      }
+    } catch (error: any) {
+      console.error('Error generating quiz:', error)
+      alert(error.message || 'Failed to generate quiz. Please try again.')
+    }
+  }
 
   if (isLoading) {
     return (
@@ -124,9 +154,20 @@ function RouteComponent() {
         <Button 
           className="flex-1 h-12 text-base font-semibold gap-2"
           size="lg"
+          onClick={handleGenerateQuiz}
+          disabled={isGeneratingQuiz}
         >
-          <Brain className="h-5 w-5" />
-          Generate Quiz from This Note
+          {isGeneratingQuiz ? (
+            <>
+              <Loader2 className="h-5 w-5 animate-spin" />
+              Generating Quiz...
+            </>
+          ) : (
+            <>
+              <Brain className="h-5 w-5" />
+              Generate Quiz from This Note
+            </>
+          )}
         </Button>
       </div>
     </div>

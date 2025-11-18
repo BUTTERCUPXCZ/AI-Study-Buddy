@@ -21,7 +21,9 @@ import { Route as _protectedQuizzesRouteImport } from './routes/__protected.quiz
 import { Route as _protectedNotesRouteImport } from './routes/__protected.notes'
 import { Route as _protectedLibraryRouteImport } from './routes/__protected.library'
 import { Route as _protectedDashboardRouteImport } from './routes/__protected.dashboard'
+import { Route as _protectedQuizzesIndexRouteImport } from './routes/__protected.quizzes.index'
 import { Route as _protectedNotesIndexRouteImport } from './routes/__protected.notes.index'
+import { Route as _protectedQuizzesQuizIdRouteImport } from './routes/__protected.quizzes.$quizId'
 import { Route as _protectedNotesNoteIdRouteImport } from './routes/__protected.notes.$noteId'
 
 const SupabaseCallbackRoute = SupabaseCallbackRouteImport.update({
@@ -83,10 +85,20 @@ const _protectedDashboardRoute = _protectedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => _protectedRoute,
 } as any)
+const _protectedQuizzesIndexRoute = _protectedQuizzesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => _protectedQuizzesRoute,
+} as any)
 const _protectedNotesIndexRoute = _protectedNotesIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => _protectedNotesRoute,
+} as any)
+const _protectedQuizzesQuizIdRoute = _protectedQuizzesQuizIdRouteImport.update({
+  id: '/$quizId',
+  path: '/$quizId',
+  getParentRoute: () => _protectedQuizzesRoute,
 } as any)
 const _protectedNotesNoteIdRoute = _protectedNotesNoteIdRouteImport.update({
   id: '/$noteId',
@@ -104,10 +116,12 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof _protectedDashboardRoute
   '/library': typeof _protectedLibraryRoute
   '/notes': typeof _protectedNotesRouteWithChildren
-  '/quizzes': typeof _protectedQuizzesRoute
+  '/quizzes': typeof _protectedQuizzesRouteWithChildren
   '/tutor': typeof _protectedTutorRoute
   '/notes/$noteId': typeof _protectedNotesNoteIdRoute
+  '/quizzes/$quizId': typeof _protectedQuizzesQuizIdRoute
   '/notes/': typeof _protectedNotesIndexRoute
+  '/quizzes/': typeof _protectedQuizzesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -118,10 +132,11 @@ export interface FileRoutesByTo {
   '/supabaseCallback': typeof SupabaseCallbackRoute
   '/dashboard': typeof _protectedDashboardRoute
   '/library': typeof _protectedLibraryRoute
-  '/quizzes': typeof _protectedQuizzesRoute
   '/tutor': typeof _protectedTutorRoute
   '/notes/$noteId': typeof _protectedNotesNoteIdRoute
+  '/quizzes/$quizId': typeof _protectedQuizzesQuizIdRoute
   '/notes': typeof _protectedNotesIndexRoute
+  '/quizzes': typeof _protectedQuizzesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -135,10 +150,12 @@ export interface FileRoutesById {
   '/__protected/dashboard': typeof _protectedDashboardRoute
   '/__protected/library': typeof _protectedLibraryRoute
   '/__protected/notes': typeof _protectedNotesRouteWithChildren
-  '/__protected/quizzes': typeof _protectedQuizzesRoute
+  '/__protected/quizzes': typeof _protectedQuizzesRouteWithChildren
   '/__protected/tutor': typeof _protectedTutorRoute
   '/__protected/notes/$noteId': typeof _protectedNotesNoteIdRoute
+  '/__protected/quizzes/$quizId': typeof _protectedQuizzesQuizIdRoute
   '/__protected/notes/': typeof _protectedNotesIndexRoute
+  '/__protected/quizzes/': typeof _protectedQuizzesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -155,7 +172,9 @@ export interface FileRouteTypes {
     | '/quizzes'
     | '/tutor'
     | '/notes/$noteId'
+    | '/quizzes/$quizId'
     | '/notes/'
+    | '/quizzes/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -166,10 +185,11 @@ export interface FileRouteTypes {
     | '/supabaseCallback'
     | '/dashboard'
     | '/library'
-    | '/quizzes'
     | '/tutor'
     | '/notes/$noteId'
+    | '/quizzes/$quizId'
     | '/notes'
+    | '/quizzes'
   id:
     | '__root__'
     | '/'
@@ -185,7 +205,9 @@ export interface FileRouteTypes {
     | '/__protected/quizzes'
     | '/__protected/tutor'
     | '/__protected/notes/$noteId'
+    | '/__protected/quizzes/$quizId'
     | '/__protected/notes/'
+    | '/__protected/quizzes/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -284,12 +306,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof _protectedDashboardRouteImport
       parentRoute: typeof _protectedRoute
     }
+    '/__protected/quizzes/': {
+      id: '/__protected/quizzes/'
+      path: '/'
+      fullPath: '/quizzes/'
+      preLoaderRoute: typeof _protectedQuizzesIndexRouteImport
+      parentRoute: typeof _protectedQuizzesRoute
+    }
     '/__protected/notes/': {
       id: '/__protected/notes/'
       path: '/'
       fullPath: '/notes/'
       preLoaderRoute: typeof _protectedNotesIndexRouteImport
       parentRoute: typeof _protectedNotesRoute
+    }
+    '/__protected/quizzes/$quizId': {
+      id: '/__protected/quizzes/$quizId'
+      path: '/$quizId'
+      fullPath: '/quizzes/$quizId'
+      preLoaderRoute: typeof _protectedQuizzesQuizIdRouteImport
+      parentRoute: typeof _protectedQuizzesRoute
     }
     '/__protected/notes/$noteId': {
       id: '/__protected/notes/$noteId'
@@ -315,11 +351,24 @@ const _protectedNotesRouteWithChildren = _protectedNotesRoute._addFileChildren(
   _protectedNotesRouteChildren,
 )
 
+interface _protectedQuizzesRouteChildren {
+  _protectedQuizzesQuizIdRoute: typeof _protectedQuizzesQuizIdRoute
+  _protectedQuizzesIndexRoute: typeof _protectedQuizzesIndexRoute
+}
+
+const _protectedQuizzesRouteChildren: _protectedQuizzesRouteChildren = {
+  _protectedQuizzesQuizIdRoute: _protectedQuizzesQuizIdRoute,
+  _protectedQuizzesIndexRoute: _protectedQuizzesIndexRoute,
+}
+
+const _protectedQuizzesRouteWithChildren =
+  _protectedQuizzesRoute._addFileChildren(_protectedQuizzesRouteChildren)
+
 interface _protectedRouteChildren {
   _protectedDashboardRoute: typeof _protectedDashboardRoute
   _protectedLibraryRoute: typeof _protectedLibraryRoute
   _protectedNotesRoute: typeof _protectedNotesRouteWithChildren
-  _protectedQuizzesRoute: typeof _protectedQuizzesRoute
+  _protectedQuizzesRoute: typeof _protectedQuizzesRouteWithChildren
   _protectedTutorRoute: typeof _protectedTutorRoute
 }
 
@@ -327,7 +376,7 @@ const _protectedRouteChildren: _protectedRouteChildren = {
   _protectedDashboardRoute: _protectedDashboardRoute,
   _protectedLibraryRoute: _protectedLibraryRoute,
   _protectedNotesRoute: _protectedNotesRouteWithChildren,
-  _protectedQuizzesRoute: _protectedQuizzesRoute,
+  _protectedQuizzesRoute: _protectedQuizzesRouteWithChildren,
   _protectedTutorRoute: _protectedTutorRoute,
 }
 
