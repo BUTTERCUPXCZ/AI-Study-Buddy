@@ -294,80 +294,80 @@ function RouteComponent() {
 
   return (
     <AppLayout>
-      <div className="h-[calc(100vh-8rem)] flex gap-6 mt-5">
+      <div className="flex gap-6 h-[calc(100vh-8rem)]">
         {/* Chat History Sidebar */}
-        <div className="w-80 space-y-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">Chat History</CardTitle>
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  className="gap-2"
-                  onClick={handleStartNewChat}
-                >
-                  <Plus className="h-4 w-4" />
-                  New
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <ScrollArea className="h-[calc(100vh-16rem)]">
-                <div className="space-y-2 pr-4">
-                  {sessions.length === 0 ? (
-                    <div className="text-center py-8">
-                      <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
-                      <p className="text-sm text-muted-foreground mb-2">No chat history yet</p>
-                      <p className="text-xs text-muted-foreground">
-                        Start a conversation to see your history
-                      </p>
-                    </div>
-                  ) : (
-                    sessions.map((session) => (
-                      <div
-                        key={session.id}
-                        onClick={() => handleLoadSession(session.id)}
-                        className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                          sessionId === session.id
-                            ? 'bg-primary/10 border-primary'
-                            : 'bg-card hover:bg-accent/50'
-                        } ${loadingSessionId === session.id ? 'opacity-50' : ''}`}
-                      >
-                        <div className="flex items-start gap-2">
-                          {loadingSessionId === session.id ? (
-                            <Loader2 className="h-4 w-4 mt-0.5 shrink-0 animate-spin" />
-                          ) : (
-                            <MessageSquare className="h-4 w-4 mt-0.5 shrink-0" />
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm truncate">{session.title}</p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {new Date(session.updatedAt).toLocaleDateString('en-US', {
-                                month: 'short',
-                                day: 'numeric',
-                                year: 'numeric',
-                              })}
-                            </p>
+        <div className="w-80 shrink-0">
+          <Card className="h-full flex flex-col">
+              <CardHeader className="pb-3 shrink-0">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">Chat History</CardTitle>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="gap-2"
+                    onClick={handleStartNewChat}
+                  >
+                    <Plus className="h-4 w-4" />
+                    New
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="flex-1 overflow-hidden px-3 pb-3">
+                <ScrollArea className="h-full">
+                  <div className="space-y-2 pr-4">
+                    {sessions.length === 0 ? (
+                      <div className="text-center py-8">
+                        
+                        <p className="text-sm text-muted-foreground mb-2">No chat history yet</p>
+                        <p className="text-xs text-muted-foreground">
+                          Start a conversation to see your history
+                        </p>
+                      </div>
+                    ) : (
+                      sessions.map((session) => (
+                        <div
+                          key={session.id}
+                          onClick={() => handleLoadSession(session.id)}
+                          className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                            sessionId === session.id
+                              ? 'bg-primary/10 border-primary'
+                              : 'bg-card hover:bg-accent/50'
+                          } ${loadingSessionId === session.id ? 'opacity-50' : ''}`}
+                        >
+                          <div className="flex items-start gap-2">
+                            {loadingSessionId === session.id ? (
+                              <Loader2 className="h-4 w-4 mt-0.5 shrink-0 animate-spin" />
+                            ) : (
+                              <MessageSquare className="h-4 w-4 mt-0.5 shrink-0" />
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm truncate">{session.title}</p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {new Date(session.updatedAt).toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric',
+                                })}
+                              </p>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </ScrollArea>
-            </CardContent>
-          </Card>
-        </div>
+                      ))
+                    )}
+                  </div>
+                </ScrollArea>
+              </CardContent>
+            </Card>
+          </div>
 
-        {/* Main Chat Area */}
-        <Card className="flex-1 flex flex-col bg-muted/30 overflow-hidden">
-          <CardHeader className="border-b bg-background/50 shrink-0">
-            <CardTitle>AI Tutor</CardTitle>
-            <CardDescription>Get personalized help with your studies</CardDescription>
-          </CardHeader>
-          
-          <div className="flex-1 overflow-y-auto p-6 space-y-4" style={{ maxHeight: 'calc(100vh - 24rem)' }}>
+          {/* Main Chat Area */}
+          <Card className="flex-1 flex flex-col bg-muted/30 overflow-hidden min-w-0">
+            <CardHeader className="border-b bg-background/50 shrink-0">
+              <CardTitle>AI Tutor</CardTitle>
+              <CardDescription>Get personalized help with your studies</CardDescription>
+            </CardHeader>
+            
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
             {messages.map((message) => (
               <div 
                 key={message.id}
