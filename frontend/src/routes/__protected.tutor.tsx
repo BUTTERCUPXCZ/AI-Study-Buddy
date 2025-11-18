@@ -5,14 +5,11 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Send, Sparkles, BookOpen, FileText, Loader2 } from 'lucide-react'
+import { Send, Sparkles, Loader2, MessageSquare, Plus } from 'lucide-react'
 import AppLayout from '@/components/app-layout'
 import { useAuth } from '@/context/AuthContext'
-import { useNotes } from '@/hooks/useNotes'
 import TutorService, { type StreamChunk } from '@/services/TutorService'
-import type { Note } from '@/services/NotesService'
+import { useTutorSessions } from '@/hooks/useTutor'
 
 export const Route = createFileRoute('/__protected/tutor')({
   component: RouteComponent,
@@ -27,19 +24,19 @@ interface Message {
 
 function RouteComponent() {
   const { user } = useAuth()
-  const { data: notes = [], isLoading: notesLoading } = useNotes(user?.id)
+  const { data: sessions = [], refetch: refetchSessions } = useTutorSessions(user?.id)
   
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
       role: 'assistant',
-      content: "Hello! I'm your AI study tutor. Select some learning materials from the sidebar, and I can help you understand concepts, answer questions, and provide explanations based on your uploaded PDFs. What would you like to learn about today?"
+      content: "Hello! I'm your AI study tutor. I can help you understand concepts, answer questions, and provide explanations. What would you like to learn about today?"
     }
   ])
   const [inputValue, setInputValue] = useState('')
-  const [selectedNoteIds, setSelectedNoteIds] = useState<string[]>([])
   const [sessionId, setSessionId] = useState<string | undefined>()
   const [isLoading, setIsLoading] = useState(false)
+  const [loadingSessionId, setLoadingSessionId] = useState<string | undefined>()
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -48,25 +45,169 @@ function RouteComponent() {
     }
   }, [messages])
 
-  const handleToggleNote = (noteId: string) => {
-    setSelectedNoteIds(prev => 
-      prev.includes(noteId) 
-        ? prev.filter(id => id !== noteId)
-        : [...prev, noteId]
-    )
+  const handleStartNewChat = () => {
+    setSessionId(undefined)
+    setMessages([
+      {
+        id: 1,
+        role: 'assistant',
+        content: "Hello! I'm your AI study tutor. I can help you understand concepts, answer questions, and provide explanations. What would you like to learn about today?"
+      }
+    ])
   }
 
-  const cleanMarkdownText = (text: string): string => {
-    // Remove asterisks used for bold/italic (**, *, **)
-    let cleaned = text.replace(/\*\*\*/g, '') // Remove triple asterisks
-    cleaned = cleaned.replace(/\*\*/g, '') // Remove double asterisks (bold)
-    cleaned = cleaned.replace(/\*/g, '') // Remove single asterisks (italic)
+  const handleLoadSession = async (clickedSessionId: string) => {
+    if (!user) return
+    setLoadingSessionId(clickedSessionId)
     
-    // Remove other markdown symbols
-    cleaned = cleaned.replace(/`/g, '') // Remove backticks
-    cleaned = cleaned.replace(/^#+\s/gm, '') // Remove headers (#, ##, etc.)
+    try {
+      const sessionData = await TutorService.getChatSession(clickedSessionId, user.id)
+      
+      // Convert session messages to our Message interface
+      const loadedMessages: Message[] = sessionData.messages.map((msg, idx) => ({
+        id: idx + 1,
+        role: msg.role,
+        content: msg.content,
+        isStreaming: false
+      }))
+      
+      setMessages(loadedMessages)
+      setSessionId(clickedSessionId)
+    } catch (error) {
+      console.error('Error loading session:', error)
+      alert('Failed to load chat session. Please try again.')
+    } finally {
+      setLoadingSessionId(undefined)
+    }
+  }
+
+  const formatMessageContent = (text: string) => {
+    // Split text into lines
+    const lines = text.split('\n')
+    const elements: React.ReactNode[] = []
+    let i = 0
     
-    return cleaned.trim()
+    while (i < lines.length) {
+      const trimmedLine = lines[i].trim()
+      
+      // Check if this is a table row (contains |)
+      if (trimmedLine.includes('|')) {
+        const tableLines: string[] = []
+        let tableStartIndex = i
+        
+        // Collect all consecutive table lines
+        while (i < lines.length && lines[i].trim().includes('|')) {
+          tableLines.push(lines[i].trim())
+          i++
+        }
+        
+        // Parse and render table
+        if (tableLines.length > 0) {
+          const table = parseTable(tableLines, tableStartIndex)
+          if (table) {
+            elements.push(table)
+          }
+        }
+        continue
+      }
+      
+      // Check if line is a bullet point (starts with *, -, or •)
+      if (trimmedLine.match(/^[*\-•]\s+(.+)/)) {
+        const bulletText = trimmedLine.replace(/^[*\-•]\s+/, '')
+        elements.push(
+          <li key={`bullet-${i}`} className="ml-4 list-disc">
+            {cleanBulletText(bulletText)}
+          </li>
+        )
+      } else if (trimmedLine) {
+        // Regular text line
+        // Clean markdown formatting
+        let cleanText = trimmedLine
+          .replace(/\*\*\*/g, '') // Remove triple asterisks
+          .replace(/\*\*/g, '') // Remove double asterisks (bold)
+          .replace(/\*/g, '') // Remove single asterisks (italic)
+          .replace(/`/g, '') // Remove backticks
+          .replace(/^#+\s/g, '') // Remove headers
+        
+        elements.push(
+          <p key={`text-${i}`} className="mb-2">
+            {cleanText}
+          </p>
+        )
+      }
+      
+      i++
+    }
+    
+    return <div className="text-left">{elements}</div>
+  }
+
+  const cleanBulletText = (text: string): string => {
+    return text
+      .replace(/\*\*\*/g, '')
+      .replace(/\*\*/g, '')
+      .replace(/\*/g, '')
+      .replace(/`/g, '')
+  }
+
+  const parseTable = (tableLines: string[], startIndex: number) => {
+    // Filter out empty lines and separator lines (lines with only |, -, and spaces)
+    const validLines = tableLines.filter(line => {
+      const cleaned = line.replace(/\|/g, '').replace(/-/g, '').replace(/:/g, '').trim()
+      return cleaned.length > 0
+    })
+    
+    if (validLines.length === 0) return null
+    
+    // Parse header row
+    const headerRow = validLines[0]
+    const headers = headerRow
+      .split('|')
+      .map(cell => cell.trim())
+      .filter(cell => cell.length > 0)
+      .map(cell => cell.replace(/\*\*/g, '').replace(/\*/g, ''))
+    
+    // Parse data rows (skip header)
+    const dataRows = validLines.slice(1).map(line => 
+      line
+        .split('|')
+        .map(cell => cell.trim())
+        .filter(cell => cell.length > 0)
+        .map(cell => cell.replace(/\*\*/g, '').replace(/\*/g, ''))
+    )
+    
+    return (
+      <div key={`table-${startIndex}`} className="my-4 overflow-x-auto">
+        <table className="min-w-full border-collapse border border-border rounded-lg">
+          <thead className="bg-muted">
+            <tr>
+              {headers.map((header, idx) => (
+                <th
+                  key={`header-${idx}`}
+                  className="border border-border px-4 py-2 text-left font-semibold text-sm"
+                >
+                  {header}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {dataRows.map((row, rowIdx) => (
+              <tr key={`row-${rowIdx}`} className="hover:bg-muted/50">
+                {row.map((cell, cellIdx) => (
+                  <td
+                    key={`cell-${rowIdx}-${cellIdx}`}
+                    className="border border-border px-4 py-2 text-sm"
+                  >
+                    {cell}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
   }
 
   const handleSend = async () => {
@@ -92,14 +233,13 @@ function RouteComponent() {
     setMessages(prev => [...prev, aiMessage])
 
     try {
-      const contextNoteId = selectedNoteIds.length > 0 ? selectedNoteIds[0] : undefined
-
       await TutorService.sendMessageStream(
         inputValue,
         user.id,
         (chunk: StreamChunk) => {
           if (chunk.type === 'session' && chunk.sessionId) {
             setSessionId(chunk.sessionId)
+            refetchSessions() // Refresh session list when new session is created
           } else if (chunk.type === 'chunk' && chunk.content) {
             setMessages(prev => 
               prev.map(msg => 
@@ -132,7 +272,7 @@ function RouteComponent() {
           }
         },
         sessionId,
-        contextNoteId
+        undefined // No noteId - use Gemini's general knowledge
       )
     } catch (error) {
       console.error('Error sending message:', error)
@@ -155,87 +295,76 @@ function RouteComponent() {
   return (
     <AppLayout>
       <div className="h-[calc(100vh-8rem)] flex gap-6 mt-5">
-        <div className="w-96 space-y-6">
+        {/* Chat History Sidebar */}
+        <div className="w-80 space-y-4">
           <Card>
             <CardHeader className="pb-3">
-              <div className="flex items-center gap-2">
-                <BookOpen className="h-5 w-5 text-primary" />
-                <CardTitle className="text-lg">Your Learning Materials</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg">Chat History</CardTitle>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="gap-2"
+                  onClick={handleStartNewChat}
+                >
+                  <Plus className="h-4 w-4" />
+                  New
+                </Button>
               </div>
-              <CardDescription className="text-xs">
-                Select materials to provide context for the AI tutor
-              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-2">
-              {notesLoading ? (
-                <div className="text-center py-8">
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mx-auto" />
-                  <p className="text-sm text-muted-foreground mt-2">Loading materials...</p>
-                </div>
-              ) : notes.length === 0 ? (
-                <div className="text-center py-8">
-                  <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
-                  <p className="text-sm text-muted-foreground mb-2">No materials yet</p>
-                  <p className="text-xs text-muted-foreground">
-                    Upload PDFs from the Notes page to get started
-                  </p>
-                </div>
-              ) : (
-                <ScrollArea className="h-[calc(100vh-20rem)]">
-                  <div className="space-y-2 pr-4">
-                    {notes.map((note: Note) => (
-                      <div 
-                        key={note.id}
-                        className="p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer"
-                        onClick={() => handleToggleNote(note.id)}
+            <CardContent>
+              <ScrollArea className="h-[calc(100vh-16rem)]">
+                <div className="space-y-2 pr-4">
+                  {sessions.length === 0 ? (
+                    <div className="text-center py-8">
+                      <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+                      <p className="text-sm text-muted-foreground mb-2">No chat history yet</p>
+                      <p className="text-xs text-muted-foreground">
+                        Start a conversation to see your history
+                      </p>
+                    </div>
+                  ) : (
+                    sessions.map((session) => (
+                      <div
+                        key={session.id}
+                        onClick={() => handleLoadSession(session.id)}
+                        className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                          sessionId === session.id
+                            ? 'bg-primary/10 border-primary'
+                            : 'bg-card hover:bg-accent/50'
+                        } ${loadingSessionId === session.id ? 'opacity-50' : ''}`}
                       >
-                        <div className="flex items-start gap-3">
-                          <Checkbox
-                            checked={selectedNoteIds.includes(note.id)}
-                            onCheckedChange={() => handleToggleNote(note.id)}
-                            className="mt-1"
-                          />
+                        <div className="flex items-start gap-2">
+                          {loadingSessionId === session.id ? (
+                            <Loader2 className="h-4 w-4 mt-0.5 shrink-0 animate-spin" />
+                          ) : (
+                            <MessageSquare className="h-4 w-4 mt-0.5 shrink-0" />
+                          )}
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm truncate">{note.title}</p>
-                            <div className="flex items-center gap-2 mt-1">
-                              <Badge variant="secondary" className="text-xs">
-                                {note.source || 'PDF'}
-                              </Badge>
-                              <span className="text-xs text-muted-foreground">
-                                {new Date(note.createdAt).toLocaleDateString()}
-                              </span>
-                            </div>
+                            <p className="font-medium text-sm truncate">{session.title}</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {new Date(session.updatedAt).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                              })}
+                            </p>
                           </div>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              )}
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
             </CardContent>
           </Card>
-
-          {selectedNoteIds.length > 0 && (
-            <Card className="border-primary">
-              <CardContent className="pt-4">
-                <div className="flex items-start gap-2">
-                  <Sparkles className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                  <div className="text-sm">
-                    <p className="font-medium text-primary mb-1">Context Active</p>
-                    <p className="text-xs text-muted-foreground">
-                      The AI will use {selectedNoteIds.length} selected {selectedNoteIds.length === 1 ? 'material' : 'materials'} to answer your questions
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </div>
 
+        {/* Main Chat Area */}
         <Card className="flex-1 flex flex-col bg-muted/30 overflow-hidden">
           <CardHeader className="border-b bg-background/50 shrink-0">
             <CardTitle>AI Tutor</CardTitle>
-            <CardDescription>Get personalized help with your study materials</CardDescription>
+            <CardDescription>Get personalized help with your studies</CardDescription>
           </CardHeader>
           
           <div className="flex-1 overflow-y-auto p-6 space-y-4" style={{ maxHeight: 'calc(100vh - 24rem)' }}>
@@ -270,12 +399,16 @@ function RouteComponent() {
                         <span className="text-sm text-muted-foreground">AI is thinking...</span>
                       </div>
                     ) : (
-                      <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                        {cleanMarkdownText(message.content)}
+                      <div className="text-sm leading-relaxed text-left">
+                        {message.role === 'user' ? (
+                          <p className="whitespace-pre-wrap">{message.content}</p>
+                        ) : (
+                          formatMessageContent(message.content)
+                        )}
                         {message.isStreaming && message.content !== '' && (
                           <span className="inline-block w-1 h-4 bg-current ml-1 animate-pulse" />
                         )}
-                      </p>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -303,11 +436,7 @@ function RouteComponent() {
                     handleSend()
                   }
                 }}
-                placeholder={
-                  selectedNoteIds.length > 0 
-                    ? "Ask me anything about your selected materials..."
-                    : "Select materials from the sidebar to get started..."
-                }
+                placeholder="Ask me anything..."
                 className="flex-1 h-12 px-4 text-base bg-background"
                 disabled={isLoading}
               />
@@ -330,11 +459,6 @@ function RouteComponent() {
                 )}
               </Button>
             </div>
-            {selectedNoteIds.length === 0 && (
-              <p className="text-xs text-muted-foreground mt-2 text-center">
-                💡 Tip: Select learning materials from the sidebar for more accurate answers
-              </p>
-            )}
           </div>
         </Card>
       </div>

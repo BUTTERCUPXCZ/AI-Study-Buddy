@@ -413,7 +413,7 @@ Make the notes:
         });
       }
 
-      // Get learning materials context
+      // Get learning materials context (optional)
       let learningMaterialsContext = '';
       if (chatSession.note) {
         learningMaterialsContext = chatSession.note.content;
@@ -436,7 +436,11 @@ Make the notes:
       });
 
       // Generate AI response
-      const prompt = TUTOR_PROMPT(userQuestion, learningMaterialsContext);
+      // Pass context only if available, otherwise use general knowledge
+      const prompt = TUTOR_PROMPT(
+        userQuestion, 
+        learningMaterialsContext || undefined
+      );
       const result = await this.model.generateContent(prompt);
       const response = await result.response;
       const answer = response.text();
@@ -516,7 +520,7 @@ Make the notes:
         });
       }
 
-      // Get learning materials context
+      // Get learning materials context (optional)
       let learningMaterialsContext = '';
       if (chatSession.note) {
         learningMaterialsContext = chatSession.note.content;
@@ -547,7 +551,11 @@ Make the notes:
       );
 
       // Generate AI response with streaming
-      const prompt = TUTOR_PROMPT(userQuestion, learningMaterialsContext);
+      // Pass context only if available, otherwise use general knowledge
+      const prompt = TUTOR_PROMPT(
+        userQuestion, 
+        learningMaterialsContext || undefined
+      );
       const result = await this.model.generateContentStream(prompt);
 
       let fullAnswer = '';
