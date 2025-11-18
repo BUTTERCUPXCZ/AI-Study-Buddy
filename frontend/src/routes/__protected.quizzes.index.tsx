@@ -2,10 +2,12 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Brain, Play, FileText, Trash2 } from 'lucide-react'
+import { Brain, Play, FileText, Trash2, AlertTriangle, CheckCircle } from 'lucide-react'
 import AppLayout from '@/components/app-layout'
 import { useAuth } from '@/context/AuthContext'
 import { useQuizzes, useDeleteQuiz } from '@/hooks/useQuiz'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import { useState } from 'react'
 
 export const Route = createFileRoute('/__protected/quizzes/')({
   component: RouteComponent,
@@ -15,18 +17,33 @@ function RouteComponent() {
   const { user } = useAuth()
   const { data: quizzes = [], isLoading } = useQuizzes(user?.id)
   const { mutateAsync: deleteQuiz } = useDeleteQuiz()
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
+  const [showErrorModal, setShowErrorModal] = useState(false)
+  const [quizToDelete, setQuizToDelete] = useState<string | null>(null)
+  const [errorMessage, setErrorMessage] = useState('')
 
   const handleDeleteQuiz = async (quizId: string) => {
     if (!user) return
     
-    if (confirm('Are you sure you want to delete this quiz?')) {
-      try {
-        await deleteQuiz({ quizId, userId: user.id })
-        alert('Quiz deleted successfully!')
-      } catch (error) {
-        console.error('Error deleting quiz:', error)
-        alert('Failed to delete quiz. Please try again.')
-      }
+    setQuizToDelete(quizId)
+    setShowDeleteModal(true)
+  }
+
+  const confirmDelete = async () => {
+    if (!user || !quizToDelete) return
+    
+    setShowDeleteModal(false)
+    
+    try {
+      await deleteQuiz({ quizId: quizToDelete, userId: user.id })
+      setShowSuccessModal(true)
+    } catch (error) {
+      console.error('Error deleting quiz:', error)
+      setErrorMessage('Failed to delete quiz. Please try again.')
+      setShowErrorModal(true)
+    } finally {
+      setQuizToDelete(null)
     }
   }
 
@@ -138,6 +155,69 @@ function RouteComponent() {
           </CardContent>
         </Card>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-6 w-6" />
+              Delete Quiz?
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this quiz? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteModal(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDelete}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Success Modal */}
+      <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-green-600">
+              <CheckCircle className="h-6 w-6" />
+              Quiz Deleted Successfully!
+            </DialogTitle>
+            <DialogDescription>
+              The quiz has been permanently removed from your account.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setShowSuccessModal(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Error Modal */}
+      <Dialog open={showErrorModal} onOpenChange={setShowErrorModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-6 w-6" />
+              Error
+            </DialogTitle>
+            <DialogDescription>
+              {errorMessage}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setShowErrorModal(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
     </AppLayout>
   )

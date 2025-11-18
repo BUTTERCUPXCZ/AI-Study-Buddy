@@ -1,11 +1,13 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, Download, Star, Calendar, Brain, Loader2 } from 'lucide-react'
+import { ArrowLeft, Download, Star, Calendar, Brain, Loader2, CheckCircle } from 'lucide-react'
 import AppLayout from '@/components/app-layout'
 import { useAuth } from '@/context/AuthContext'
 import { useNote } from '@/hooks/useNotes'
 import { useGenerateQuizFromNote } from '@/hooks/useQuiz'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import { useState } from 'react'
 
 export const Route = createFileRoute('/__protected/notes/$noteId')({
   component: RouteComponent,
@@ -17,6 +19,8 @@ function RouteComponent() {
   const navigate = useNavigate()
   const { data: note, isLoading, isError } = useNote(noteId, user?.id || '')
   const { mutateAsync: generateQuiz, isPending: isGeneratingQuiz } = useGenerateQuizFromNote()
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
+  const [generatedQuizId, setGeneratedQuizId] = useState<string | null>(null)
 
   const handleGenerateQuiz = async () => {
     if (!note || !user) {
@@ -33,15 +37,20 @@ function RouteComponent() {
       })
 
       if (result.success && result.quizId) {
-        alert('Quiz generated successfully! Redirecting to quizzes page...')
-        // Navigate to the quiz detail page
-        navigate({ to: `/quizzes/${result.quizId}` })
+        setGeneratedQuizId(result.quizId)
+        setShowSuccessModal(true)
       } else {
         alert(result.error || 'Failed to generate quiz. Please try again.')
       }
     } catch (error: any) {
       console.error('Error generating quiz:', error)
       alert(error.message || 'Failed to generate quiz. Please try again.')
+    }
+  }
+
+  const handleNavigateToQuiz = () => {
+    if (generatedQuizId) {
+      navigate({ to: `/quizzes/${generatedQuizId}` })
     }
   }
 
@@ -170,6 +179,29 @@ function RouteComponent() {
           )}
         </Button>
       </div>
+
+      {/* Success Modal */}
+      <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-green-600">
+              <CheckCircle className="h-6 w-6" />
+              Quiz Generated Successfully!
+            </DialogTitle>
+            <DialogDescription>
+              Your quiz has been created from this note. You can now start taking the quiz or view it later from the Quizzes page.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSuccessModal(false)}>
+              Stay Here
+            </Button>
+            <Button onClick={handleNavigateToQuiz}>
+              Go to Quiz
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
     </AppLayout>
   )

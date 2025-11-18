@@ -15,6 +15,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as ForgotpasswordRouteImport } from './routes/forgotpassword'
 import { Route as EmailVerifyRouteImport } from './routes/emailVerify'
 import { Route as _protectedRouteImport } from './routes/__protected'
+import { Route as LandingPageRouteImport } from './routes/LandingPage'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as _protectedTutorRouteImport } from './routes/__protected.tutor'
 import { Route as _protectedQuizzesRouteImport } from './routes/__protected.quizzes'
@@ -53,6 +54,11 @@ const EmailVerifyRoute = EmailVerifyRouteImport.update({
 } as any)
 const _protectedRoute = _protectedRouteImport.update({
   id: '/__protected',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LandingPageRoute = LandingPageRouteImport.update({
+  id: '/LandingPage',
+  path: '/LandingPage',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -108,6 +114,7 @@ const _protectedNotesNoteIdRoute = _protectedNotesNoteIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/LandingPage': typeof LandingPageRoute
   '/emailVerify': typeof EmailVerifyRoute
   '/forgotpassword': typeof ForgotpasswordRoute
   '/login': typeof LoginRoute
@@ -125,6 +132,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/LandingPage': typeof LandingPageRoute
   '/emailVerify': typeof EmailVerifyRoute
   '/forgotpassword': typeof ForgotpasswordRoute
   '/login': typeof LoginRoute
@@ -141,6 +149,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/LandingPage': typeof LandingPageRoute
   '/__protected': typeof _protectedRouteWithChildren
   '/emailVerify': typeof EmailVerifyRoute
   '/forgotpassword': typeof ForgotpasswordRoute
@@ -161,6 +170,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/LandingPage'
     | '/emailVerify'
     | '/forgotpassword'
     | '/login'
@@ -178,6 +188,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/LandingPage'
     | '/emailVerify'
     | '/forgotpassword'
     | '/login'
@@ -193,6 +204,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/LandingPage'
     | '/__protected'
     | '/emailVerify'
     | '/forgotpassword'
@@ -212,6 +224,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  LandingPageRoute: typeof LandingPageRoute
   _protectedRoute: typeof _protectedRouteWithChildren
   EmailVerifyRoute: typeof EmailVerifyRoute
   ForgotpasswordRoute: typeof ForgotpasswordRoute
@@ -262,6 +275,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: ''
       preLoaderRoute: typeof _protectedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/LandingPage': {
+      id: '/LandingPage'
+      path: '/LandingPage'
+      fullPath: '/LandingPage'
+      preLoaderRoute: typeof LandingPageRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -386,6 +406,7 @@ const _protectedRouteWithChildren = _protectedRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  LandingPageRoute: LandingPageRoute,
   _protectedRoute: _protectedRouteWithChildren,
   EmailVerifyRoute: EmailVerifyRoute,
   ForgotpasswordRoute: ForgotpasswordRoute,
