@@ -1,5 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import type { Response } from 'express';
 import { DatabaseService } from '../database/database.service';
 import { NotesService } from '../notes/notes.service';
 import { QuizzesService } from '../quizzes/quizzes.service';
@@ -464,6 +465,138 @@ Make the notes:
         success: false,
         error: error.message,
       };
+    }
+  }
+
+  /**
+   * AI Tutor chat with streaming support
+   * Streams the response chunk by chunk using Server-Sent Events
+   */
+  async tutorChatStream(
+    userQuestion: string,
+    userId: string,
+    res: Response,
+    sessionId?: string,
+    noteId?: string,
+  ): Promise<void> {
+    try {
+      this.logger.log('Processing tutor chat with streaming...');
+
+      // Get or create chat session
+      let chatSession;
+      if (sessionId) {
+        chatSession = await this.databaseService.chatSession.findFirst({
+          where: {
+            id: sessionId,
+            userId,
+          },
+          include: {
+            messages: {
+              orderBy: { createdAt: 'asc' },
+            },
+            note: true,
+          },
+        });
+
+        if (!chatSession) {
+          throw new NotFoundException('Chat session not found');
+        }
+      } else {
+        // Create new session
+        chatSession = await this.databaseService.chatSession.create({
+          data: {
+            userId,
+            noteId: noteId || null,
+            title: userQuestion.substring(0, 50) + '...', // Use first part of question as title
+          },
+          include: {
+            messages: true,
+            note: true,
+          },
+        });
+      }
+
+      // Get learning materials context
+      let learningMaterialsContext = '';
+      if (chatSession.note) {
+        learningMaterialsContext = chatSession.note.content;
+      } else if (noteId) {
+        const note = await this.databaseService.note.findUnique({
+          where: { id: noteId },
+        });
+        if (note) {
+          learningMaterialsContext = note.content;
+        }
+      }
+
+      // Save user message
+      await this.databaseService.chatMessage.create({
+        data: {
+          role: 'user',
+          content: userQuestion,
+          sessionId: chatSession.id,
+        },
+      });
+
+      // Send session info first
+      res.write(
+        `data: ${JSON.stringify({
+          type: 'session',
+          sessionId: chatSession.id,
+        })}\n\n`,
+      );
+
+      // Generate AI response with streaming
+      const prompt = TUTOR_PROMPT(userQuestion, learningMaterialsContext);
+      const result = await this.model.generateContentStream(prompt);
+
+      let fullAnswer = '';
+
+      // Stream chunks to client
+      for await (const chunk of result.stream) {
+        const chunkText = chunk.text();
+        fullAnswer += chunkText;
+
+        // Send chunk to client
+        res.write(
+          `data: ${JSON.stringify({
+            type: 'chunk',
+            content: chunkText,
+          })}\n\n`,
+        );
+      }
+
+      // Save complete AI response to database
+      const assistantMessage = await this.databaseService.chatMessage.create({
+        data: {
+          role: 'assistant',
+          content: fullAnswer,
+          sessionId: chatSession.id,
+        },
+      });
+
+      // Send completion signal
+      res.write(
+        `data: ${JSON.stringify({
+          type: 'done',
+          messageId: assistantMessage.id,
+        })}\n\n`,
+      );
+
+      this.logger.log(
+        `Streaming chat completed for session: ${chatSession.id}`,
+      );
+
+      res.end();
+    } catch (error) {
+      this.logger.error('Error in streaming tutor chat:', error);
+      res.write(
+        `data: ${JSON.stringify({
+          type: 'error',
+          error: error.message,
+        })}\n\n`,
+      );
+      res.end();
     }
   }
 

@@ -8,7 +8,9 @@ import {
   Param,
   HttpCode,
   HttpStatus,
+  Res,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { AiService } from './ai.service';
 import { GenerateNotesDto } from './dto/generate-notes.dto';
 import { GenerateQuizDto } from './dto/generate-quiz.dto';
@@ -53,6 +55,28 @@ export class AiController {
       dto.sessionId,
       dto.noteId,
     );
+  }
+
+  @Post('tutor/chat/stream')
+  async tutorChatStream(@Body() dto: TutorChatDto, @Res() res: Response) {
+    // Set headers for SSE
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
+
+    try {
+      await this.aiService.tutorChatStream(
+        dto.userQuestion,
+        dto.userId,
+        res,
+        dto.sessionId,
+        dto.noteId,
+      );
+    } catch (error) {
+      res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+      res.end();
+    }
   }
 
   @Get('tutor/sessions/user/:userId')

@@ -112,4 +112,119 @@ export class PdfService {
       );
     }
   }
+
+  /**
+   * Get all files for a specific user
+   * @param userId - The user ID to fetch files for
+   * @returns Array of file records
+   */
+  async getUserFiles(userId: string) {
+    try {
+      const files = await this.databaseService.file.findMany({
+        where: { userId },
+        orderBy: { id: 'desc' },
+        include: {
+          user: {
+            select: {
+              id: true,
+              Fullname: true,
+              email: true,
+            },
+          },
+        },
+      });
+
+      return files;
+    } catch (error) {
+      throw new BadRequestException(
+        `Failed to fetch files: ${error.message || 'Unknown error'}`,
+      );
+    }
+  }
+
+  /**
+   * Get a single file by ID
+   * @param id - The file ID
+   * @returns File record
+   */
+  async getFileById(id: string) {
+    try {
+      const file = await this.databaseService.file.findUnique({
+        where: { id },
+        include: {
+          user: {
+            select: {
+              id: true,
+              Fullname: true,
+              email: true,
+            },
+          },
+        },
+      });
+
+      if (!file) {
+        throw new NotFoundException(`File with ID ${id} not found`);
+      }
+
+      return file;
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new BadRequestException(
+        `Failed to fetch file: ${error.message || 'Unknown error'}`,
+      );
+    }
+  }
+
+  /**
+   * Delete a file from storage and database
+   * @param id - The file ID
+   * @param userId - The user ID (for authorization)
+   * @returns Deletion confirmation
+   */
+  async deleteFile(id: string, userId: string) {
+    try {
+      // Find the file
+      const file = await this.databaseService.file.findUnique({
+        where: { id },
+      });
+
+      if (!file) {
+        throw new NotFoundException(`File with ID ${id} not found`);
+      }
+
+      // Check if the user owns the file
+      if (file.userId !== userId) {
+        throw new BadRequestException('You do not have permission to delete this file');
+      }
+
+      // Delete from Supabase Storage
+      const { error: deleteError } = await this.supabase.storage
+        .from(this.bucketName)
+        .remove([file.url]);
+
+      if (deleteError) {
+        console.error('Failed to delete from storage:', deleteError);
+        // Continue with database deletion even if storage deletion fails
+      }
+
+      // Delete from database
+      await this.databaseService.file.delete({
+        where: { id },
+      });
+
+      return {
+        success: true,
+        message: 'File deleted successfully',
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException(
+        `Failed to delete file: ${error.message || 'Unknown error'}`,
+      );
+    }
+  }
 }

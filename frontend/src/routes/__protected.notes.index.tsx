@@ -43,6 +43,9 @@ function RouteComponent() {
     stage: string;
     status: 'processing' | 'completed' | 'failed';
   } | null>(null)
+  // Control WebSocket connection - only enable when processing
+  // This prevents unnecessary connection delays when just browsing notes
+  const [enableWebSocket, setEnableWebSocket] = useState(false)
 
   // Wrap onJobCompleted in useCallback
   const onJobCompleted = useCallback(() => {
@@ -54,11 +57,12 @@ function RouteComponent() {
     // Refetch notes
     refetchNotes();
     
-    // Clear processing job after animation
+    // Clear processing job and disable WebSocket after animation
     setTimeout(() => {
       setProcessingJob(null);
       setSelectedFiles([]);
       setValidationError('');
+      setEnableWebSocket(false); // Disconnect WebSocket after completion
     }, 2000);
   }, [refetchNotes]); 
 
@@ -72,10 +76,11 @@ function RouteComponent() {
       setProcessingJob(null);
       setSelectedFiles([]);
       setValidationError('');
+      setEnableWebSocket(false); // Disconnect WebSocket after failure
     }, 3000);
   }, []);
 
-  // WebSocket connection for job tracking
+  // WebSocket connection for job tracking - LAZY CONNECTION
   const { 
     jobProgress, 
     trackJob, 
@@ -84,23 +89,37 @@ function RouteComponent() {
     usingPolling 
   } = useJobWebSocket({
     userId: user?.id,
-    enabled: true, // Keep WebSocket connected throughout the session
+    enabled: enableWebSocket, // Only connect when actively processing
     onJobCompleted: onJobCompleted,
     onJobFailed: onJobFailed,
   });
 
+  // Log WebSocket connection state changes
+  useEffect(() => {
+    if (enableWebSocket && isConnected) {
+      console.log('✅ WebSocket connected for real-time job tracking');
+    } else if (enableWebSocket && !isConnected && usingPolling) {
+      console.log('🔄 Using polling fallback for job tracking');
+    }
+  }, [enableWebSocket, isConnected, usingPolling]);
+
   // Update processing job with real-time progress
   useEffect(() => {
-    if (jobProgress && processingJob) {
-      setProcessingJob(prev => prev ? {
-        ...prev,
-        progress: jobProgress.progress,
-        stage: jobProgress.message || prev.stage,
-        status: jobProgress.status === 'completed' ? 'completed' : 
-                jobProgress.status === 'failed' ? 'failed' : 'processing'
-      } : null);
+    if (jobProgress) {
+      setProcessingJob(prev => {
+        // Only update if we have an active processing job
+        if (!prev) return null;
+        
+        return {
+          ...prev,
+          progress: jobProgress.progress,
+          stage: jobProgress.message || prev.stage,
+          status: jobProgress.status === 'completed' ? 'completed' : 
+                  jobProgress.status === 'failed' ? 'failed' : 'processing'
+        };
+      });
     }
-  }, [jobProgress, processingJob]);
+  }, [jobProgress]); // Remove processingJob from dependencies to avoid infinite loop
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -171,6 +190,9 @@ function RouteComponent() {
         status: 'processing'
       });
 
+      // Enable WebSocket connection now that we're processing
+      setEnableWebSocket(true);
+
       // Upload and process the PDF
       const result = await uploadAsync({
         file,
@@ -198,6 +220,7 @@ function RouteComponent() {
         stopTracking();
         setSelectedFiles([]);
         setValidationError('');
+        setEnableWebSocket(false); // Disconnect WebSocket after error
       }, 3000);
     }
   }

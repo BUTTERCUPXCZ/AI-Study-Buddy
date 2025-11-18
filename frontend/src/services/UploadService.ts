@@ -20,6 +20,18 @@ export interface JobStatus {
   data?: any;
 }
 
+export interface FileData {
+  id: string;
+  url: string;
+  name: string;
+  userId: string;
+  user?: {
+    id: string;
+    Fullname: string;
+    email: string;
+  };
+}
+
 class UploadService {
   /**
    * Upload a PDF file
@@ -103,6 +115,42 @@ class UploadService {
         }
       }, interval);
     });
+  }
+
+  /**
+   * Get all files for a user
+   */
+  async getUserFiles(userId: string): Promise<FileData[]> {
+    try {
+      const response = await api.get(`/upload/user/${userId}`);
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch files');
+    }
+  }
+
+  /**
+   * Get a single file by ID
+   */
+  async getFileById(fileId: string): Promise<FileData> {
+    try {
+      const response = await api.get(`/upload/${fileId}`);
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch file');
+    }
+  }
+
+  /**
+   * Delete a file
+   */
+  async deleteFile(fileId: string, userId: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const response = await api.delete(`/upload/${fileId}?userId=${userId}`);
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to delete file');
+    }
   }
 }
 

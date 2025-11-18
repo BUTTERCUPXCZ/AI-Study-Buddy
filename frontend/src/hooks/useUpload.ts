@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { useState, useCallback } from 'react';
 import UploadService from '@/services/UploadService';
 
@@ -102,4 +102,44 @@ export const useUploadPdf = () => {
     error: uploadProgress.error,
     reset,
   };
+};
+
+/**
+ * Hook to fetch all files for a user
+ */
+export const useUserFiles = (userId: string) => {
+  return useQuery({
+    queryKey: ['files', userId],
+    queryFn: () => UploadService.getUserFiles(userId),
+    enabled: !!userId,
+  });
+};
+
+/**
+ * Hook to fetch a single file by ID
+ */
+export const useFile = (fileId: string) => {
+  return useQuery({
+    queryKey: ['file', fileId],
+    queryFn: () => UploadService.getFileById(fileId),
+    enabled: !!fileId,
+  });
+};
+
+/**
+ * Hook to delete a file
+ */
+export const useDeleteFile = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ fileId, userId }: { fileId: string; userId: string }) =>
+      UploadService.deleteFile(fileId, userId),
+    onSuccess: (_, variables) => {
+      // Invalidate files query to refetch the updated list
+      queryClient.invalidateQueries({ queryKey: ['files', variables.userId] });
+      // Also invalidate notes as they might be affected
+      queryClient.invalidateQueries({ queryKey: ['notes', variables.userId] });
+    },
+  });
 };
