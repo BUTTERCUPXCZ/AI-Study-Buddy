@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Test Client</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #555;
+            font-size: 1.2em;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .status.connected {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        button.primary {
+            background: #007bff;
+            color: white;
+        }
+        button.success {
+            background: #28a745;
+            color: white;
+        }
+        button.danger {
+            background: #dc3545;
+            color: white;
+        }
+        button.warning {
+            background: #ffc107;
+            color: #333;
+        }
+        input {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            flex: 1;
+            min-width: 200px;
+        }
+        .log {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 4px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-left: 3px solid #007bff;
+            padding-left: 10px;
+        }
+        .log-entry.update {
+            border-left-color: #007bff;
+        }
+        .log-entry.progress {
+            border-left-color: #ffc107;
+        }
+        .log-entry.completed {
+            border-left-color: #28a745;
+        }
+        .log-entry.error {
+            border-left-color: #dc3545;
+        }
+        .log-entry .timestamp {
+            color: #858585;
+            font-size: 11px;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #007bff, #0056b3);
+            width: 0%;
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        .input-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin: 10px 0;
+        }
+        .input-group label {
+            font-weight: bold;
+            min-width: 100px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔌 WebSocket Test Client</h1>
+    
+    <div class="container">
+        <h2>Connection Status</h2>
+        <div id="connectionStatus" class="status disconnected">Disconnected</div>
+        
+        <div class="controls">
+            <button class="primary" onclick="connect()">Connect</button>
+            <button class="danger" onclick="disconnect()">Disconnect</button>
+            <button class="warning" onclick="clearLog()">Clear Log</button>
+        </div>
+
+        <div class="input-group">
+            <label>Server URL:</label>
+            <input type="text" id="serverUrl" value="http://localhost:3000" />
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Job Subscription</h2>
+        
+        <div class="input-group">
+            <label>Job ID:</label>
+            <input type="text" id="jobId" value="test-job-123" placeholder="Enter job ID" />
+        </div>
+
+        <div class="input-group">
+            <label>User ID:</label>
+            <input type="text" id="userId" value="" placeholder="Enter user ID (optional)" />
+        </div>
+
+        <div class="controls">
+            <button class="success" onclick="subscribeToJob()">Subscribe to Job</button>
+            <button class="success" onclick="subscribeToUser()">Subscribe to User</button>
+            <button class="success" onclick="subscribeToAll()">Subscribe to All Jobs</button>
+            <button class="danger" onclick="unsubscribeFromJob()">Unsubscribe</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Job Progress</h2>
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressBar">0%</div>
+        </div>
+        <div id="progressMessage" style="text-align: center; margin-top: 10px; font-style: italic; color: #666;">
+            Waiting for updates...
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Event Log</h2>
+        <div id="log" class="log">
+            <div class="log-entry">Waiting for connection...</div>
+        </div>
+    </div>
+
+    <script>
+        let socket = null;
+
+        function log(message, type = 'update') {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.innerHTML = `
+                <span class="timestamp">[${timestamp}]</span> ${message}
+            `;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function updateConnectionStatus(connected) {
+            const statusDiv = document.getElementById('connectionStatus');
+            if (connected) {
+                statusDiv.textContent = 'Connected';
+                statusDiv.className = 'status connected';
+            } else {
+                statusDiv.textContent = 'Disconnected';
+                statusDiv.className = 'status disconnected';
+            }
+        }
+
+        function updateProgress(progress, message) {
+            const progressBar = document.getElementById('progressBar');
+            const progressMessage = document.getElementById('progressMessage');
+            
+            progressBar.style.width = `${progress}%`;
+            progressBar.textContent = `${progress}%`;
+            
+            if (message) {
+                progressMessage.textContent = message;
+            }
+        }
+
+        function connect() {
+            const serverUrl = document.getElementById('serverUrl').value;
+            
+            if (socket && socket.connected) {
+                log('Already connected', 'update');
+                return;
+            }
+
+            socket = io(`${serverUrl}/jobs`, {
+                transports: ['websocket'],
+            });
+
+            socket.on('connect', () => {
+                log('✅ Connected to WebSocket server', 'update');
+                updateConnectionStatus(true);
+            });
+
+            socket.on('disconnect', () => {
+                log('❌ Disconnected from WebSocket server', 'error');
+                updateConnectionStatus(false);
+            });
+
+            socket.on('job:update', (data) => {
+                log(`📊 Job Update: ${JSON.stringify(data, null, 2)}`, 'update');
+            });
+
+            socket.on('job:progress', (data) => {
+                log(`⏳ Progress: ${data.progress}% - ${data.message || 'Processing...'}`, 'progress');
+                updateProgress(data.progress, data.message);
+            });
+
+            socket.on('job:completed', (data) => {
+                log(`✅ Job Completed: ${JSON.stringify(data, null, 2)}`, 'completed');
+                updateProgress(100, 'Job completed successfully!');
+            });
+
+            socket.on('job:error', (data) => {
+                log(`❌ Job Error: ${JSON.stringify(data, null, 2)}`, 'error');
+                updateProgress(0, `Error: ${data.error}`);
+            });
+
+            socket.on('announcement', (data) => {
+                log(`📢 Announcement: ${data.message}`, 'update');
+            });
+
+            socket.on('notification', (data) => {
+                log(`🔔 Notification: ${JSON.stringify(data, null, 2)}`, 'update');
+            });
+
+            log('🔄 Connecting to server...', 'update');
+        }
+
+        function disconnect() {
+            if (socket) {
+                socket.disconnect();
+                socket = null;
+                log('Disconnected', 'update');
+                updateConnectionStatus(false);
+            }
+        }
+
+        function subscribeToJob() {
+            if (!socket || !socket.connected) {
+                log('❌ Not connected to server', 'error');
+                return;
+            }
+
+            const jobId = document.getElementById('jobId').value;
+            if (!jobId) {
+                log('❌ Please enter a job ID', 'error');
+                return;
+            }
+
+            socket.emit('subscribe:jobs', { jobId }, (response) => {
+                log(`Subscribed to job: ${jobId} - Response: ${JSON.stringify(response)}`, 'update');
+            });
+        }
+
+        function subscribeToUser() {
+            if (!socket || !socket.connected) {
+                log('❌ Not connected to server', 'error');
+                return;
+            }
+
+            const userId = document.getElementById('userId').value;
+            if (!userId) {
+                log('❌ Please enter a user ID', 'error');
+                return;
+            }
+
+            socket.emit('subscribe:jobs', { userId }, (response) => {
+                log(`Subscribed to user: ${userId} - Response: ${JSON.stringify(response)}`, 'update');
+            });
+        }
+
+        function subscribeToAll() {
+            if (!socket || !socket.connected) {
+                log('❌ Not connected to server', 'error');
+                return;
+            }
+
+            socket.emit('subscribe:jobs', {}, (response) => {
+                log(`Subscribed to all jobs - Response: ${JSON.stringify(response)}`, 'update');
+            });
+        }
+
+        function unsubscribeFromJob() {
+            if (!socket || !socket.connected) {
+                log('❌ Not connected to server', 'error');
+                return;
+            }
+
+            const jobId = document.getElementById('jobId').value;
+            socket.emit('unsubscribe:jobs', { jobId }, (response) => {
+                log(`Unsubscribed from job: ${jobId} - Response: ${JSON.stringify(response)}`, 'update');
+            });
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+            updateProgress(0, 'Waiting for updates...');
+        }
+
+        // Auto-connect on page load
+        // window.onload = () => connect();
+    </script>
+</body>
+</html>

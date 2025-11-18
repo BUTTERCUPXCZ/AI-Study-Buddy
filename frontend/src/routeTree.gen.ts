@@ -21,6 +21,7 @@ import { Route as _protectedQuizzesRouteImport } from './routes/__protected.quiz
 import { Route as _protectedNotesRouteImport } from './routes/__protected.notes'
 import { Route as _protectedLibraryRouteImport } from './routes/__protected.library'
 import { Route as _protectedDashboardRouteImport } from './routes/__protected.dashboard'
+import { Route as _protectedNotesIndexRouteImport } from './routes/__protected.notes.index'
 import { Route as _protectedNotesNoteIdRouteImport } from './routes/__protected.notes.$noteId'
 
 const SupabaseCallbackRoute = SupabaseCallbackRouteImport.update({
@@ -82,6 +83,11 @@ const _protectedDashboardRoute = _protectedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => _protectedRoute,
 } as any)
+const _protectedNotesIndexRoute = _protectedNotesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => _protectedNotesRoute,
+} as any)
 const _protectedNotesNoteIdRoute = _protectedNotesNoteIdRouteImport.update({
   id: '/$noteId',
   path: '/$noteId',
@@ -101,6 +107,7 @@ export interface FileRoutesByFullPath {
   '/quizzes': typeof _protectedQuizzesRoute
   '/tutor': typeof _protectedTutorRoute
   '/notes/$noteId': typeof _protectedNotesNoteIdRoute
+  '/notes/': typeof _protectedNotesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -111,10 +118,10 @@ export interface FileRoutesByTo {
   '/supabaseCallback': typeof SupabaseCallbackRoute
   '/dashboard': typeof _protectedDashboardRoute
   '/library': typeof _protectedLibraryRoute
-  '/notes': typeof _protectedNotesRouteWithChildren
   '/quizzes': typeof _protectedQuizzesRoute
   '/tutor': typeof _protectedTutorRoute
   '/notes/$noteId': typeof _protectedNotesNoteIdRoute
+  '/notes': typeof _protectedNotesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -131,6 +138,7 @@ export interface FileRoutesById {
   '/__protected/quizzes': typeof _protectedQuizzesRoute
   '/__protected/tutor': typeof _protectedTutorRoute
   '/__protected/notes/$noteId': typeof _protectedNotesNoteIdRoute
+  '/__protected/notes/': typeof _protectedNotesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -147,6 +155,7 @@ export interface FileRouteTypes {
     | '/quizzes'
     | '/tutor'
     | '/notes/$noteId'
+    | '/notes/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -157,10 +166,10 @@ export interface FileRouteTypes {
     | '/supabaseCallback'
     | '/dashboard'
     | '/library'
-    | '/notes'
     | '/quizzes'
     | '/tutor'
     | '/notes/$noteId'
+    | '/notes'
   id:
     | '__root__'
     | '/'
@@ -176,6 +185,7 @@ export interface FileRouteTypes {
     | '/__protected/quizzes'
     | '/__protected/tutor'
     | '/__protected/notes/$noteId'
+    | '/__protected/notes/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -274,6 +284,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof _protectedDashboardRouteImport
       parentRoute: typeof _protectedRoute
     }
+    '/__protected/notes/': {
+      id: '/__protected/notes/'
+      path: '/'
+      fullPath: '/notes/'
+      preLoaderRoute: typeof _protectedNotesIndexRouteImport
+      parentRoute: typeof _protectedNotesRoute
+    }
     '/__protected/notes/$noteId': {
       id: '/__protected/notes/$noteId'
       path: '/$noteId'
@@ -286,10 +303,12 @@ declare module '@tanstack/react-router' {
 
 interface _protectedNotesRouteChildren {
   _protectedNotesNoteIdRoute: typeof _protectedNotesNoteIdRoute
+  _protectedNotesIndexRoute: typeof _protectedNotesIndexRoute
 }
 
 const _protectedNotesRouteChildren: _protectedNotesRouteChildren = {
   _protectedNotesNoteIdRoute: _protectedNotesNoteIdRoute,
+  _protectedNotesIndexRoute: _protectedNotesIndexRoute,
 }
 
 const _protectedNotesRouteWithChildren = _protectedNotesRoute._addFileChildren(

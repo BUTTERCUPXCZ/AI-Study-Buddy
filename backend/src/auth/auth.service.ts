@@ -98,7 +98,7 @@ export class AuthService {
     return {
       message: 'OAuth login successful',
       user: {
-        id: dbUser.supabaseId,
+        id: dbUser.id, // Use database ID, not supabaseId
         email: dbUser.email,
         fullname: dbUser.Fullname,
       }
@@ -178,7 +178,7 @@ export class AuthService {
           message: 'Login successful',
           access_token: session.access_token,
           user: {
-            id: user.id,
+            id: existingUser.id, // Use database ID
             email: user.email,
             fullname: user.user_metadata?.fullname || existingUser.Fullname,
           },
@@ -210,7 +210,7 @@ export class AuthService {
     }
     
     return {
-      id: supabaseUser.id,
+      id: dbUser.id, // Use database ID
       email: supabaseUser.email,
       fullname: dbUser.Fullname,
       supabaseUser: supabaseUser

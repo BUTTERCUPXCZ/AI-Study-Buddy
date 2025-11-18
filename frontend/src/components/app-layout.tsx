@@ -21,13 +21,13 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   
   const navItems = [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { to: '/notes', label: 'Notes', icon: FileText },
+    { to: '/notes', label: 'Study Notes', icon: FileText },
     { to: '/quizzes', label: 'Quizzes', icon: Brain },
     { to: '/tutor', label: 'AI Tutor', icon: GraduationCap },
     { to: '/library', label: 'Library', icon: Library },
   ]
 
-  const currentRoute = navItems.find(item => location.pathname === item.to)
+  const currentRoute = navItems.find(item => location.pathname.startsWith(item.to))
   const pageTitle = currentRoute?.label || 'Dashboard'
 
   return (
@@ -45,7 +45,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         <nav className="space-y-1">
           {navItems.map((item) => {
             const Icon = item.icon
-            const isActive = location.pathname === item.to
+            const isActive = location.pathname.startsWith(item.to)
             return (
               <Link 
                 key={item.to}

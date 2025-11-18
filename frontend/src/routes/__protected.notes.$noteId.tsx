@@ -1,125 +1,31 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, Download, Star, BookOpen, Calendar } from 'lucide-react'
-import { Separator } from '@/components/ui/separator'
+import { ArrowLeft, Download, Star, Calendar, Brain } from 'lucide-react'
 import AppLayout from '@/components/app-layout'
+import { useAuth } from '@/context/AuthContext'
+import { useNote } from '@/hooks/useNotes'
 
 export const Route = createFileRoute('/__protected/notes/$noteId')({
   component: RouteComponent,
 })
 
-const mockNotesData: Record<string, any> = {
-  '0': {
-    id: '0',
-    title: 'Introduction to Algorithms',
-    subject: 'Computer Science',
-    date: 'Nov 10, 2025',
-    pages: 5,
-    excerpt: 'Key concepts: Big O notation, time complexity, space complexity...',
-    sections: [
-      {
-        title: 'What is an Algorithm?',
-        content: 'An algorithm is a step-by-step procedure for solving a problem or accomplishing a task. It must be finite, well-defined, and effective.',
-        keyPoints: [
-          'Must have clear inputs and outputs',
-          'Each step must be unambiguous',
-          'Must terminate after finite steps'
-        ]
-      },
-      {
-        title: 'Time Complexity',
-        content: 'Time complexity measures how the runtime of an algorithm grows as the input size increases.',
-        keyPoints: [
-          'Big O notation: O(n), O(log n), O(n²)',
-          'Best, average, and worst case analysis',
-          'Space-time tradeoffs'
-        ]
-      },
-      {
-        title: 'Space Complexity',
-        content: 'Space complexity refers to the amount of memory an algorithm uses relative to the input size.',
-        keyPoints: [
-          'Auxiliary space vs total space',
-          'Stack space in recursive algorithms',
-          'In-place algorithms minimize space complexity'
-        ]
-      }
-    ]
-  },
-  '1': {
-    id: '1',
-    title: 'Data Structures Overview',
-    subject: 'Computer Science',
-    date: 'Nov 8, 2025',
-    pages: 3,
-    excerpt: 'Arrays, linked lists, stacks, queues, and their use cases...',
-    sections: [
-      {
-        title: 'Arrays and Lists',
-        content: 'Arrays are contiguous memory locations that store elements of the same type. Lists provide dynamic sizing.',
-        keyPoints: [
-          'Arrays: O(1) access, fixed size',
-          'Lists: Dynamic sizing, O(n) insertion',
-          'Use cases and tradeoffs'
-        ]
-      },
-      {
-        title: 'Stacks and Queues',
-        content: 'Stacks follow LIFO (Last In First Out) principle, while queues follow FIFO (First In First Out).',
-        keyPoints: [
-          'Stack operations: push, pop, peek - all O(1)',
-          'Queue operations: enqueue, dequeue - all O(1)',
-          'Applications: function calls, BFS, task scheduling'
-        ]
-      }
-    ]
-  },
-  '2': {
-    id: '2',
-    title: 'Operating Systems Basics',
-    subject: 'Computer Science',
-    date: 'Nov 5, 2025',
-    pages: 7,
-    excerpt: 'Process management, threading, synchronization, deadlocks...',
-    sections: [
-      {
-        title: 'Process Management',
-        content: 'The OS manages processes, allocating CPU time and resources efficiently.',
-        keyPoints: [
-          'Process states: new, ready, running, waiting, terminated',
-          'Context switching',
-          'Scheduling algorithms'
-        ]
-      },
-      {
-        title: 'Threading and Concurrency',
-        content: 'Threads are lightweight processes that share the same memory space, enabling concurrent execution.',
-        keyPoints: [
-          'User threads vs kernel threads',
-          'Benefits: parallelism, responsiveness, resource sharing',
-          'Challenges: synchronization, race conditions'
-        ]
-      },
-      {
-        title: 'Deadlocks',
-        content: 'A deadlock occurs when processes are waiting for resources held by each other, creating a circular wait.',
-        keyPoints: [
-          'Four conditions: mutual exclusion, hold and wait, no preemption, circular wait',
-          'Prevention, avoidance, and detection strategies',
-          'Banker\'s algorithm for deadlock avoidance'
-        ]
-      }
-    ]
-  }
-}
-
 function RouteComponent() {
   const { noteId } = Route.useParams()
-  const note = mockNotesData[noteId]
+  const { user } = useAuth()
+  const { data: note, isLoading, isError } = useNote(noteId, user?.id || '')
 
-  if (!note) {
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center h-[60vh]">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </AppLayout>
+    )
+  }
+
+  if (isError || !note) {
     return (
       <AppLayout>
       <div className="flex flex-col items-center justify-center h-[60vh]">
@@ -136,111 +42,92 @@ function RouteComponent() {
     )
   }
 
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  }
+
+  // Process content to handle markdown-like formatting
+  const formatContent = (content: string) => {
+    return content
+      // Headers
+      .replace(/^### (.*$)/gim, '<h3 class="text-xl font-bold mt-6 mb-3">$1</h3>')
+      .replace(/^## (.*$)/gim, '<h2 class="text-2xl font-bold mt-8 mb-4">$1</h2>')
+      .replace(/^# (.*$)/gim, '<h1 class="text-3xl font-bold mt-8 mb-4">$1</h1>')
+      // Bold
+      .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1</strong>')
+      // Bullet points
+      .replace(/^\* (.*$)/gim, '<li class="ml-4">$1</li>')
+      .replace(/^- (.*$)/gim, '<li class="ml-4">$1</li>')
+      // Line breaks
+      .replace(/\n\n/g, '</p><p class="mb-4">')
+      .replace(/\n/g, '<br/>')
+  }
+
   return (
     <AppLayout>
-    <div className="min-h-screen bg-background">
-      <div className="max-w-4xl mx-auto py-8 px-4">
-        {/* Header with Title and Actions */}
-        <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex-1">
-              <h1 className="text-3xl font-bold mb-2">{note.title}</h1>
-              <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                <Badge variant="secondary" className="text-xs">
-                  {note.subject}
-                </Badge>
-                <div className="flex items-center gap-1.5">
-                  <Calendar className="h-4 w-4" />
-                  {note.date}
-                </div>
-              </div>
-            </div>
-            <Button variant="ghost" size="icon" className="shrink-0">
-              <Star className="h-5 w-5" />
+    <div className="max-w-4xl mx-auto py-4">
+      {/* Compact Header */}
+      <div className="mb-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <Link to="/notes">
+            <Button variant="ghost" size="sm" className="gap-2 -ml-2">
+              <ArrowLeft className="h-4 w-4" />
+              Back to Notes
+            </Button>
+          </Link>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" className="h-9 w-9">
+              <Star className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="sm" className="gap-2">
+              <Download className="h-4 w-4" />
+              Export
             </Button>
           </div>
+        </div>
 
-          {/* Excerpt */}
-          <p className="text-sm text-muted-foreground">
-            {note.excerpt}
-          </p>
-
-          {/* Actions */}
-          <div className="flex items-center justify-between mt-4 pt-4 border-t">
-            <Badge variant="outline" className="text-xs">
-              {note.pages} pages
+        {/* Title and Metadata */}
+        <div>
+          <h1 className="text-3xl font-bold mb-2 leading-tight">{note.title}</h1>
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+            <Badge variant="secondary" className="text-xs font-medium">
+              {note.source ? 'PDF Generated' : 'Manual'}
             </Badge>
-            <div className="flex items-center gap-2">
-              <Link to="/notes">
-                <Button variant="ghost" size="sm" className="gap-2">
-                  <ArrowLeft className="h-4 w-4" />
-                  Back
-                </Button>
-              </Link>
-              <Button variant="ghost" size="sm" className="gap-2">
-                <Download className="h-4 w-4" />
-                Download
-              </Button>
+            <div className="flex items-center gap-1.5">
+              <Calendar className="h-3.5 w-3.5" />
+              <span>{formatDate(note.createdAt)}</span>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Content Card */}
-        <Card className="bg-white shadow-sm">
-          <CardContent className="p-8">
-            <div className="space-y-8">
-              {note.sections.map((section: any, index: number) => (
-                <div key={index}>
-                  {index > 0 && <Separator className="my-8" />}
-                  
-                  {/* Section */}
-                  <div className="space-y-4">
-                    {/* Section Title */}
-                    <div className="flex items-start gap-3">
-                      <BookOpen className="h-6 w-6 text-primary mt-0.5 shrink-0" />
-                      <h2 className="text-2xl font-bold">{section.title}</h2>
-                    </div>
-
-                    {/* Section Content */}
-                    <p className="text-base leading-relaxed text-muted-foreground">
-                      {section.content}
-                    </p>
-
-                    {/* Key Points */}
-                    {section.keyPoints && section.keyPoints.length > 0 && (
-                      <div className="mt-6 bg-muted/30 rounded-lg p-6">
-                        <h3 className="text-sm font-bold mb-4 text-foreground">
-                          Key Points:
-                        </h3>
-                        <ul className="space-y-3">
-                          {section.keyPoints.map((point: string, pointIndex: number) => (
-                            <li 
-                              key={pointIndex} 
-                              className="flex items-start gap-3 text-sm text-foreground"
-                            >
-                              <span className="text-primary mt-0.5 shrink-0 font-bold">▸</span>
-                              <span>{point}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Generate Quiz Button */}
-        <div className="mt-6">
-          <Button 
-            className="w-full h-14 text-base font-semibold bg-linear-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600"
-            size="lg"
-          >
-            Generate Quiz from This Note
-          </Button>
+      {/* Content - ChatGPT Style */}
+      <div className="bg-background rounded-lg mb-6">
+        <div className="prose prose-slate dark:prose-invert max-w-none">
+          <div 
+            className="text-base leading-relaxed space-y-4"
+            dangerouslySetInnerHTML={{ 
+              __html: `<p class="mb-4">${formatContent(note.content)}</p>` 
+            }}
+            style={{
+              fontSize: '16px',
+              lineHeight: '1.75',
+              color: 'inherit'
+            }}
+          />
         </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="sticky bottom-6 flex gap-3 bg-background/80 backdrop-blur-sm p-4 rounded-lg border">
+        <Button 
+          className="flex-1 h-12 text-base font-semibold gap-2"
+          size="lg"
+        >
+          <Brain className="h-5 w-5" />
+          Generate Quiz from This Note
+        </Button>
       </div>
     </div>
     </AppLayout>

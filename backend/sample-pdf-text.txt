@@ -1,0 +1,133 @@
+Introduction to Data Structures and Algorithms
+
+Chapter 1: Arrays and Lists
+
+An array is a collection of elements stored in contiguous memory locations. Arrays allow random access to elements using an index, which makes retrieval operations very efficient with O(1) time complexity.
+
+Key Characteristics of Arrays:
+- Fixed size (in most languages)
+- Elements stored contiguously in memory
+- Fast access using indices
+- Efficient for sequential access
+
+Common Array Operations:
+1. Access - O(1)
+2. Search - O(n)
+3. Insertion - O(n)
+4. Deletion - O(n)
+
+Linked Lists
+
+A linked list is a linear data structure where elements are stored in nodes. Each node contains data and a reference (or pointer) to the next node in the sequence.
+
+Types of Linked Lists:
+1. Singly Linked List - Each node points to the next node
+2. Doubly Linked List - Each node points to both next and previous nodes
+3. Circular Linked List - Last node points back to the first node
+
+Advantages of Linked Lists:
+- Dynamic size
+- Efficient insertion/deletion at beginning
+- No memory wastage
+
+Disadvantages:
+- No random access
+- Extra memory for pointers
+- Not cache-friendly
+
+Time Complexity Comparison:
+
+Operation       | Array  | Linked List
+----------------|--------|-------------
+Access          | O(1)   | O(n)
+Search          | O(n)   | O(n)
+Insert at start | O(n)   | O(1)
+Insert at end   | O(1)   | O(n)
+Delete at start | O(n)   | O(1)
+
+Chapter 2: Stacks and Queues
+
+Stack
+A stack is a linear data structure that follows the Last In First Out (LIFO) principle. The last element added to the stack is the first one to be removed.
+
+Common Stack Operations:
+- Push: Add an element to the top
+- Pop: Remove the top element
+- Peek: View the top element without removing it
+- isEmpty: Check if stack is empty
+
+Applications of Stacks:
+1. Function call management (call stack)
+2. Expression evaluation
+3. Backtracking algorithms
+4. Browser history
+
+Queue
+A queue is a linear data structure that follows the First In First Out (FIFO) principle. The first element added is the first one to be removed.
+
+Common Queue Operations:
+- Enqueue: Add element to the rear
+- Dequeue: Remove element from the front
+- Front: View the front element
+- isEmpty: Check if queue is empty
+
+Types of Queues:
+1. Simple Queue
+2. Circular Queue
+3. Priority Queue
+4. Double-ended Queue (Deque)
+
+Applications of Queues:
+1. Process scheduling
+2. Breadth-first search
+3. Print spooling
+4. Request handling in web servers
+
+Chapter 3: Trees
+
+A tree is a hierarchical data structure consisting of nodes connected by edges. It has a root node and subtrees of children nodes.
+
+Binary Tree Terminology:
+- Root: The topmost node
+- Parent: Node with children
+- Child: Node with a parent
+- Leaf: Node with no children
+- Height: Length of longest path from root to leaf
+- Depth: Length of path from root to a specific node
+
+Binary Search Tree (BST)
+A binary search tree is a binary tree where:
+- Left subtree contains nodes with values less than parent
+- Right subtree contains nodes with values greater than parent
+- Both subtrees are also BSTs
+
+BST Operations:
+- Search: O(log n) average, O(n) worst case
+- Insertion: O(log n) average, O(n) worst case
+- Deletion: O(log n) average, O(n) worst case
+
+Tree Traversal Methods:
+1. Inorder (Left, Root, Right)
+2. Preorder (Root, Left, Right)
+3. Postorder (Left, Right, Root)
+4. Level Order (Breadth-first)
+
+Summary
+
+Understanding data structures is fundamental to writing efficient algorithms. Each structure has its strengths and weaknesses, and choosing the right one depends on the specific requirements of your application.
+
+Key Takeaways:
+- Arrays provide fast access but fixed size
+- Linked lists offer dynamic sizing with slower access
+- Stacks follow LIFO principle
+- Queues follow FIFO principle
+- Trees provide hierarchical organization
+- BSTs enable efficient searching when balanced
+
+Practice Problems:
+1. Implement a stack using arrays
+2. Reverse a linked list
+3. Check if parentheses are balanced using a stack
+4. Implement a queue using two stacks
+5. Find the height of a binary tree
+6. Perform inorder traversal of a BST

@@ -24,15 +24,22 @@ model User {
   notes     Note[]
   quizzes   Quiz[]
   files     File[]
+  uploads   Upload[]
+  jobs      Job[]
+  chatSessions ChatSession[]
 }
 
 model Note {
   id        String   @id @default(cuid())
   title     String
   content   String
+  source    String?  // Optional: track source file or PDF
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   userId    String
   user      User     @relation(fields: [userId], references: [id])
+  quizzes   Quiz[]
+  chatSessions ChatSession[]
 }
 
 model Quiz {
@@ -40,8 +47,33 @@ model Quiz {
   title     String
   questions Json
   score     Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userId    String
+  noteId    String?  // Link quiz to a note
+  user      User     @relation(fields: [userId], references: [id])
+  note      Note?    @relation(fields: [noteId], references: [id])
+}
+
+model ChatSession {
+  id        String   @id @default(cuid())
+  title     String?  // Optional title for the chat session
+  messages  ChatMessage[]
+  noteId    String?  // Link chat to a note for context
+  note      Note?    @relation(fields: [noteId], references: [id])
   userId    String
   user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  role      String   // 'user' or 'assistant'
+  content   String
+  sessionId String
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
 }
 
 model File {
@@ -50,5 +82,55 @@ model File {
   name      String
   userId    String
   user      User     @relation(fields: [userId], references: [id])
+}
+
+// Uploads represent user-uploaded files (e.g. PDFs, images). This is separate
+// from the existing `File` model to avoid breaking changes; you can migrate
+// or consolidate later if desired.
+model Upload {
+  id        String   @id @default(cuid())
+  url       String
+  filename  String
+  size      Int?
+  mime      String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+enum JobStatus {
+  waiting
+  processing
+  extracting
+  generating_notes
+  generating_quiz
+  completed
+  failed
+  delayed
+  paused
+}
+
+// Jobs table to store metadata about BullMQ jobs. The authoritative job state
+// lives in Redis, but storing job metadata here is useful for auditing,
+// long-term history, relationships to users, and analytics.
+model Job {
+  id           String    @id @default(cuid())
+  jobId        String    @unique // Bull/Bee-Queue job id (if available)
+  name         String
+  data         Json
+  opts         Json?
+  status       JobStatus @default(waiting)
+  attempts     Int       @default(0)
+  priority     Int?
+  progress     Int?      @default(0)
+  failedReason String?
+  finishedAt   DateTime?
+  failedAt     DateTime?
+  queueName    String
+  timestamp    DateTime  @default(now())
+  userId       String?
+  user         User?     @relation(fields: [userId], references: [id])
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 }
 
