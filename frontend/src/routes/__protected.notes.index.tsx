@@ -30,12 +30,228 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, memo } from 'react'
 import AppLayout from '@/components/app-layout'
 import { useAuth } from '@/context/AuthContext'
 import { useNotes, useDeleteNote } from '@/hooks/useNotes'
 import { useUploadPdf } from '@/hooks/useUpload'
 import { useJobWebSocket } from '@/hooks/useJobWebSocket'
+import { downloadNotePdf } from '@/lib/pdfUtils'
+
+// Helper functions
+const formatDate = (dateString: string) => {
+  const date = new Date(dateString)
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+const getExcerpt = (content: string, maxLength: number = 100) => {
+  if (content.length <= maxLength) return content
+  return content.substring(0, maxLength) + '...'
+}
+
+const getStageMessage = (stage: string) => {
+  if (!stage) return 'Processing your document...';
+  
+  switch (stage.toLowerCase()) {
+    case 'processing':
+    case 'uploading':
+      return 'Processing your PDF...';
+    case 'uploading_to_gemini':
+      return 'Uploading PDF to Gemini AI...';
+    case 'generating_notes':
+    case 'generating notes':
+    case 'gemini is analyzing your pdf and generating study notes...':
+      return 'Gemini is analyzing your PDF...';
+    case 'saving_notes':
+    case 'saving notes':
+      return 'Saving your generated notes...';
+    case 'completed':
+    case 'complete':
+      return 'Completed! ✓';
+    default:
+      return stage;
+  }
+};
+
+// Memoized Components
+const ProcessingJobCard = memo(({ 
+  processingJob, 
+  usingPolling, 
+  isConnected 
+}: { 
+  processingJob: any, 
+  usingPolling: boolean, 
+  isConnected: boolean 
+}) => (
+  <Card className={`h-full border-2 shadow-md ${
+    processingJob.status === 'completed' ? 'border-green-500/50 bg-green-50/50 dark:bg-green-950/10' :
+    processingJob.status === 'failed' ? 'border-red-500/50 bg-red-50/50 dark:bg-red-950/10' :
+    'border-primary/50 bg-primary/5 animate-pulse'
+  } transition-all duration-300`}>
+    <CardHeader className="pb-3">
+      <div className="flex items-start justify-between gap-2">
+        <div className="space-y-1.5 flex-1 min-w-0">
+          <CardTitle className="text-lg font-semibold line-clamp-2 flex items-center gap-2">
+            {processingJob.status === 'completed' ? (
+              <>
+                <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
+                {processingJob.fileName}
+              </>
+            ) : processingJob.status === 'failed' ? (
+              <>
+                <AlertCircle className="h-5 w-5 text-red-600 shrink-0" />
+                {processingJob.fileName}
+              </>
+            ) : (
+              <>
+                <Loader2 className="h-5 w-5 animate-spin text-primary shrink-0" />
+                {processingJob.fileName}
+              </>
+            )}
+          </CardTitle>
+          <div className="flex items-center gap-2 mt-1">
+            <Badge variant={
+              processingJob.status === 'completed' ? 'default' :
+              processingJob.status === 'failed' ? 'destructive' :
+              'secondary'
+            } className="text-xs font-medium">
+              {processingJob.status === 'completed' ? 'Completed' :
+               processingJob.status === 'failed' ? 'Failed' :
+               'Processing'}
+            </Badge>
+            {!usingPolling && isConnected && (
+              <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-medium">
+                <Wifi className="h-3 w-3" />
+                Live
+              </span>
+            )}
+            {usingPolling && (
+              <span className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 font-medium">
+                <WifiOff className="h-3 w-3" />
+                Polling
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    </CardHeader>
+    <CardContent className="pt-2 space-y-4">
+      {processingJob.status === 'processing' && (
+        <>
+          <div className="space-y-2">
+            <div className="flex justify-between text-xs font-medium text-muted-foreground">
+              <span>{getStageMessage(processingJob.stage)}</span>
+              <span>{Math.round(processingJob.progress)}%</span>
+            </div>
+            <Progress value={processingJob.progress} className="h-2" />
+          </div>
+          <p className="text-xs text-muted-foreground italic bg-background/50 p-2 rounded border">
+            💡 Gemini AI is reading your PDF directly for the best understanding!
+          </p>
+        </>
+      )}
+      {processingJob.status === 'completed' && (
+        <p className="text-sm text-green-700 dark:text-green-400 font-medium flex items-center gap-2">
+          <CheckCircle2 className="h-4 w-4" />
+          Study notes generated successfully! Refreshing list...
+        </p>
+      )}
+      {processingJob.status === 'failed' && (
+        <p className="text-sm text-red-700 dark:text-red-400 font-medium flex items-center gap-2">
+          <AlertCircle className="h-4 w-4" />
+          Failed to process PDF. Please try again.
+        </p>
+      )}
+    </CardContent>
+  </Card>
+));
+
+const NoteCard = memo(({ 
+  note, 
+  navigate, 
+  onDownload, 
+  onDelete 
+}: { 
+  note: any, 
+  navigate: any, 
+  onDownload: (id: string, title: string, content: string, e: React.MouseEvent) => void,
+  onDelete: (id: string, title: string, e: React.MouseEvent) => void 
+}) => (
+  <Card 
+    className="h-full flex flex-col hover:shadow-lg hover:border-primary/30 transition-all duration-300 bg-card cursor-pointer overflow-hidden group border-border/60"
+    onClick={() => {
+      console.log('Navigating to note:', note.id)
+      navigate({ 
+        to: '/notes/$noteId', 
+        params: { noteId: note.id } 
+      })
+    }}
+  >
+    <CardHeader className="pb-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="space-y-2 flex-1 min-w-0">
+          <CardTitle className="text-lg font-bold line-clamp-2 group-hover:text-primary transition-colors leading-tight">
+            {note.title}
+          </CardTitle>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge variant="secondary" className="text-xs font-medium bg-secondary/50 text-secondary-foreground">
+              {note.source ? 'PDF' : 'Manual'}
+            </Badge>
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
+              <span className="w-1 h-1 rounded-full bg-muted-foreground/50"></span>
+              {formatDate(note.createdAt)}
+            </span>
+          </div>
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 hover:bg-primary/10 -mr-2"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+            >
+              <MoreVertical className="h-4 w-4 text-muted-foreground" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem
+              onClick={(e) => onDownload(note.id, note.title, note.content, e)}
+              className="cursor-pointer"
+            >
+              <Download className="mr-2 h-4 w-4" />
+              <span>Download as PDF</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={(e) => onDelete(note.id, note.title, e)}
+              className="text-destructive focus:text-destructive cursor-pointer"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              <span>Delete Note</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </CardHeader>
+    <CardContent className="pt-0 flex-1 flex flex-col">
+      <p className="text-sm text-muted-foreground line-clamp-4 mb-6 leading-relaxed flex-1">
+        {getExcerpt(note.content, 150)}
+      </p>
+      <div className="flex items-center justify-between pt-4 border-t mt-auto">
+        <span className="text-xs font-medium text-primary group-hover:underline underline-offset-4">
+          View details
+        </span>
+        <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+          <FileText className="h-3 w-3 text-primary" />
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+));
 
 export const Route = createFileRoute('/__protected/notes/')({
   component: RouteComponent,
@@ -294,61 +510,23 @@ function RouteComponent() {
     }
   }
   
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-  }
+  // Helper functions extracted for performance
+  // Helper functions are now outside the component
+  // const formatDate = ...
+  // const getExcerpt = ...
+  // const getStageMessage = ...
 
-  const getExcerpt = (content: string, maxLength: number = 100) => {
-    if (content.length <= maxLength) return content
-    return content.substring(0, maxLength) + '...'
-  }
-
-  const getStageMessage = (stage: string) => {
-    if (!stage) return 'Processing your document...';
-    
-    switch (stage.toLowerCase()) {
-      case 'processing':
-      case 'uploading':
-        return 'Processing your PDF...';
-      case 'uploading_to_gemini':
-        return 'Uploading PDF to Gemini AI...';
-      case 'generating_notes':
-      case 'generating notes':
-      case 'gemini is analyzing your pdf and generating study notes...':
-        return 'Gemini is analyzing your PDF...';
-      case 'saving_notes':
-      case 'saving notes':
-        return 'Saving your generated notes...';
-      case 'completed':
-      case 'complete':
-        return 'Completed! ✓';
-      default:
-        return stage;
-    }
-  };
-
-  const handleDownloadNote = async (noteId: string, title: string, content: string, e: React.MouseEvent) => {
+  const handleDownloadNote = useCallback(async (noteId: string, title: string, content: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
     try {
-      // Create a simple text file for now (can be enhanced to PDF later)
-      const blob = new Blob([`${title}\n\n${content}`], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.txt`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      
-      console.log('Downloaded note:', noteId);
+      downloadNotePdf(title, content);
+      console.log('Downloaded note as PDF:', noteId);
     } catch (error) {
       console.error('Failed to download note:', error);
     }
-  };
+  }, []);
 
   const handleDeleteNote = async (noteId: string) => {
     if (!user?.id) {
@@ -370,12 +548,12 @@ function RouteComponent() {
     }
   };
 
-  const openDeleteDialog = (noteId: string, noteTitle: string, e: React.MouseEvent) => {
+  const openDeleteDialog = useCallback((noteId: string, noteTitle: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setNoteToDelete({ id: noteId, title: noteTitle });
     setDeleteDialogOpen(true);
-  };
+  }, []);
 
   return (
     <AppLayout>
@@ -534,166 +712,22 @@ function RouteComponent() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Processing Job Card */}
           {processingJob && (
-            <Card className={`h-full border-2 shadow-md ${
-              processingJob.status === 'completed' ? 'border-green-500/50 bg-green-50/50 dark:bg-green-950/10' :
-              processingJob.status === 'failed' ? 'border-red-500/50 bg-red-50/50 dark:bg-red-950/10' :
-              'border-primary/50 bg-primary/5 animate-pulse'
-            } transition-all duration-300`}>
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="space-y-1.5 flex-1 min-w-0">
-                    <CardTitle className="text-lg font-semibold line-clamp-2 flex items-center gap-2">
-                      {processingJob.status === 'completed' ? (
-                        <>
-                          <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
-                          {processingJob.fileName}
-                        </>
-                      ) : processingJob.status === 'failed' ? (
-                        <>
-                          <AlertCircle className="h-5 w-5 text-red-600 shrink-0" />
-                          {processingJob.fileName}
-                        </>
-                      ) : (
-                        <>
-                          <Loader2 className="h-5 w-5 animate-spin text-primary shrink-0" />
-                          {processingJob.fileName}
-                        </>
-                      )}
-                    </CardTitle>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge variant={
-                        processingJob.status === 'completed' ? 'default' :
-                        processingJob.status === 'failed' ? 'destructive' :
-                        'secondary'
-                      } className="text-xs font-medium">
-                        {processingJob.status === 'completed' ? 'Completed' :
-                         processingJob.status === 'failed' ? 'Failed' :
-                         'Processing'}
-                      </Badge>
-                      {!usingPolling && isConnected && (
-                        <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-medium">
-                          <Wifi className="h-3 w-3" />
-                          Live
-                        </span>
-                      )}
-                      {usingPolling && (
-                        <span className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 font-medium">
-                          <WifiOff className="h-3 w-3" />
-                          Polling
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-2 space-y-4">
-                {processingJob.status === 'processing' && (
-                  <>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-xs font-medium text-muted-foreground">
-                        <span>{getStageMessage(processingJob.stage)}</span>
-                        <span>{Math.round(processingJob.progress)}%</span>
-                      </div>
-                      <Progress value={processingJob.progress} className="h-2" />
-                    </div>
-                    <p className="text-xs text-muted-foreground italic bg-background/50 p-2 rounded border">
-                      💡 Gemini AI is reading your PDF directly for the best understanding!
-                    </p>
-                  </>
-                )}
-                {processingJob.status === 'completed' && (
-                  <p className="text-sm text-green-700 dark:text-green-400 font-medium flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4" />
-                    Study notes generated successfully! Refreshing list...
-                  </p>
-                )}
-                {processingJob.status === 'failed' && (
-                  <p className="text-sm text-red-700 dark:text-red-400 font-medium flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4" />
-                    Failed to process PDF. Please try again.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
+            <ProcessingJobCard 
+              processingJob={processingJob}
+              usingPolling={usingPolling}
+              isConnected={isConnected}
+            />
           )}
           
           {/* Existing Notes */}
           {notes.map((note) => (
-            <Card 
+            <NoteCard 
               key={note.id} 
-              className="h-full flex flex-col hover:shadow-lg hover:border-primary/30 transition-all duration-300 bg-card cursor-pointer overflow-hidden group border-border/60"
-              onClick={() => {
-                console.log('Navigating to note:', note.id)
-                navigate({ 
-                  to: '/notes/$noteId', 
-                  params: { noteId: note.id } 
-                })
-              }}
-            >
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="space-y-2 flex-1 min-w-0">
-                    <CardTitle className="text-lg font-bold line-clamp-2 group-hover:text-primary transition-colors leading-tight">
-                      {note.title}
-                    </CardTitle>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Badge variant="secondary" className="text-xs font-medium bg-secondary/50 text-secondary-foreground">
-                        {note.source ? 'PDF' : 'Manual'}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <span className="w-1 h-1 rounded-full bg-muted-foreground/50"></span>
-                        {formatDate(note.createdAt)}
-                      </span>
-                    </div>
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0 hover:bg-primary/10 -mr-2"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                        }}
-                      >
-                        <MoreVertical className="h-4 w-4 text-muted-foreground" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48">
-                      <DropdownMenuItem
-                        onClick={(e) => handleDownloadNote(note.id, note.title, note.content, e)}
-                        className="cursor-pointer"
-                      >
-                        <Download className="mr-2 h-4 w-4" />
-                        <span>Download as PDF</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={(e) => openDeleteDialog(note.id, note.title, e)}
-                        className="text-destructive focus:text-destructive cursor-pointer"
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        <span>Delete Note</span>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-0 flex-1 flex flex-col">
-                <p className="text-sm text-muted-foreground line-clamp-4 mb-6 leading-relaxed flex-1">
-                  {getExcerpt(note.content, 150)}
-                </p>
-                <div className="flex items-center justify-between pt-4 border-t mt-auto">
-                  <span className="text-xs font-medium text-primary group-hover:underline underline-offset-4">
-                    View details
-                  </span>
-                  <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <FileText className="h-3 w-3 text-primary" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+              note={note} 
+              navigate={navigate}
+              onDownload={handleDownloadNote}
+              onDelete={openDeleteDialog}
+            />
           ))}
         </div>
       ) : isEmptyStateVisible ? (
@@ -755,4 +789,4 @@ function RouteComponent() {
     </AppLayout>
   )
 }
- 
+

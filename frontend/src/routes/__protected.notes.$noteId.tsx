@@ -8,6 +8,7 @@ import { useNote } from '@/hooks/useNotes'
 import { useGenerateQuizFromNote } from '@/hooks/useQuiz'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { useState } from 'react'
+import { downloadNotePdf } from '@/lib/pdfUtils'
 
 export const Route = createFileRoute('/__protected/notes/$noteId')({
   component: RouteComponent,
@@ -119,7 +120,12 @@ function RouteComponent() {
             <Button variant="ghost" size="icon" className="h-9 w-9">
               <Star className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="sm" className="gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="gap-2"
+              onClick={() => downloadNotePdf(note.title, note.content)}
+            >
               <Download className="h-4 w-4" />
               Export
             </Button>

@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import AppLayout from '@/components/app-layout'
 import { useAuth } from '@/context/AuthContext'
 import { useUserFiles, useDeleteFile } from '@/hooks/useUpload'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, memo, useCallback } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -25,6 +25,52 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination'
+
+// Memoized FileRow Component
+const FileRow = memo(({ 
+  file, 
+  onDelete 
+}: { 
+  file: any, 
+  onDelete: (id: string, name: string) => void 
+}) => (
+  <div 
+    className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-muted/30 transition-colors group"
+  >
+    <div className="col-span-8 md:col-span-6 flex items-center gap-4 min-w-0">
+      <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300">
+        <FileText className="h-5 w-5 text-primary" />
+      </div>
+      <div className="min-w-0">
+        <h3 className="font-medium text-sm text-foreground truncate">{file.name}</h3>
+        <p className="text-xs text-muted-foreground mt-0.5 font-mono">ID: {file.id.slice(0, 8)}</p>
+      </div>
+    </div>
+    
+    <div className="col-span-2 hidden md:flex items-center text-sm text-muted-foreground">
+      {/* Placeholder for date if available in file object, otherwise just ID based sort implies date */}
+      <span className="truncate">Recent</span>
+    </div>
+    
+    <div className="col-span-2 hidden md:flex items-center">
+      <Badge variant="secondary" className="font-normal bg-secondary/50 text-secondary-foreground hover:bg-secondary/70">
+        PDF Document
+      </Badge>
+    </div>
+    
+    <div className="col-span-4 md:col-span-2 flex items-center justify-end gap-2">
+      <Button 
+        variant="ghost" 
+        size="icon" 
+        className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100"
+        onClick={() => onDelete(file.id, file.name)}
+        title="Delete file"
+      >
+        <Trash2 className="h-4 w-4" />
+      </Button>
+    </div>
+  </div>
+))
 
 export const Route = createFileRoute('/__protected/library')({
   component: RouteComponent,
@@ -150,6 +196,10 @@ function RouteComponent() {
     }
   }
 
+  const handleSetFileToDelete = useCallback((id: string, name: string) => {
+    setFileToDelete({ id, name })
+  }, [])
+
   if (isLoading) {
     return (
       <AppLayout>
@@ -265,44 +315,11 @@ function RouteComponent() {
             {/* List Items */}
             <div className="divide-y">
               {paginatedFiles.map((file) => (
-                <div 
+                <FileRow 
                   key={file.id}
-                  className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-muted/30 transition-colors group"
-                >
-                  <div className="col-span-8 md:col-span-6 flex items-center gap-4 min-w-0">
-                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300">
-                      <FileText className="h-5 w-5 text-primary" />
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="font-medium text-sm text-foreground truncate">{file.name}</h3>
-                      <p className="text-xs text-muted-foreground mt-0.5 font-mono">ID: {file.id.slice(0, 8)}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="col-span-2 hidden md:flex items-center text-sm text-muted-foreground">
-                    {/* Placeholder for date if available in file object, otherwise just ID based sort implies date */}
-                    <span className="truncate">Recent</span>
-                  </div>
-                  
-                  <div className="col-span-2 hidden md:flex items-center">
-                    <Badge variant="secondary" className="font-normal bg-secondary/50 text-secondary-foreground hover:bg-secondary/70">
-                      PDF Document
-                    </Badge>
-                  </div>
-                  
-                  <div className="col-span-4 md:col-span-2 flex items-center justify-end gap-2">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100"
-                      onClick={() => setFileToDelete({ id: file.id, name: file.name })}
-                      disabled={isDeleting}
-                      title="Delete file"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
+                  file={file}
+                  onDelete={(id, name) => setFileToDelete({ id, name })}
+                />
               ))}
             </div>
           </div>

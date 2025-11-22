@@ -48,7 +48,7 @@ export class AiService {
       const prompt = NOTES_GENERATION_PROMPT(pdfText);
       const result = await this.model.generateContent(prompt);
       const response = await result.response;
-      const notes = response.text();
+      const notes = this.cleanGeneratedText(response.text());
 
       // Save notes to database using NotesService
       const noteRecord = await this.notesService.createNote(
@@ -98,7 +98,7 @@ export class AiService {
       
       const result = await this.model.generateContent(prompt);
       const response = await result.response;
-      const generatedContent = response.text();
+      const generatedContent = this.cleanGeneratedText(response.text());
 
       // Generate a title from the filename or content
       const title = this.generateTitleFromFileName(fileName);
@@ -153,54 +153,62 @@ export class AiService {
       // Generate a title from the filename
       const title = this.generateTitleFromFileName(fileName);
 
-      // Create prompt for note generation
-      const prompt = `You are an expert study assistant. Analyze the PDF document and create comprehensive, well-structured study notes.
+     const prompt = `
+You are an advanced study assistant. Analyze the PDF content and generate high-quality, exam-ready study notes.
 
-Please create detailed study notes with the following structure:
+Your output must follow this structure and tone:
+- Clear, structured, concise
+- Uses headings, bullets, icons, and clean formatting
+- Reads like a polished study guide created by an expert educator
+- Prioritizes clarity, comprehension, and exam relevance
 
 # ${title}
 
-## 📋 Overview
-[Provide a brief overview of the document's main purpose and scope]
+## 📘 Overview
+Provide a short, clear description of what the document covers and why it matters.
 
 ## 🎯 Key Concepts
-[List and explain the main concepts, theories, or ideas]
+List and explain the essential ideas, principles, or theories presented in the material.
 
 ## 📝 Detailed Notes
+Break down the content into logical topics and subtopics.
+For each topic, provide:
+- A clear explanation
+- Important bullet points
+- Examples or notes when useful
 
-### [Topic 1]
-[Detailed explanation with important points]
-- Key point 1
-- Key point 2
-- Key point 3
+### Topic 1
+- Key idea
+- Important detail
+- Additional points
 
-### [Topic 2]
-[Detailed explanation with important points]
-- Key point 1
-- Key point 2
+### Topic 2
+- Key idea
+- Important detail
 
-[Continue with additional topics as needed]
+(Continue adding topics as necessary based on the PDF.)
 
-## 💡 Important Points to Remember
-- [Critical concept 1]
-- [Critical concept 2]
-- [Critical concept 3]
+## 💡 Must-Know Points
+Highlight the most important takeaways a student should remember for exams.
 
-## 📚 Summary
-[Provide a concise summary of the entire document]
+- Critical concept 1  
+- Critical concept 2  
+- Critical concept 3  
 
-## 🔑 Key Terms and Definitions
-- **Term 1**: Definition
-- **Term 2**: Definition
+## 🔑 Key Terms & Definitions
+List important vocabulary with simple, accurate definitions.
 
-Make the notes:
-- Clear and easy to understand
-- Well-organized with proper headings
-- Suitable for studying and exam preparation
-- Include important details but remain concise
-- Use bullet points and formatting for better readability
+- **Term 1** — Definition  
+- **Term 2** — Definition  
 
-Analyze the PDF and generate comprehensive study notes now.`;
+## 📚 Final Summary
+Wrap up the entire content with a concise, easy-to-understand summary.
+
+---
+
+Now analyze the PDF and produce polished, comprehensive study notes following the structure above.
+`;
+
 
       // Send PDF to Gemini with inline data
       const result = await this.model.generateContent([
@@ -214,7 +222,7 @@ Analyze the PDF and generate comprehensive study notes now.`;
       ]);
 
       const response = await result.response;
-      const generatedContent = response.text();
+      const generatedContent = this.cleanGeneratedText(response.text());
 
       this.logger.log(`Generated ${generatedContent.length} characters of notes`);
 
@@ -241,6 +249,18 @@ Analyze the PDF and generate comprehensive study notes now.`;
       this.logger.error('Error generating notes from PDF:', error);
       throw error;
     }
+  }
+
+  /**
+   * Clean generated text by removing markdown code blocks and extra whitespace
+   */
+  private cleanGeneratedText(text: string): string {
+    // Remove markdown code blocks if present (e.g. ```markdown ... ``` or just ``` ... ```)
+    let cleaned = text.replace(/^```(?:markdown)?\s*/i, '').replace(/^```\s*/, '');
+    cleaned = cleaned.replace(/```\s*$/, '');
+    
+    // Remove any other potential leading/trailing whitespace
+    return cleaned.trim();
   }
 
   /**
