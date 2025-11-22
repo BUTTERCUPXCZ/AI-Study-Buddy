@@ -18,7 +18,12 @@ interface JobProgressData {
 interface JobCompletedData {
   jobId: string;
   status: string;
-  result: any;
+  result: {
+    status: string;
+    noteId: string;
+    fileId: string;
+    userId: string;
+  };
   timestamp: string;
 }
 

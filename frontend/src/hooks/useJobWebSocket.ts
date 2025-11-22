@@ -6,7 +6,7 @@
     interface UseJobWebSocketOptions {
     userId?: string;
     enabled?: boolean;
-    onJobCompleted?: () => void;
+    onJobCompleted?: (noteId?: string) => void;
     onJobFailed?: () => void;
     }
 
@@ -82,7 +82,9 @@
             
             console.log('[useJobWebSocket] Notes query invalidated and refetch triggered (polling)');
             
-            onJobCompletedRef.current?.();
+            // Extract noteId from the status data
+            const noteId = status.data?.noteId || status.result?.noteId;
+            onJobCompletedRef.current?.(noteId);
             }
 
             if (status.status === 'failed') {
@@ -160,6 +162,9 @@
         onJobCompleted: (data) => {
             console.log('[useJobWebSocket] Job completed, invalidating notes for userId:', userId);
             
+            // Extract noteId from the result
+            const noteId = data.result?.noteId;
+            
             // Set completed status briefly for UI feedback
             setJobProgress({
             jobId: data.jobId,
@@ -184,8 +189,8 @@
             
             console.log('[useJobWebSocket] Notes query invalidated and refetch triggered');
             
-            // Trigger the callback immediately
-            onJobCompletedRef.current?.();
+            // Trigger the callback with noteId immediately
+            onJobCompletedRef.current?.(noteId);
             
             // Clear state quickly to allow modal to close
             setTimeout(() => {

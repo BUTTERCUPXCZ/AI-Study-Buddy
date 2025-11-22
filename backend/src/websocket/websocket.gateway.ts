@@ -117,7 +117,16 @@ export class JobsWebSocketGateway implements OnGatewayInit, OnGatewayConnection,
     };
 
     await this.storeJobUpdate(jobId, payload);
+    
+    // Emit to job-specific room
     this.server.to(`job:${jobId}`).emit('job:completed', payload);
+    
+    // Emit to user room if userId is provided
+    if (result.userId) {
+      this.server.to(`user:${result.userId}`).emit('job:completed', payload);
+    }
+    
+    // Emit to all jobs room
     this.server.to('all-jobs').emit('job:completed', payload);
 
     this.logger.log(`Job completed notification sent for job ${jobId}`);
@@ -135,7 +144,16 @@ export class JobsWebSocketGateway implements OnGatewayInit, OnGatewayConnection,
     };
 
     await this.storeJobUpdate(jobId, payload);
+    
+    // Emit to job-specific room
     this.server.to(`job:${jobId}`).emit('job:error', payload);
+    
+    // Emit to user room if userId is provided in error
+    if (error.userId) {
+      this.server.to(`user:${error.userId}`).emit('job:error', payload);
+    }
+    
+    // Emit to all jobs room
     this.server.to('all-jobs').emit('job:error', payload);
 
     this.logger.error(`Job error notification sent for job ${jobId}`, error);

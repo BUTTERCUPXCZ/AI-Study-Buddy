@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Link, useLocation } from '@tanstack/react-router'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Separator } from '@/components/ui/separator'
-import { LayoutDashboard, FileText, Brain, GraduationCap, Library, LogOut } from 'lucide-react'
+import { FileText, Brain, GraduationCap, Library, LogOut } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { authService } from '@/services/AuthService'
 import {
@@ -20,7 +20,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const [logoutOpen, setLogoutOpen] = useState(false)
   
   const navItems = [
-    { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+
     { to: '/notes', label: 'Study Notes', icon: FileText },
     { to: '/quizzes', label: 'Quizzes', icon: Brain },
     { to: '/tutor', label: 'AI Tutor', icon: GraduationCap },

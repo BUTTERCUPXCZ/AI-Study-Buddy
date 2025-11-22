@@ -21,7 +21,6 @@ import { Route as _protectedTutorRouteImport } from './routes/__protected.tutor'
 import { Route as _protectedQuizzesRouteImport } from './routes/__protected.quizzes'
 import { Route as _protectedNotesRouteImport } from './routes/__protected.notes'
 import { Route as _protectedLibraryRouteImport } from './routes/__protected.library'
-import { Route as _protectedDashboardRouteImport } from './routes/__protected.dashboard'
 import { Route as _protectedQuizzesIndexRouteImport } from './routes/__protected.quizzes.index'
 import { Route as _protectedNotesIndexRouteImport } from './routes/__protected.notes.index'
 import { Route as _protectedQuizzesQuizIdRouteImport } from './routes/__protected.quizzes.$quizId'
@@ -86,11 +85,6 @@ const _protectedLibraryRoute = _protectedLibraryRouteImport.update({
   path: '/library',
   getParentRoute: () => _protectedRoute,
 } as any)
-const _protectedDashboardRoute = _protectedDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => _protectedRoute,
-} as any)
 const _protectedQuizzesIndexRoute = _protectedQuizzesIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -120,7 +114,6 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/supabaseCallback': typeof SupabaseCallbackRoute
-  '/dashboard': typeof _protectedDashboardRoute
   '/library': typeof _protectedLibraryRoute
   '/notes': typeof _protectedNotesRouteWithChildren
   '/quizzes': typeof _protectedQuizzesRouteWithChildren
@@ -138,7 +131,6 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/supabaseCallback': typeof SupabaseCallbackRoute
-  '/dashboard': typeof _protectedDashboardRoute
   '/library': typeof _protectedLibraryRoute
   '/tutor': typeof _protectedTutorRoute
   '/notes/$noteId': typeof _protectedNotesNoteIdRoute
@@ -156,7 +148,6 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/supabaseCallback': typeof SupabaseCallbackRoute
-  '/__protected/dashboard': typeof _protectedDashboardRoute
   '/__protected/library': typeof _protectedLibraryRoute
   '/__protected/notes': typeof _protectedNotesRouteWithChildren
   '/__protected/quizzes': typeof _protectedQuizzesRouteWithChildren
@@ -176,7 +167,6 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/supabaseCallback'
-    | '/dashboard'
     | '/library'
     | '/notes'
     | '/quizzes'
@@ -194,7 +184,6 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/supabaseCallback'
-    | '/dashboard'
     | '/library'
     | '/tutor'
     | '/notes/$noteId'
@@ -211,7 +200,6 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/supabaseCallback'
-    | '/__protected/dashboard'
     | '/__protected/library'
     | '/__protected/notes'
     | '/__protected/quizzes'
@@ -319,13 +307,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof _protectedLibraryRouteImport
       parentRoute: typeof _protectedRoute
     }
-    '/__protected/dashboard': {
-      id: '/__protected/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof _protectedDashboardRouteImport
-      parentRoute: typeof _protectedRoute
-    }
     '/__protected/quizzes/': {
       id: '/__protected/quizzes/'
       path: '/'
@@ -385,7 +366,6 @@ const _protectedQuizzesRouteWithChildren =
   _protectedQuizzesRoute._addFileChildren(_protectedQuizzesRouteChildren)
 
 interface _protectedRouteChildren {
-  _protectedDashboardRoute: typeof _protectedDashboardRoute
   _protectedLibraryRoute: typeof _protectedLibraryRoute
   _protectedNotesRoute: typeof _protectedNotesRouteWithChildren
   _protectedQuizzesRoute: typeof _protectedQuizzesRouteWithChildren
@@ -393,7 +373,6 @@ interface _protectedRouteChildren {
 }
 
 const _protectedRouteChildren: _protectedRouteChildren = {
-  _protectedDashboardRoute: _protectedDashboardRoute,
   _protectedLibraryRoute: _protectedLibraryRoute,
   _protectedNotesRoute: _protectedNotesRouteWithChildren,
   _protectedQuizzesRoute: _protectedQuizzesRouteWithChildren,

@@ -18,6 +18,11 @@ export interface JobStatus {
     stage?: string;
   };
   data?: any;
+  result?: {
+    noteId?: string;
+    fileId?: string;
+    userId?: string;
+  };
 }
 
 export interface FileData {

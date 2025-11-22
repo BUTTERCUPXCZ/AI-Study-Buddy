@@ -162,28 +162,28 @@ function RouteComponent() {
 
   return (
     <AppLayout>
-    <div className="space-y-6 mt-5">
+    <div className="max-w-6xl mx-auto py-8 space-y-8">
       {/* Header Section */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Library</h2>
-          <p className="text-muted-foreground mt-1">Manage your uploaded lectures and documents</p>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Library</h1>
+          <p className="text-muted-foreground mt-1 text-lg">Manage your uploaded lectures and documents</p>
         </div>
         <Link to="/notes">
-          <Button className="gap-2">
-            <FileText className="h-4 w-4" />
+          <Button size="lg" className="gap-2 shadow-sm hover:shadow-md transition-all">
+            <FileText className="h-5 w-5" />
             Upload New File
           </Button>
         </Link>
       </div>
 
       {/* Search and Sort Bar */}
-      <div className="flex gap-3">
+      <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
           <Input
             placeholder="Search files..."
-            className="pl-9 h-11"
+            className="pl-12 h-12 text-base bg-card border-border/60 focus:border-primary/50 focus:ring-primary/20 transition-all shadow-sm"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -192,194 +192,167 @@ function RouteComponent() {
           <Button 
             variant="outline" 
             size="lg" 
-            className="gap-2"
+            className="h-12 px-6 gap-2 bg-card border-border/60 hover:bg-accent hover:text-accent-foreground transition-all shadow-sm"
             onClick={() => setShowSortMenu(!showSortMenu)}
           >
             {getSortIcon()}
-            Sort
+            <span className="font-medium">Sort</span>
           </Button>
           {showSortMenu && (
-            <div className="absolute right-0 mt-2 w-48 bg-popover border rounded-md shadow-lg z-10">
+            <div className="absolute right-0 mt-2 w-56 bg-popover border rounded-xl shadow-xl z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
               <div className="p-2">
-                <p className="px-2 py-1.5 text-sm font-semibold">Sort by</p>
-                <div className="border-t my-1"></div>
-                <button
-                  className="w-full text-left px-2 py-1.5 text-sm hover:bg-accent rounded flex items-center gap-2"
-                  onClick={() => {
-                    setSortBy('date-desc')
-                    setShowSortMenu(false)
-                  }}
-                >
-                  <Calendar className="h-4 w-4" />
-                  Newest First
-                </button>
-                <button
-                  className="w-full text-left px-2 py-1.5 text-sm hover:bg-accent rounded flex items-center gap-2"
-                  onClick={() => {
-                    setSortBy('date-asc')
-                    setShowSortMenu(false)
-                  }}
-                >
-                  <Calendar className="h-4 w-4" />
-                  Oldest First
-                </button>
-                <button
-                  className="w-full text-left px-2 py-1.5 text-sm hover:bg-accent rounded flex items-center gap-2"
-                  onClick={() => {
-                    setSortBy('name-asc')
-                    setShowSortMenu(false)
-                  }}
-                >
-                  <SortAsc className="h-4 w-4" />
-                  Name (A-Z)
-                </button>
-                <button
-                  className="w-full text-left px-2 py-1.5 text-sm hover:bg-accent rounded flex items-center gap-2"
-                  onClick={() => {
-                    setSortBy('name-desc')
-                    setShowSortMenu(false)
-                  }}
-                >
-                  <SortDesc className="h-4 w-4" />
-                  Name (Z-A)
-                </button>
+                <p className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Sort by</p>
+                <div className="space-y-1">
+                  <button
+                    className={`w-full text-left px-3 py-2.5 text-sm rounded-lg flex items-center gap-3 transition-colors ${sortBy === 'date-desc' ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted text-foreground'}`}
+                    onClick={() => {
+                      setSortBy('date-desc')
+                      setShowSortMenu(false)
+                    }}
+                  >
+                    <Calendar className="h-4 w-4" />
+                    Newest First
+                  </button>
+                  <button
+                    className={`w-full text-left px-3 py-2.5 text-sm rounded-lg flex items-center gap-3 transition-colors ${sortBy === 'date-asc' ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted text-foreground'}`}
+                    onClick={() => {
+                      setSortBy('date-asc')
+                      setShowSortMenu(false)
+                    }}
+                  >
+                    <Calendar className="h-4 w-4" />
+                    Oldest First
+                  </button>
+                  <button
+                    className={`w-full text-left px-3 py-2.5 text-sm rounded-lg flex items-center gap-3 transition-colors ${sortBy === 'name-asc' ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted text-foreground'}`}
+                    onClick={() => {
+                      setSortBy('name-asc')
+                      setShowSortMenu(false)
+                    }}
+                  >
+                    <SortAsc className="h-4 w-4" />
+                    Name (A-Z)
+                  </button>
+                  <button
+                    className={`w-full text-left px-3 py-2.5 text-sm rounded-lg flex items-center gap-3 transition-colors ${sortBy === 'name-desc' ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted text-foreground'}`}
+                    onClick={() => {
+                      setSortBy('name-desc')
+                      setShowSortMenu(false)
+                    }}
+                  >
+                    <SortDesc className="h-4 w-4" />
+                    Name (Z-A)
+                  </button>
+                </div>
               </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Files</p>
-                <p className="text-2xl font-bold mt-1">{files.length}</p>
-              </div>
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                <FolderOpen className="h-6 w-6 text-primary" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Filtered Results</p>
-                <p className="text-2xl font-bold mt-1">{filteredAndSortedFiles.length}</p>
-              </div>
-              <div className="h-12 w-12 rounded-full bg-blue-500/10 flex items-center justify-center">
-                <Search className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Current Page</p>
-                <p className="text-2xl font-bold mt-1">{currentPage} / {totalPages || 1}</p>
-              </div>
-              <div className="h-12 w-12 rounded-full bg-purple-500/10 flex items-center justify-center">
-                {getSortIcon()}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Sort Order</p>
-                <p className="text-lg font-bold mt-1 truncate">{getSortLabel()}</p>
-              </div>
-              <div className="h-12 w-12 rounded-full bg-orange-500/10 flex items-center justify-center">
-                <Calendar className="h-6 w-6 text-orange-600 dark:text-orange-400" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* Files List */}
       {filteredAndSortedFiles.length > 0 ? (
-        <>
-          <Card>
-            <CardHeader>
-              <CardTitle>Your Files</CardTitle>
-              <CardDescription>
-                {searchQuery ? `Found ${filteredAndSortedFiles.length} file(s) matching "${searchQuery}"` : 'All your uploaded documents'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {paginatedFiles.map((file) => (
-                  <div 
-                    key={file.id}
-                    className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-4 flex-1 min-w-0">
-                      <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                        <FileText className="h-6 w-6 text-primary" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-sm truncate">{file.name}</h3>
-                        <div className="flex items-center gap-3 mt-1">
-                          <span className="text-xs text-muted-foreground">ID: {file.id.slice(0, 8)}...</span>
-                          {file.user && (
-                            <>
-                              <span className="text-xs text-muted-foreground">•</span>
-                              <span className="text-xs text-muted-foreground">By {file.user.Fullname}</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
+        <div className="space-y-6">
+          <div className="bg-card rounded-xl border shadow-sm overflow-hidden">
+            {/* List Header */}
+            <div className="grid grid-cols-12 gap-4 px-6 py-4 border-b bg-muted/30 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              <div className="col-span-8 md:col-span-6">Name</div>
+              <div className="col-span-2 hidden md:block">Date Added</div>
+              <div className="col-span-2 hidden md:block">Type</div>
+              <div className="col-span-4 md:col-span-2 text-right">Actions</div>
+            </div>
+
+            {/* List Items */}
+            <div className="divide-y">
+              {paginatedFiles.map((file) => (
+                <div 
+                  key={file.id}
+                  className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-muted/30 transition-colors group"
+                >
+                  <div className="col-span-8 md:col-span-6 flex items-center gap-4 min-w-0">
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300">
+                      <FileText className="h-5 w-5 text-primary" />
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-xs">PDF</Badge>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => setFileToDelete({ id: file.id, name: file.name })}
-                        disabled={isDeleting}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                    <div className="min-w-0">
+                      <h3 className="font-medium text-sm text-foreground truncate">{file.name}</h3>
+                      <p className="text-xs text-muted-foreground mt-0.5 font-mono">ID: {file.id.slice(0, 8)}</p>
                     </div>
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                  
+                  <div className="col-span-2 hidden md:flex items-center text-sm text-muted-foreground">
+                    {/* Placeholder for date if available in file object, otherwise just ID based sort implies date */}
+                    <span className="truncate">Recent</span>
+                  </div>
+                  
+                  <div className="col-span-2 hidden md:flex items-center">
+                    <Badge variant="secondary" className="font-normal bg-secondary/50 text-secondary-foreground hover:bg-secondary/70">
+                      PDF Document
+                    </Badge>
+                  </div>
+                  
+                  <div className="col-span-4 md:col-span-2 flex items-center justify-end gap-2">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100"
+                      onClick={() => setFileToDelete({ id: file.id, name: file.name })}
+                      disabled={isDeleting}
+                      title="Delete file"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="space-y-6 pt-2">
-              {/* Pagination Controls - Top */}
-              <div className="flex justify-center">
-                <Pagination>
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t">
+              <p className="text-sm text-muted-foreground">
+                Showing <span className="font-medium text-foreground">{startIndex + 1}</span> to <span className="font-medium text-foreground">{Math.min(endIndex, filteredAndSortedFiles.length)}</span> of <span className="font-medium text-foreground">{filteredAndSortedFiles.length}</span> files
+              </p>
+              
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <label htmlFor="items-per-page" className="text-sm text-muted-foreground whitespace-nowrap">
+                    Rows per page:
+                  </label>
+                  <select
+                    id="items-per-page"
+                    value={itemsPerPage}
+                    onChange={(e) => {
+                      setItemsPerPage(Number(e.target.value))
+                      setCurrentPage(1)
+                    }}
+                    className="h-8 px-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  >
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                  </select>
+                </div>
+
+                <Pagination className="mx-0 w-auto">
                   <PaginationContent>
                     <PaginationItem>
                       <PaginationPrevious
                         onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                        className={currentPage === 1 ? 'pointer-events-none opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                        className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer hover:bg-muted'}
                       />
                     </PaginationItem>
                     
                     {getPageNumbers().map((page, index) => (
-                      <PaginationItem key={index}>
+                      <PaginationItem key={index} className="hidden sm:block">
                         {page === 'ellipsis' ? (
                           <PaginationEllipsis />
                         ) : (
                           <PaginationLink
                             onClick={() => setCurrentPage(page)}
                             isActive={currentPage === page}
-                            className="cursor-pointer"
+                            className={`cursor-pointer ${currentPage === page ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'hover:bg-muted'}`}
                           >
                             {page}
                           </PaginationLink>
@@ -390,78 +363,50 @@ function RouteComponent() {
                     <PaginationItem>
                       <PaginationNext
                         onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                        className={currentPage === totalPages ? 'pointer-events-none opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                        className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer hover:bg-muted'}
                       />
                     </PaginationItem>
                   </PaginationContent>
                 </Pagination>
               </div>
-
-              {/* Info and Items Per Page - Bottom */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-2">
-                <p className="text-sm text-muted-foreground text-center sm:text-left">
-                  Showing <span className="font-medium">{startIndex + 1}</span> to <span className="font-medium">{Math.min(endIndex, filteredAndSortedFiles.length)}</span> of <span className="font-medium">{filteredAndSortedFiles.length}</span> files
-                </p>
-                <div className="flex items-center justify-center sm:justify-end gap-2">
-                  <label htmlFor="items-per-page" className="text-sm text-muted-foreground whitespace-nowrap">
-                    Items per page:
-                  </label>
-                  <select
-                    id="items-per-page"
-                    value={itemsPerPage}
-                    onChange={(e) => {
-                      setItemsPerPage(Number(e.target.value))
-                      setCurrentPage(1)
-                    }}
-                    className="h-9 px-3 pr-8 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    <option value={5}>5</option>
-                    <option value={10}>10</option>
-                    <option value={20}>20</option>
-                    <option value={50}>50</option>
-                  </select>
-                </div>
-              </div>
             </div>
           )}
-        </>
+        </div>
       ) : (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-16">
-            <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center mb-4">
-              {searchQuery ? <Search className="h-10 w-10 text-muted-foreground" /> : <FolderOpen className="h-10 w-10 text-muted-foreground" />}
-            </div>
-            <h3 className="font-semibold text-lg mb-2">
-              {searchQuery ? 'No files found' : 'No files in your library yet'}
-            </h3>
-            <p className="text-sm text-muted-foreground mb-6 text-center max-w-sm">
-              {searchQuery 
-                ? `No files match your search for "${searchQuery}". Try a different search term.`
-                : 'Upload lectures from the Notes page to get started'}
-            </p>
-            {!searchQuery && (
-              <Link to="/notes">
-                <Button className="gap-2">
-                  <FileText className="h-4 w-4" />
-                  Upload Your First File
-                </Button>
-              </Link>
-            )}
-          </CardContent>
-        </Card>
+        <div className="flex flex-col items-center justify-center py-24 bg-card rounded-xl border border-dashed">
+          <div className="h-24 w-24 rounded-full bg-muted/50 flex items-center justify-center mb-6">
+            {searchQuery ? <Search className="h-10 w-10 text-muted-foreground/50" /> : <FolderOpen className="h-10 w-10 text-muted-foreground/50" />}
+          </div>
+          <h3 className="font-bold text-xl mb-2 text-foreground">
+            {searchQuery ? 'No files found' : 'Library is empty'}
+          </h3>
+          <p className="text-muted-foreground mb-8 text-center max-w-md text-base">
+            {searchQuery 
+              ? `We couldn't find any files matching "${searchQuery}". Try adjusting your search terms.`
+              : 'Your library is looking a bit empty. Upload your first lecture or document to get started.'}
+          </p>
+          {!searchQuery && (
+            <Link to="/notes">
+              <Button size="lg" className="gap-2">
+                <FileText className="h-5 w-5" />
+                Upload Your First File
+              </Button>
+            </Link>
+          )}
+        </div>
       )}
     </div>
 
     {/* Delete Confirmation Dialog */}
     <Dialog open={!!fileToDelete} onOpenChange={() => setFileToDelete(null)}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Delete File</DialogTitle>
           <DialogDescription>
-            Are you sure you want to delete "{fileToDelete?.name}"? This action cannot be undone.
+            Are you sure you want to delete <span className="font-medium text-foreground">"{fileToDelete?.name}"</span>? This action cannot be undone.
           </DialogDescription>
         </DialogHeader>
-        <DialogFooter className="gap-2">
+        <DialogFooter className="gap-2 sm:gap-0">
           <Button
             variant="outline"
             onClick={() => setFileToDelete(null)}
@@ -474,7 +419,7 @@ function RouteComponent() {
             onClick={() => fileToDelete && handleDelete(fileToDelete.id)}
             disabled={isDeleting}
           >
-            {isDeleting ? 'Deleting...' : 'Delete'}
+            {isDeleting ? 'Deleting...' : 'Delete File'}
           </Button>
         </DialogFooter>
       </DialogContent>

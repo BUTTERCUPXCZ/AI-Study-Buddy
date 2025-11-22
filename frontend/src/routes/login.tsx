@@ -43,7 +43,7 @@ function RouteComponent() {
       onSuccess: () => {
         // Use window.location to trigger a full page reload
         // This ensures AuthContext reinitializes with the new token
-        window.location.href = '/dashboard'
+        window.location.href = '/notes'
       }
     })
   }
