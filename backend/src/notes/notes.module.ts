@@ -5,12 +5,11 @@ import { DatabaseModule } from '../database/database.module';
 import { RedisModule } from '../redis/redis.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { NotesCacheListener } from './NotesCacheListener.service';
-import { RedisService } from 'src/redis/redis.service';
 
 @Module({
   imports: [DatabaseModule, RedisModule, EventEmitterModule.forRoot()],
   controllers: [NotesController],
-  providers: [NotesService, NotesCacheListener, RedisService],
+  providers: [NotesService, NotesCacheListener],
   exports: [NotesService],
 })
 export class NotesModule {}

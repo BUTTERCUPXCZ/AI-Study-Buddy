@@ -56,8 +56,8 @@ function RouteComponent() {
         // Clear the OAuth mode from storage
         authService.clearOAuthMode()
 
-        // Redirect to dashboard on success
-        window.location.href = '/dashboard'
+        // Redirect to notes on success
+        window.location.href = '/notes'
       } catch (err: any) {
         console.error('OAuth callback error:', err)
         setError(err.message || 'Authentication failed')
@@ -85,7 +85,7 @@ function RouteComponent() {
               {mode === 'register' ? 'Signing you up...' : 'Signing you in...'}
             </h2>
             <p className="text-sm text-muted-foreground">Please wait — you'll be redirected shortly.</p>
-            <div className="flex justify-center">
+            <div className="flex justify-center"> 
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           </>

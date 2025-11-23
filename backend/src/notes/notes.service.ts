@@ -6,12 +6,12 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 @Injectable()
 export class NotesService {
   private readonly logger = new Logger(NotesService.name);
-  private readonly CACHE_TTL = 300; // 5 minutes cache
+
 
   constructor(
     private readonly databaseService: DatabaseService,
+    private readonly eventEmitter: EventEmitter2,
     private readonly redisService: RedisService,
-    private readonly eventEmitter: EventEmitter2, // Inject this
   ) {}
 
   /**
@@ -48,23 +48,22 @@ export class NotesService {
    */
   async getUserNotes(userId: string) {
     const cacheKey = `user:${userId}:notes`;
-
+    
     // Try to get from cache first
     const cachedNotes = await this.redisService.get(cacheKey);
     if (cachedNotes) {
-      this.logger.log(`Retrieved notes from cache for user: ${userId}`);
+      this.logger.log(`Fetching notes from cache for user: ${userId}`);
       return cachedNotes;
     }
 
-    // If not in cache, get from database
-    this.logger.log(`Cache miss - fetching notes from database for user: ${userId}`);
+    this.logger.log(`Fetching notes from database for user: ${userId}`);
     const notes = await this.databaseService.note.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
     });
 
-    // Store in cache for future requests
-    await this.redisService.set(cacheKey, notes, this.CACHE_TTL);
+    // Cache the result
+    await this.redisService.set(cacheKey, notes, 3600); // Cache for 1 hour
 
     return notes;
   }
@@ -78,12 +77,11 @@ export class NotesService {
     // Try to get from cache first
     const cachedNote = await this.redisService.get(cacheKey);
     if (cachedNote) {
-      this.logger.log(`Retrieved note ${noteId} from cache for user: ${userId}`);
+      this.logger.log(`Fetching note ${noteId} from cache for user: ${userId}`);
       return cachedNote;
     }
 
-    // If not in cache, get from database
-    this.logger.log(`Cache miss - fetching note ${noteId} from database for user: ${userId}`);
+    this.logger.log(`Fetching note ${noteId} from database for user: ${userId}`);
     const note = await this.databaseService.note.findFirst({
       where: {
         id: noteId,
@@ -95,8 +93,8 @@ export class NotesService {
       throw new NotFoundException('Note not found');
     }
 
-    // Store in cache for future requests
-    await this.redisService.set(cacheKey, note, this.CACHE_TTL);
+    // Cache the result
+    await this.redisService.set(cacheKey, note, 3600); // Cache for 1 hour
 
     return note;
   }

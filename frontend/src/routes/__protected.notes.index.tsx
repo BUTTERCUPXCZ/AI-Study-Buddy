@@ -31,12 +31,14 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { useState, useCallback, useEffect, memo } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import AppLayout from '@/components/app-layout'
 import { useAuth } from '@/context/AuthContext'
 import { useNotes, useDeleteNote } from '@/hooks/useNotes'
 import { useUploadPdf } from '@/hooks/useUpload'
 import { useJobWebSocket } from '@/hooks/useJobWebSocket'
 import { downloadNotePdf } from '@/lib/pdfUtils'
+import NotesService from '@/services/NotesService'
 
 // Helper functions
 const formatDate = (dateString: string) => {
@@ -170,15 +172,18 @@ const NoteCard = memo(({
   note, 
   navigate, 
   onDownload, 
-  onDelete 
+  onDelete,
+  onPrefetch
 }: { 
   note: any, 
   navigate: any, 
   onDownload: (id: string, title: string, content: string, e: React.MouseEvent) => void,
-  onDelete: (id: string, title: string, e: React.MouseEvent) => void 
+  onDelete: (id: string, title: string, e: React.MouseEvent) => void,
+  onPrefetch: (noteId: string) => void
 }) => (
   <Card 
     className="h-full flex flex-col hover:shadow-lg hover:border-primary/30 transition-all duration-300 bg-card cursor-pointer overflow-hidden group border-border/60"
+    onMouseEnter={() => onPrefetch(note.id)}
     onClick={() => {
       console.log('Navigating to note:', note.id)
       navigate({ 
@@ -192,7 +197,7 @@ const NoteCard = memo(({
         <div className="space-y-2 flex-1 min-w-0">
           <CardTitle className="text-lg font-bold line-clamp-2 group-hover:text-primary transition-colors leading-tight">
             {note.title}
-          </CardTitle>
+          </CardTitle>  
           <div className="flex items-center gap-2 flex-wrap">
             <Badge variant="secondary" className="text-xs font-medium bg-secondary/50 text-secondary-foreground">
               {note.source ? 'PDF' : 'Manual'}
@@ -260,7 +265,8 @@ export const Route = createFileRoute('/__protected/notes/')({
 function RouteComponent() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const { data: notes = [], isLoading: isLoadingNotes, refetch: refetchNotes } = useNotes(user?.id)
+  const queryClient = useQueryClient()
+  const { data: notes = [], isLoading: isLoadingNotes } = useNotes(user?.id)
   const { mutateAsync: deleteNote, isPending: isDeleting } = useDeleteNote()
   const { 
     uploadAsync,
@@ -291,8 +297,8 @@ function RouteComponent() {
     // Show success state briefly
     setProcessingJob(prev => prev ? { ...prev, status: 'completed', progress: 100 } : null);
     
-    // Refetch notes
-    refetchNotes();
+    // Invalidate queries to refetch fresh data
+    queryClient.invalidateQueries({ queryKey: ['notes', user?.id] });
     
     // Ensure modal is closed
     setOpen(false);
@@ -320,7 +326,7 @@ function RouteComponent() {
         setEnableWebSocket(false);
       }, 2000);
     }
-  }, [refetchNotes, navigate]); 
+  }, [queryClient, navigate, user?.id]); 
 
   // Wrap onJobFailed in useCallback
   const onJobFailed = useCallback(() => {
@@ -555,6 +561,17 @@ function RouteComponent() {
     setDeleteDialogOpen(true);
   }, []);
 
+  // Prefetch note data on hover for instant navigation
+  const handlePrefetchNote = useCallback((noteId: string) => {
+    if (user?.id) {
+      queryClient.prefetchQuery({
+        queryKey: ['note', noteId, user.id],
+        queryFn: () => NotesService.getNote(noteId, user.id),
+        staleTime: 1000 * 60 * 5, // 5 minutes
+      })
+    }
+  }, [user?.id, queryClient])
+
   return (
     <AppLayout>
       
@@ -727,6 +744,7 @@ function RouteComponent() {
               navigate={navigate}
               onDownload={handleDownloadNote}
               onDelete={openDeleteDialog}
+              onPrefetch={handlePrefetchNote}
             />
           ))}
         </div>

@@ -7,8 +7,10 @@ import { useAuth } from '@/context/AuthContext'
 import { useNote } from '@/hooks/useNotes'
 import { useGenerateQuizFromNote } from '@/hooks/useQuiz'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { downloadNotePdf } from '@/lib/pdfUtils'
+import NotesService from '@/services/NotesService'
 
 export const Route = createFileRoute('/__protected/notes/$noteId')({
   component: RouteComponent,
@@ -18,10 +20,22 @@ function RouteComponent() {
   const { noteId } = Route.useParams()
   const { user } = useAuth()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { data: note, isLoading, isError } = useNote(noteId, user?.id || '')
   const { mutateAsync: generateQuiz, isPending: isGeneratingQuiz } = useGenerateQuizFromNote()
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [generatedQuizId, setGeneratedQuizId] = useState<string | null>(null)
+
+  // Prefetch notes list when viewing a single note for faster back navigation
+  useEffect(() => {
+    if (user?.id) {
+      queryClient.prefetchQuery({
+        queryKey: ['notes', user.id],
+        queryFn: () => NotesService.getUserNotes(user.id),
+        staleTime: 1000 * 60 * 5, // 5 minutes
+      })
+    }
+  }, [user?.id, queryClient])
 
   const handleGenerateQuiz = async () => {
     if (!note || !user) {
@@ -40,6 +54,9 @@ function RouteComponent() {
       if (result.success && result.quizId) {
         setGeneratedQuizId(result.quizId)
         setShowSuccessModal(true)
+        
+        // Invalidate quizzes query to show the new quiz
+        queryClient.invalidateQueries({ queryKey: ['quizzes', user.id] })
       } else {
         alert(result.error || 'Failed to generate quiz. Please try again.')
       }
