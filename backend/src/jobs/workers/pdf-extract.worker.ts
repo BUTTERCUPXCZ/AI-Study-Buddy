@@ -11,7 +11,7 @@ import {
   CreatePdfExtractJobDto,
   PdfExtractJobResult,
 } from '../dto/pdf-extract.dto';
-import { JobStatus } from '@prisma/client';
+import { File, JobStatus } from '@prisma/client';
 
 @Processor('pdf-extract')
 export class PdfExtractWorker extends WorkerHost {
@@ -39,9 +39,13 @@ export class PdfExtractWorker extends WorkerHost {
 
     try {
       // Update job status to processing and set stage to processing
-      await this.jobsService.updateJobStatus(job.id!, JobStatus.processing, {
-        progress: 0,
-      });
+      await this.jobsService.updateJobStatus(
+        job.id!,
+        JobStatus.processing as JobStatus,
+        {
+          progress: 0,
+        },
+      );
       await this.jobsService.setJobStage(job.id!, 'processing');
       this.wsGateway.emitJobUpdate(job.id!, 'processing', {
         fileId,
@@ -86,16 +90,17 @@ export class PdfExtractWorker extends WorkerHost {
           );
 
           // Get the file record to retrieve the storage path
-          const fileRecord = await this.databaseService.file.findUnique({
-            where: { id: fileId },
-          });
+          const fileRecord: File | null =
+            await this.databaseService.file.findUnique({
+              where: { id: fileId },
+            });
 
           if (!fileRecord) {
             throw new Error('File record not found in database');
           }
 
           // Use the stored path (which should be the storage path)
-          const filePath = fileRecord.url;
+          const filePath: string = fileRecord.url;
 
           this.logger.log(
             `Attempting direct download from Supabase storage: ${filePath}`,
@@ -195,10 +200,14 @@ export class PdfExtractWorker extends WorkerHost {
 
       // Update job status to completed and stage
       await this.jobsService.setJobStage(job.id!, 'completed');
-      await this.jobsService.updateJobStatus(job.id!, JobStatus.completed, {
-        progress: 100,
-        finishedAt: new Date(),
-      });
+      await this.jobsService.updateJobStatus(
+        job.id!,
+        JobStatus.completed as JobStatus,
+        {
+          progress: 100,
+          finishedAt: new Date(),
+        },
+      );
       await this.wsGateway.emitJobCompleted(job.id!, { fileId, userId });
 
       const result: PdfExtractJobResult = {
@@ -218,11 +227,15 @@ export class PdfExtractWorker extends WorkerHost {
       );
 
       // Update job status to failed
-      await this.jobsService.updateJobStatus(job.id!, JobStatus.failed, {
-        failedReason: errorMessage,
-        failedAt: new Date(),
-        attempts: job.attemptsMade,
-      });
+      await this.jobsService.updateJobStatus(
+        job.id!,
+        JobStatus.failed as JobStatus,
+        {
+          failedReason: errorMessage,
+          failedAt: new Date(),
+          attempts: job.attemptsMade,
+        },
+      );
 
       throw error;
     }

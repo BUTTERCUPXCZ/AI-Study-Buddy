@@ -53,9 +53,13 @@ export class PdfNotesWorker extends WorkerHost {
 
     try {
       // Set initial status
-      await this.jobsService.updateJobStatus(job.id!, JobStatus.processing, {
-        progress: 0,
-      });
+      await this.jobsService.updateJobStatus(
+        job.id!,
+        JobStatus.processing as JobStatus,
+        {
+          progress: 0,
+        },
+      );
       await this.jobsService.setJobStage(job.id!, 'processing');
       this.wsGateway.emitJobUpdate(job.id!, 'processing', {
         jobId: job.id!,
@@ -115,10 +119,14 @@ export class PdfNotesWorker extends WorkerHost {
       // Step 4: Complete (100%)
       await job.updateProgress(100);
       await this.jobsService.setJobStage(job.id!, 'completed');
-      await this.jobsService.updateJobStatus(job.id!, JobStatus.completed, {
-        progress: 100,
-        finishedAt: new Date(),
-      });
+      await this.jobsService.updateJobStatus(
+        job.id!,
+        JobStatus.completed as JobStatus,
+        {
+          progress: 100,
+          finishedAt: new Date(),
+        },
+      );
 
       // Emit final progress with status 'completed'
       this.wsGateway.emitJobProgress(
@@ -152,11 +160,15 @@ export class PdfNotesWorker extends WorkerHost {
       );
 
       // Update job status to failed
-      await this.jobsService.updateJobStatus(job.id!, JobStatus.failed, {
-        failedReason: errorMessage,
-        failedAt: new Date(),
-        attempts: job.attemptsMade,
-      });
+      await this.jobsService.updateJobStatus(
+        job.id!,
+        JobStatus.failed as JobStatus,
+        {
+          failedReason: errorMessage,
+          failedAt: new Date(),
+          attempts: job.attemptsMade,
+        },
+      );
 
       this.wsGateway.emitJobProgress(job.id!, 100, 'Processing failed');
 

@@ -13,7 +13,7 @@ import {
   TutorChatResponse,
   QuizQuestion,
 } from './interfaces/ai-response.interface';
-import { ChatSession, ChatMessage, Note } from '@prisma/client';
+import { ChatSession, ChatMessage, Note, Quiz, Prisma } from '@prisma/client';
 
 @Injectable()
 export class AiService {
@@ -52,7 +52,7 @@ export class AiService {
       const notes = this.cleanGeneratedText(response.text());
 
       // Save notes to database using NotesService
-      const noteRecord = await this.notesService.createNote(
+      const noteRecord: Note = await this.notesService.createNote(
         userId,
         title,
         notes,
@@ -107,7 +107,7 @@ export class AiService {
       const title = this.generateTitleFromFileName(fileName);
 
       // Save notes to database
-      const noteRecord = await this.notesService.createNote(
+      const noteRecord: Note = await this.notesService.createNote(
         userId,
         title,
         generatedContent,
@@ -231,7 +231,7 @@ Now analyze the PDF and produce polished, comprehensive study notes following th
       );
 
       // Save notes to database
-      const noteRecord = await this.notesService.createNote(
+      const noteRecord: Note = await this.notesService.createNote(
         userId,
         title,
         generatedContent,
@@ -368,10 +368,10 @@ Make the notes:
       const questions = JSON.parse(jsonText) as QuizQuestion[];
 
       // Save quiz to database using QuizzesService
-      const quizRecord = await this.quizzesService.createQuiz(
+      const quizRecord: Quiz = await this.quizzesService.createQuiz(
         userId,
         title,
-        questions,
+        questions as unknown as Prisma.InputJsonValue,
         noteId,
       );
 
@@ -413,7 +413,7 @@ Make the notes:
         | (ChatSession & { messages: ChatMessage[]; note: Note | null })
         | null;
       if (sessionId) {
-        chatSession = await this.databaseService.chatSession.findFirst({
+        chatSession = (await this.databaseService.chatSession.findFirst({
           where: {
             id: sessionId,
             userId,
@@ -424,14 +424,16 @@ Make the notes:
             },
             note: true,
           },
-        });
+        })) as
+          | (ChatSession & { messages: ChatMessage[]; note: Note | null })
+          | null;
 
         if (!chatSession) {
           throw new NotFoundException('Chat session not found');
         }
       } else {
         // Create new session
-        chatSession = await this.databaseService.chatSession.create({
+        chatSession = (await this.databaseService.chatSession.create({
           data: {
             userId,
             noteId: noteId || null,
@@ -441,7 +443,7 @@ Make the notes:
             messages: true,
             note: true,
           },
-        });
+        })) as ChatSession & { messages: ChatMessage[]; note: Note | null };
       }
 
       // Get learning materials context (optional)
@@ -449,7 +451,7 @@ Make the notes:
       if (chatSession.note) {
         learningMaterialsContext = chatSession.note.content;
       } else if (noteId) {
-        const note = await this.databaseService.note.findUnique({
+        const note: Note | null = await this.databaseService.note.findUnique({
           where: { id: noteId },
         });
         if (note) {
@@ -477,13 +479,14 @@ Make the notes:
       const answer = response.text();
 
       // Save AI response
-      const assistantMessage = await this.databaseService.chatMessage.create({
-        data: {
-          role: 'assistant',
-          content: answer,
-          sessionId: chatSession.id,
-        },
-      });
+      const assistantMessage: ChatMessage =
+        await this.databaseService.chatMessage.create({
+          data: {
+            role: 'assistant',
+            content: answer,
+            sessionId: chatSession.id,
+          },
+        });
 
       this.logger.log(`Chat message saved in session: ${chatSession.id}`);
 
@@ -525,7 +528,7 @@ Make the notes:
         | (ChatSession & { messages: ChatMessage[]; note: Note | null })
         | null;
       if (sessionId) {
-        chatSession = await this.databaseService.chatSession.findFirst({
+        chatSession = (await this.databaseService.chatSession.findFirst({
           where: {
             id: sessionId,
             userId,
@@ -536,14 +539,16 @@ Make the notes:
             },
             note: true,
           },
-        });
+        })) as
+          | (ChatSession & { messages: ChatMessage[]; note: Note | null })
+          | null;
 
         if (!chatSession) {
           throw new NotFoundException('Chat session not found');
         }
       } else {
         // Create new session
-        chatSession = await this.databaseService.chatSession.create({
+        chatSession = (await this.databaseService.chatSession.create({
           data: {
             userId,
             noteId: noteId || null,
@@ -553,7 +558,7 @@ Make the notes:
             messages: true,
             note: true,
           },
-        });
+        })) as ChatSession & { messages: ChatMessage[]; note: Note | null };
       }
 
       // Get learning materials context (optional)
@@ -561,7 +566,7 @@ Make the notes:
       if (chatSession.note) {
         learningMaterialsContext = chatSession.note.content;
       } else if (noteId) {
-        const note = await this.databaseService.note.findUnique({
+        const note: Note | null = await this.databaseService.note.findUnique({
           where: { id: noteId },
         });
         if (note) {
@@ -611,13 +616,14 @@ Make the notes:
       }
 
       // Save complete AI response to database
-      const assistantMessage = await this.databaseService.chatMessage.create({
-        data: {
-          role: 'assistant',
-          content: fullAnswer,
-          sessionId: chatSession.id,
-        },
-      });
+      const assistantMessage: ChatMessage =
+        await this.databaseService.chatMessage.create({
+          data: {
+            role: 'assistant',
+            content: fullAnswer,
+            sessionId: chatSession.id,
+          },
+        });
 
       // Send completion signal
       res.write(
@@ -649,7 +655,7 @@ Make the notes:
   /**
    * Get all chat sessions for a user
    */
-  async getUserChatSessions(userId: string) {
+  getUserChatSessions(userId: string): Promise<unknown> {
     return this.databaseService.chatSession.findMany({
       where: { userId },
       orderBy: { updatedAt: 'desc' },
@@ -671,8 +677,8 @@ Make the notes:
   /**
    * Get a specific chat session with all messages
    */
-  async getChatSession(sessionId: string, userId: string) {
-    const session = await this.databaseService.chatSession.findFirst({
+  async getChatSession(sessionId: string, userId: string): Promise<unknown> {
+    const session = (await this.databaseService.chatSession.findFirst({
       where: {
         id: sessionId,
         userId,
@@ -683,7 +689,9 @@ Make the notes:
         },
         note: true,
       },
-    });
+    })) as
+      | (ChatSession & { messages: ChatMessage[]; note: Note | null })
+      | null;
 
     if (!session) {
       throw new NotFoundException('Chat session not found');
@@ -695,8 +703,11 @@ Make the notes:
   /**
    * Delete a chat session
    */
-  async deleteChatSession(sessionId: string, userId: string) {
-    const session = await this.getChatSession(sessionId, userId);
+  async deleteChatSession(sessionId: string, userId: string): Promise<unknown> {
+    const session = (await this.getChatSession(
+      sessionId,
+      userId,
+    )) as ChatSession & { messages: ChatMessage[]; note: Note | null };
 
     return this.databaseService.chatSession.delete({
       where: { id: session.id },
@@ -710,8 +721,11 @@ Make the notes:
     sessionId: string,
     userId: string,
     title: string,
-  ) {
-    const session = await this.getChatSession(sessionId, userId);
+  ): Promise<unknown> {
+    const session = (await this.getChatSession(
+      sessionId,
+      userId,
+    )) as ChatSession & { messages: ChatMessage[]; note: Note | null };
 
     return this.databaseService.chatSession.update({
       where: { id: session.id },

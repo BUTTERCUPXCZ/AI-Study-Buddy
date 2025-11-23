@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
-import { JobStatus } from '@prisma/client';
+import { Job, JobStatus } from '@prisma/client';
 
 @Injectable()
 export class JobsService {
@@ -16,7 +16,7 @@ export class JobsService {
     data: Record<string, any>;
     userId?: string;
     opts?: Record<string, any>;
-  }) {
+  }): Promise<Job> {
     // Use upsert to avoid unique constraint errors
     return await this.databaseService.job.upsert({
       where: { jobId: data.jobId },
@@ -25,7 +25,7 @@ export class JobsService {
         queueName: data.queueName,
         data: data.data,
         opts: data.opts || {},
-        status: JobStatus.waiting,
+        status: JobStatus.waiting as JobStatus,
         userId: data.userId,
       },
       create: {
@@ -34,7 +34,7 @@ export class JobsService {
         queueName: data.queueName,
         data: data.data,
         opts: data.opts || {},
-        status: JobStatus.waiting,
+        status: JobStatus.waiting as JobStatus,
         userId: data.userId,
       },
     });
@@ -53,7 +53,7 @@ export class JobsService {
       failedAt?: Date;
       attempts?: number;
     },
-  ) {
+  ): Promise<Job> {
     return await this.databaseService.job.update({
       where: { jobId },
       data: {
@@ -67,7 +67,7 @@ export class JobsService {
   /**
    * Get job by jobId
    */
-  async getJob(jobId: string) {
+  async getJob(jobId: string): Promise<Job | null> {
     return await this.databaseService.job.findUnique({
       where: { jobId },
     });
@@ -76,7 +76,7 @@ export class JobsService {
   /**
    * Get jobs by user
    */
-  async getUserJobs(userId: string, limit = 50) {
+  async getUserJobs(userId: string, limit = 50): Promise<Job[]> {
     return await this.databaseService.job.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
@@ -87,7 +87,7 @@ export class JobsService {
   /**
    * Get jobs by queue name
    */
-  async getQueueJobs(queueName: string, limit = 50) {
+  async getQueueJobs(queueName: string, limit = 50): Promise<Job[]> {
     return await this.databaseService.job.findMany({
       where: { queueName },
       orderBy: { createdAt: 'desc' },
@@ -98,27 +98,29 @@ export class JobsService {
   /**
    * Clean up completed jobs older than specified days
    */
-  async cleanupOldJobs(days: number = 7) {
+  async cleanupOldJobs(days: number = 7): Promise<{ count: number }> {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - days);
 
-    return await this.databaseService.job.deleteMany({
+    return (await this.databaseService.job.deleteMany({
       where: {
-        status: JobStatus.completed,
+        status: JobStatus.completed as JobStatus,
         finishedAt: {
           lt: cutoffDate,
         },
       },
-    });
+    })) as { count: number };
   }
 
   /**
    * Set a human-friendly stage for a job (stored in opts JSON)
    * This avoids risky schema migrations while still tracking fine-grained stages.
    */
-  async setJobStage(jobId: string, stage: string) {
+  async setJobStage(jobId: string, stage: string): Promise<Job> {
     // Read current job opts
-    const job = await this.databaseService.job.findUnique({ where: { jobId } });
+    const job: Job | null = await this.databaseService.job.findUnique({
+      where: { jobId },
+    });
     const currentOpts = (job && (job.opts as Record<string, any>)) || {};
     const newOpts = { ...currentOpts, stage };
 

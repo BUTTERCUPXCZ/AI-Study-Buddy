@@ -29,7 +29,7 @@ export class PdfController {
   async uploadPdf(
     @UploadedFile() file: Express.Multer.File,
     @Body() createPdfDto: CreatePdfDto,
-  ) {
+  ): Promise<unknown> {
     if (!file) {
       throw new BadRequestException('No file uploaded');
     }
@@ -42,7 +42,7 @@ export class PdfController {
    * GET /upload/user/:userId
    */
   @Get('user/:userId')
-  async getUserFiles(@Param('userId') userId: string) {
+  async getUserFiles(@Param('userId') userId: string): Promise<unknown> {
     return await this.pdfService.getUserFiles(userId);
   }
 

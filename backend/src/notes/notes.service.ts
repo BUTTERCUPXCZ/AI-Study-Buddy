@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
 import { RedisService } from '../redis/redis.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { Note } from '@prisma/client';
 
 @Injectable()
 export class NotesService {
@@ -21,10 +22,10 @@ export class NotesService {
     title: string,
     content: string,
     source?: string,
-  ) {
+  ): Promise<Note> {
     this.logger.log(`Creating note for user: ${userId}`);
 
-    const note = await this.databaseService.note.create({
+    const note: Note = await this.databaseService.note.create({
       data: {
         title,
         content,
@@ -42,7 +43,7 @@ export class NotesService {
   /**
    * Get all notes for a user
    */
-  async getUserNotes(userId: string) {
+  async getUserNotes(userId: string): Promise<unknown> {
     const cacheKey = `user:${userId}:notes`;
 
     // Try to get from cache first
@@ -53,7 +54,7 @@ export class NotesService {
     }
 
     this.logger.log(`Fetching notes from database for user: ${userId}`);
-    const notes = await this.databaseService.note.findMany({
+    const notes: Note[] = await this.databaseService.note.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
     });
@@ -67,7 +68,7 @@ export class NotesService {
   /**
    * Get a specific note by ID
    */
-  async getNoteById(noteId: string, userId: string) {
+  async getNoteById(noteId: string, userId: string): Promise<unknown> {
     const cacheKey = `user:${userId}:note:${noteId}`;
 
     // Try to get from cache first
@@ -80,7 +81,7 @@ export class NotesService {
     this.logger.log(
       `Fetching note ${noteId} from database for user: ${userId}`,
     );
-    const note = await this.databaseService.note.findFirst({
+    const note: Note | null = await this.databaseService.note.findFirst({
       where: {
         id: noteId,
         userId,
@@ -105,10 +106,10 @@ export class NotesService {
     userId: string,
     content: string,
     title?: string,
-  ) {
+  ): Promise<unknown> {
     await this.getNoteById(noteId, userId);
 
-    const updatedNote = await this.databaseService.note.update({
+    const updatedNote: Note = await this.databaseService.note.update({
       where: { id: noteId },
       data: {
         content,
@@ -125,10 +126,10 @@ export class NotesService {
   /**
    * Delete a note
    */
-  async deleteNote(noteId: string, userId: string) {
+  async deleteNote(noteId: string, userId: string): Promise<unknown> {
     await this.getNoteById(noteId, userId);
 
-    const deletedNote = await this.databaseService.note.delete({
+    const deletedNote: Note = await this.databaseService.note.delete({
       where: { id: noteId },
     });
 

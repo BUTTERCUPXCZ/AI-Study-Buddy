@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { QuizzesService } from './quizzes.service';
 import { CreateQuizDto, UpdateQuizScoreDto } from './dto/quiz.dto';
+import { Quiz } from '@prisma/client';
 
 @Controller('quizzes')
 export class QuizzesController {
@@ -18,7 +19,7 @@ export class QuizzesController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async createQuiz(@Body() dto: CreateQuizDto) {
+  async createQuiz(@Body() dto: CreateQuizDto): Promise<Quiz> {
     return this.quizzesService.createQuiz(
       dto.userId,
       dto.title,
@@ -28,7 +29,7 @@ export class QuizzesController {
   }
 
   @Get('user/:userId')
-  async getUserQuizzes(@Param('userId') userId: string) {
+  async getUserQuizzes(@Param('userId') userId: string): Promise<unknown> {
     return this.quizzesService.getUserQuizzes(userId);
   }
 
@@ -36,7 +37,7 @@ export class QuizzesController {
   async getQuizById(
     @Param('quizId') quizId: string,
     @Param('userId') userId: string,
-  ) {
+  ): Promise<unknown> {
     return this.quizzesService.getQuizById(quizId, userId);
   }
 
@@ -45,7 +46,7 @@ export class QuizzesController {
     @Param('quizId') quizId: string,
     @Param('userId') userId: string,
     @Body() dto: UpdateQuizScoreDto,
-  ) {
+  ): Promise<unknown> {
     return this.quizzesService.updateQuizScore(quizId, userId, dto.score);
   }
 

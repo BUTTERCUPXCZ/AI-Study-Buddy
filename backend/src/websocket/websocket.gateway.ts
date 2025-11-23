@@ -120,6 +120,8 @@ export class JobsWebSocketGateway
       jobId: string;
       progress: number;
       message: string;
+      fileId?: string;
+      noteId?: string;
     },
   ) {
     const userRoom = `user:${payload.userId}`;

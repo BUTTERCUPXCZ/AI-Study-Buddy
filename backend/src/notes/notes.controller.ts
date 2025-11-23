@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { NotesService } from './notes.service';
 import { CreateNoteDto, UpdateNoteDto } from './dto/note.dto';
+import { Note } from '@prisma/client';
 
 @Controller('notes')
 export class NotesController {
@@ -18,7 +19,7 @@ export class NotesController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async createNote(@Body() dto: CreateNoteDto) {
+  async createNote(@Body() dto: CreateNoteDto): Promise<Note> {
     return this.notesService.createNote(
       dto.userId,
       dto.title,
@@ -28,7 +29,7 @@ export class NotesController {
   }
 
   @Get('user/:userId')
-  async getUserNotes(@Param('userId') userId: string) {
+  async getUserNotes(@Param('userId') userId: string): Promise<unknown> {
     return this.notesService.getUserNotes(userId);
   }
 
@@ -36,7 +37,7 @@ export class NotesController {
   async getNoteById(
     @Param('noteId') noteId: string,
     @Param('userId') userId: string,
-  ) {
+  ): Promise<unknown> {
     return this.notesService.getNoteById(noteId, userId);
   }
 
@@ -45,7 +46,7 @@ export class NotesController {
     @Param('noteId') noteId: string,
     @Param('userId') userId: string,
     @Body() dto: UpdateNoteDto,
-  ) {
+  ): Promise<unknown> {
     return this.notesService.updateNote(noteId, userId, dto.content, dto.title);
   }
 

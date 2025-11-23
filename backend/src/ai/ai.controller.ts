@@ -82,7 +82,7 @@ export class AiController {
   }
 
   @Get('tutor/sessions/user/:userId')
-  async getUserChatSessions(@Param('userId') userId: string) {
+  async getUserChatSessions(@Param('userId') userId: string): Promise<unknown> {
     return this.aiService.getUserChatSessions(userId);
   }
 
@@ -90,7 +90,7 @@ export class AiController {
   async getChatSession(
     @Param('sessionId') sessionId: string,
     @Param('userId') userId: string,
-  ) {
+  ): Promise<unknown> {
     return this.aiService.getChatSession(sessionId, userId);
   }
 
@@ -99,7 +99,7 @@ export class AiController {
     @Param('sessionId') sessionId: string,
     @Param('userId') userId: string,
     @Body() dto: UpdateChatSessionTitleDto,
-  ) {
+  ): Promise<unknown> {
     return this.aiService.updateChatSessionTitle(sessionId, userId, dto.title);
   }
 

@@ -8,6 +8,7 @@ import { DatabaseService } from '../database/database.service';
 import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { PdfNotesQueue } from '../jobs/queues/pdf-notes.queue';
+import { File, User } from '@prisma/client';
 
 @Injectable()
 export class PdfService {
@@ -52,9 +53,10 @@ export class PdfService {
 
     try {
       // Validate that the user exists in the database
-      const userExists = await this.databaseService.user.findUnique({
-        where: { id: createPdfDto.userId },
-      });
+      const userExists: User | null =
+        await this.databaseService.user.findUnique({
+          where: { id: createPdfDto.userId },
+        });
 
       if (!userExists) {
         throw new BadRequestException(
@@ -83,7 +85,7 @@ export class PdfService {
       }
 
       // Save file metadata to database with the storage path
-      const fileRecord = await this.databaseService.file.create({
+      const fileRecord: File = await this.databaseService.file.create({
         data: {
           name: createPdfDto.fileName,
           url: uploadData.path, // Store the storage path
@@ -122,9 +124,9 @@ export class PdfService {
    * @param userId - The user ID to fetch files for
    * @returns Array of file records
    */
-  async getUserFiles(userId: string) {
+  async getUserFiles(userId: string): Promise<unknown> {
     try {
-      const files = await this.databaseService.file.findMany({
+      const files = (await this.databaseService.file.findMany({
         where: { userId },
         orderBy: { id: 'desc' },
         include: {
@@ -136,7 +138,7 @@ export class PdfService {
             },
           },
         },
-      });
+      })) as unknown[];
 
       return files;
     } catch (error) {
@@ -151,9 +153,9 @@ export class PdfService {
    * @param id - The file ID
    * @returns File record
    */
-  async getFileById(id: string) {
+  async getFileById(id: string): Promise<unknown> {
     try {
-      const file = await this.databaseService.file.findUnique({
+      const file = (await this.databaseService.file.findUnique({
         where: { id },
         include: {
           user: {
@@ -164,7 +166,7 @@ export class PdfService {
             },
           },
         },
-      });
+      })) as unknown;
 
       if (!file) {
         throw new NotFoundException(`File with ID ${id} not found`);
@@ -190,7 +192,7 @@ export class PdfService {
   async deleteFile(id: string, userId: string) {
     try {
       // Find the file
-      const file = await this.databaseService.file.findUnique({
+      const file: File | null = await this.databaseService.file.findUnique({
         where: { id },
       });
 

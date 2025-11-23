@@ -24,10 +24,14 @@ export class CompletionWorker extends WorkerHost {
 
       // Set final stage and mark job completed in DB
       await this.jobsService.setJobStage(jobId, 'completed');
-      await this.jobsService.updateJobStatus(jobId, JobStatus.completed, {
-        progress: 100,
-        finishedAt: new Date(),
-      });
+      await this.jobsService.updateJobStatus(
+        jobId,
+        JobStatus.completed as JobStatus,
+        {
+          progress: 100,
+          finishedAt: new Date(),
+        },
+      );
 
       // Emit websocket completion
       await this.wsGateway.emitJobCompleted(
@@ -42,11 +46,15 @@ export class CompletionWorker extends WorkerHost {
       this.logger.error(
         `Completion worker failed for ${jobId}: ${errorMessage}`,
       );
-      await this.jobsService.updateJobStatus(jobId, JobStatus.failed, {
-        failedReason: errorMessage,
-        failedAt: new Date(),
-        attempts: job.attemptsMade,
-      });
+      await this.jobsService.updateJobStatus(
+        jobId,
+        JobStatus.failed as JobStatus,
+        {
+          failedReason: errorMessage,
+          failedAt: new Date(),
+          attempts: job.attemptsMade,
+        },
+      );
       await this.wsGateway.emitJobError(jobId, error);
       throw error;
     }

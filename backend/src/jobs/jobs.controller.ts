@@ -1,5 +1,6 @@
 import { Controller, Get, Param, Query, Delete } from '@nestjs/common';
 import { JobsService } from './jobs.service';
+import { Job } from '@prisma/client';
 
 @Controller('jobs')
 export class JobsController {
@@ -11,7 +12,7 @@ export class JobsController {
    */
   @Get(':jobId')
   async getJob(@Param('jobId') jobId: string) {
-    const job = await this.jobsService.getJob(jobId);
+    const job: Job | null = await this.jobsService.getJob(jobId);
     return {
       success: true,
       job,
@@ -27,7 +28,7 @@ export class JobsController {
     @Param('userId') userId: string,
     @Query('limit') limit?: string,
   ) {
-    const jobs = await this.jobsService.getUserJobs(
+    const jobs: Job[] = await this.jobsService.getUserJobs(
       userId,
       limit ? parseInt(limit, 10) : 50,
     );
@@ -47,7 +48,7 @@ export class JobsController {
     @Param('queueName') queueName: string,
     @Query('limit') limit?: string,
   ) {
-    const jobs = await this.jobsService.getQueueJobs(
+    const jobs: Job[] = await this.jobsService.getQueueJobs(
       queueName,
       limit ? parseInt(limit, 10) : 50,
     );
@@ -64,7 +65,7 @@ export class JobsController {
    */
   @Delete('cleanup')
   async cleanupJobs(@Query('days') days?: string) {
-    const result = await this.jobsService.cleanupOldJobs(
+    const result: { count: number } = await this.jobsService.cleanupOldJobs(
       days ? parseInt(days, 10) : 7,
     );
     return {
