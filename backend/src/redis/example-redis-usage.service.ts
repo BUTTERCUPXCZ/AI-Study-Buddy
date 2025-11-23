@@ -23,18 +23,26 @@ export class ExampleRedisUsageService {
   async checkRateLimit(userId: string, limit: number = 10): Promise<boolean> {
     const key = `rate_limit:${userId}`;
     const current = await this.redisService.incr(key);
-    
+
     if (current === 1) {
       // Set expiration to 1 minute
       await this.redisService.expire(key, 60);
     }
-    
+
     return current <= limit;
   }
 
   // Example: Session management
-  async createSession(sessionId: string, userId: string, expirationSeconds: number = 86400) {
-    await this.redisService.set(`session:${sessionId}`, userId, expirationSeconds);
+  async createSession(
+    sessionId: string,
+    userId: string,
+    expirationSeconds: number = 86400,
+  ) {
+    await this.redisService.set(
+      `session:${sessionId}`,
+      userId,
+      expirationSeconds,
+    );
   }
 
   async getSession(sessionId: string): Promise<string | null> {
@@ -48,11 +56,14 @@ export class ExampleRedisUsageService {
   // Example: Storing lists (e.g., user activity)
   async addUserActivity(userId: string, activity: string) {
     const key = `user:${userId}:activities`;
-    await this.redisService.lpush(key, JSON.stringify({
-      activity,
-      timestamp: new Date().toISOString(),
-    }));
-    
+    await this.redisService.lpush(
+      key,
+      JSON.stringify({
+        activity,
+        timestamp: new Date().toISOString(),
+      }),
+    );
+
     // Keep only last 100 activities
     // You could also implement this logic
   }
@@ -60,7 +71,7 @@ export class ExampleRedisUsageService {
   async getUserActivities(userId: string, limit: number = 10) {
     const key = `user:${userId}:activities`;
     const activities = await this.redisService.lrange(key, 0, limit - 1);
-    return activities.map(a => JSON.parse(a));
+    return activities.map((a) => JSON.parse(a) as unknown);
   }
 
   // Example: Storing sets (e.g., user tags)
@@ -73,7 +84,10 @@ export class ExampleRedisUsageService {
   }
 
   async hasUserTag(userId: string, tag: string): Promise<boolean> {
-    const result = await this.redisService.sismember(`user:${userId}:tags`, tag);
+    const result = await this.redisService.sismember(
+      `user:${userId}:tags`,
+      tag,
+    );
     return result === 1;
   }
 }

@@ -13,9 +13,9 @@ export class JobsService {
     jobId: string;
     name: string;
     queueName: string;
-    data: any;
+    data: Record<string, any>;
     userId?: string;
-    opts?: any;
+    opts?: Record<string, any>;
   }) {
     // Use upsert to avoid unique constraint errors
     return await this.databaseService.job.upsert({
@@ -119,8 +119,8 @@ export class JobsService {
   async setJobStage(jobId: string, stage: string) {
     // Read current job opts
     const job = await this.databaseService.job.findUnique({ where: { jobId } });
-    const currentOpts = (job && (job.opts as any)) || {};
-    const newOpts = { ...(currentOpts || {}), stage };
+    const currentOpts = (job && (job.opts as Record<string, any>)) || {};
+    const newOpts = { ...currentOpts, stage };
 
     return await this.databaseService.job.update({
       where: { jobId },

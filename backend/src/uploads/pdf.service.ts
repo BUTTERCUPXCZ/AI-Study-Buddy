@@ -1,6 +1,9 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreatePdfDto, UploadPdfResponseDto } from './dto/create-pdf.dto';
-import { UpdatePdfDto } from './dto/update-pdf.dto';
 import { DatabaseService } from '../database/database.service';
 import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
@@ -19,7 +22,7 @@ export class PdfService {
     this.supabase = createClient(
       this.configService.get<string>('SUPABASE_URL')!,
       this.configService.get<string>('SUPABASE_SERVICE_ROLE_KEY')!,
-    );
+    ) as unknown as SupabaseClient;
   }
 
   /**
@@ -55,7 +58,7 @@ export class PdfService {
 
       if (!userExists) {
         throw new BadRequestException(
-          `User with ID ${createPdfDto.userId} does not exist. Please ensure you're using a valid user ID.`
+          `User with ID ${createPdfDto.userId} does not exist. Please ensure you're using a valid user ID.`,
         );
       }
 
@@ -67,12 +70,13 @@ export class PdfService {
       const uniqueFileName = `${createPdfDto.userId}/${timestamp}-${sanitizedFileName}`;
 
       // Upload to Supabase Storage
-      const { data: uploadData, error: uploadError } = await this.supabase.storage
-        .from(this.bucketName)
-        .upload(uniqueFileName, file.buffer, {
-          contentType: file.mimetype,
-          upsert: false,
-        });
+      const { data: uploadData, error: uploadError } =
+        await this.supabase.storage
+          .from(this.bucketName)
+          .upload(uniqueFileName, file.buffer, {
+            contentType: file.mimetype,
+            upsert: false,
+          });
 
       if (uploadError) {
         throw new BadRequestException(`Upload failed: ${uploadError.message}`);
@@ -107,9 +111,9 @@ export class PdfService {
       if (error instanceof BadRequestException) {
         throw error;
       }
-      throw new BadRequestException(
-        `Failed to upload file: ${error.message || 'Unknown error'}`,
-      );
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      throw new BadRequestException(`Failed to upload file: ${errorMessage}`);
     }
   }
 
@@ -136,9 +140,9 @@ export class PdfService {
 
       return files;
     } catch (error) {
-      throw new BadRequestException(
-        `Failed to fetch files: ${error.message || 'Unknown error'}`,
-      );
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      throw new BadRequestException(`Failed to fetch files: ${errorMessage}`);
     }
   }
 
@@ -171,9 +175,9 @@ export class PdfService {
       if (error instanceof NotFoundException) {
         throw error;
       }
-      throw new BadRequestException(
-        `Failed to fetch file: ${error.message || 'Unknown error'}`,
-      );
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      throw new BadRequestException(`Failed to fetch file: ${errorMessage}`);
     }
   }
 
@@ -196,7 +200,9 @@ export class PdfService {
 
       // Check if the user owns the file
       if (file.userId !== userId) {
-        throw new BadRequestException('You do not have permission to delete this file');
+        throw new BadRequestException(
+          'You do not have permission to delete this file',
+        );
       }
 
       // Delete from Supabase Storage
@@ -219,12 +225,15 @@ export class PdfService {
         message: 'File deleted successfully',
       };
     } catch (error) {
-      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
         throw error;
       }
-      throw new BadRequestException(
-        `Failed to delete file: ${error.message || 'Unknown error'}`,
-      );
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      throw new BadRequestException(`Failed to delete file: ${errorMessage}`);
     }
   }
 }

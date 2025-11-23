@@ -14,7 +14,7 @@ describe('AuthController', () => {
         create: jest.fn(),
         update: jest.fn(),
       },
-    } as any;
+    } as unknown as DatabaseService;
 
     const mockConfigService = {
       get: (key: string) => {
@@ -23,7 +23,7 @@ describe('AuthController', () => {
         if (key === 'FRONTEND_URL') return 'http://localhost:5173';
         return null;
       },
-    } as any;
+    } as unknown as ConfigService;
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AuthController],

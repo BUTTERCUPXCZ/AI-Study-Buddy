@@ -7,7 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Send, Sparkles, Loader2, MessageSquare, Plus } from 'lucide-react'
 import AppLayout from '@/components/app-layout'
-import { useAuth } from '@/context/AuthContext'
+import { useAuth } from '@/context/AuthContextDefinition'
 import TutorService, { type StreamChunk } from '@/services/TutorService'
 import { useTutorSessions } from '@/hooks/useTutor'
 
@@ -93,7 +93,7 @@ function RouteComponent() {
       // Check if this is a table row (contains |)
       if (trimmedLine.includes('|')) {
         const tableLines: string[] = []
-        let tableStartIndex = i
+        const tableStartIndex = i
         
         // Collect all consecutive table lines
         while (i < lines.length && lines[i].trim().includes('|')) {
@@ -122,7 +122,7 @@ function RouteComponent() {
       } else if (trimmedLine) {
         // Regular text line
         // Clean markdown formatting
-        let cleanText = trimmedLine
+        const cleanText = trimmedLine
           .replace(/\*\*\*/g, '') // Remove triple asterisks
           .replace(/\*\*/g, '') // Remove double asterisks (bold)
           .replace(/\*/g, '') // Remove single asterisks (italic)

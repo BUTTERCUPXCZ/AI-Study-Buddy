@@ -74,7 +74,9 @@ export class AiController {
         dto.noteId,
       );
     } catch (error) {
-      res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      res.write(`data: ${JSON.stringify({ error: errorMessage })}\n\n`);
       res.end();
     }
   }

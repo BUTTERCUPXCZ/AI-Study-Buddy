@@ -46,7 +46,7 @@ export const useUpdateNote = () => {
 
       // Optimistically update to the new value
       if (previousNote) {
-        queryClient.setQueryData(['note', noteId, userId], (old: any) => ({
+        queryClient.setQueryData(['note', noteId, userId], (old: Record<string, unknown>) => ({
           ...old,
           ...data,
         }));
@@ -87,7 +87,7 @@ export const useDeleteNote = () => {
       const previousNotes = queryClient.getQueryData(['notes', userId]);
 
       // Optimistically remove the note
-      queryClient.setQueryData(['notes', userId], (old: any[]) =>
+      queryClient.setQueryData(['notes', userId], (old: { id: string }[]) =>
         old ? old.filter(note => note.id !== noteId) : []
       );
 

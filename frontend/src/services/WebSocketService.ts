@@ -3,7 +3,7 @@ import { io, Socket } from 'socket.io-client';
 interface JobUpdateData {
   jobId: string;
   status: string;
-  data?: any;
+  data?: unknown;
   timestamp: string;
 }
 

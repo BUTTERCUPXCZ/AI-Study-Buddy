@@ -13,7 +13,9 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     const token = this.configService.get<string>('redis.token');
 
     if (!url || !token) {
-      throw new Error('Redis configuration is missing. Please check your environment variables.');
+      throw new Error(
+        'Redis configuration is missing. Please check your environment variables.',
+      );
     }
 
     this.client = new Redis({
@@ -38,11 +40,17 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     return await this.client.get<T>(key);
   }
 
-  async set(key: string, value: any, expirationSeconds?: number): Promise<string | null> {
+  async set(
+    key: string,
+    value: string | number | Buffer,
+    expirationSeconds?: number,
+  ): Promise<string | null> {
     if (expirationSeconds) {
-      return await this.client.set(key, value, { ex: expirationSeconds });
+      return (await this.client.set(key, value, { ex: expirationSeconds })) as
+        | string
+        | null;
     }
-    return await this.client.set(key, value);
+    return (await this.client.set(key, value)) as string | null;
   }
 
   async del(...keys: string[]): Promise<number> {
@@ -74,12 +82,16 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     return await this.client.hget<T>(key, field);
   }
 
-  async hset(key: string, field: string, value: any): Promise<number> {
+  async hset(
+    key: string,
+    field: string,
+    value: string | number | Buffer,
+  ): Promise<number> {
     return await this.client.hset(key, { [field]: value });
   }
 
-  async hgetall<T = Record<string, any>>(key: string): Promise<T> {
-    return await this.client.hgetall(key) as T;
+  async hgetall<T = Record<string, unknown>>(key: string): Promise<T> {
+    return (await this.client.hgetall(key)) as T;
   }
 
   async hdel(key: string, ...fields: string[]): Promise<number> {
@@ -87,11 +99,17 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   // List operations
-  async lpush(key: string, ...elements: any[]): Promise<number> {
+  async lpush(
+    key: string,
+    ...elements: (string | number | Buffer)[]
+  ): Promise<number> {
     return await this.client.lpush(key, ...elements);
   }
 
-  async rpush(key: string, ...elements: any[]): Promise<number> {
+  async rpush(
+    key: string,
+    ...elements: (string | number | Buffer)[]
+  ): Promise<number> {
     return await this.client.rpush(key, ...elements);
   }
 
@@ -103,7 +121,11 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     return await this.client.rpop<T>(key);
   }
 
-  async lrange<T = string>(key: string, start: number, stop: number): Promise<T[]> {
+  async lrange<T = string>(
+    key: string,
+    start: number,
+    stop: number,
+  ): Promise<T[]> {
     return await this.client.lrange<T>(key, start, stop);
   }
 
@@ -112,7 +134,10 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   // Set operations
-  async sadd(key: string, ...members: any[]): Promise<number> {
+  async sadd(
+    key: string,
+    ...members: (string | number | Buffer)[]
+  ): Promise<number> {
     return await this.client.sadd(key, members[0], ...members.slice(1));
   }
 
@@ -120,16 +145,26 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     return await this.client.smembers(key);
   }
 
-  async sismember(key: string, member: any): Promise<number> {
+  async sismember(
+    key: string,
+    member: string | number | Buffer,
+  ): Promise<number> {
     return await this.client.sismember(key, member);
   }
 
-  async srem(key: string, ...members: any[]): Promise<number> {
+  async srem(
+    key: string,
+    ...members: (string | number | Buffer)[]
+  ): Promise<number> {
     return await this.client.srem(key, ...members);
   }
 
   // Sorted Set operations
-  async zadd(key: string, score: number, member: any): Promise<number | null> {
+  async zadd(
+    key: string,
+    score: number,
+    member: string | number | Buffer,
+  ): Promise<number | null> {
     return await this.client.zadd(key, { score, member });
   }
 
@@ -137,12 +172,19 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     return await this.client.zrange(key, start, stop);
   }
 
-  async zrem(key: string, ...members: any[]): Promise<number> {
+  async zrem(
+    key: string,
+    ...members: (string | number | Buffer)[]
+  ): Promise<number> {
     return await this.client.zrem(key, ...members);
   }
 
   // Cache with JSON support
-  async setCache<T>(key: string, value: T, expirationSeconds?: number): Promise<string | null> {
+  async setCache<T>(
+    key: string,
+    value: T,
+    expirationSeconds?: number,
+  ): Promise<string | null> {
     const serialized = JSON.stringify(value);
     return await this.set(key, serialized, expirationSeconds);
   }

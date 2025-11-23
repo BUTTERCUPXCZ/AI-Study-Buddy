@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, Download, Star, Calendar, Brain, Loader2, CheckCircle } from 'lucide-react'
 import AppLayout from '@/components/app-layout'
-import { useAuth } from '@/context/AuthContext'
+import { useAuth } from '@/context/AuthContextDefinition'
 import { useNote } from '@/hooks/useNotes'
 import { useGenerateQuizFromNote } from '@/hooks/useQuiz'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
@@ -60,9 +60,10 @@ function RouteComponent() {
       } else {
         alert(result.error || 'Failed to generate quiz. Please try again.')
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error generating quiz:', error)
-      alert(error.message || 'Failed to generate quiz. Please try again.')
+      const message = (error as { message?: string }).message || 'Failed to generate quiz. Please try again.'
+      alert(message)
     }
   }
 

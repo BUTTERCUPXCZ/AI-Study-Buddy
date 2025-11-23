@@ -28,8 +28,9 @@ class NotesService {
     try {
       const response = await api.get(`/notes/user/${userId}`);
       return response.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to fetch notes');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      throw new Error(err.response?.data?.message || 'Failed to fetch notes');
     }
   }
 
@@ -40,8 +41,9 @@ class NotesService {
     try {
       const response = await api.get(`/notes/${noteId}/user/${userId}`);
       return response.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to fetch note');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      throw new Error(err.response?.data?.message || 'Failed to fetch note');
     }
   }
 
@@ -56,8 +58,9 @@ class NotesService {
     try {
       const response = await api.put(`/notes/${noteId}/user/${userId}`, data);
       return response.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to update note');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      throw new Error(err.response?.data?.message || 'Failed to update note');
     }
   }
 
@@ -67,8 +70,9 @@ class NotesService {
   async deleteNote(noteId: string, userId: string): Promise<void> {
     try {
       await api.delete(`/notes/${noteId}/user/${userId}`);
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to delete note');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      throw new Error(err.response?.data?.message || 'Failed to delete note');
     }
   }
 }

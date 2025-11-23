@@ -91,8 +91,9 @@ class TutorService {
           }
         }
       }
-    } catch (error: any) {
-      throw new Error(error.message || 'Failed to send message');
+    } catch (error: unknown) {
+      const err = error as { message?: string };
+      throw new Error(err.message || 'Failed to send message');
     }
   }
 
@@ -103,8 +104,9 @@ class TutorService {
     try {
       const response = await api.get(`/ai/tutor/sessions/user/${userId}`);
       return response.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to fetch chat sessions');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      throw new Error(err.response?.data?.message || 'Failed to fetch chat sessions');
     }
   }
 
@@ -115,8 +117,9 @@ class TutorService {
     try {
       const response = await api.get(`/ai/tutor/sessions/${sessionId}/user/${userId}`);
       return response.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to fetch chat session');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      throw new Error(err.response?.data?.message || 'Failed to fetch chat session');
     }
   }
 
@@ -134,8 +137,9 @@ class TutorService {
         { title },
       );
       return response.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to update session title');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      throw new Error(err.response?.data?.message || 'Failed to update session title');
     }
   }
 
@@ -145,8 +149,9 @@ class TutorService {
   async deleteChatSession(sessionId: string, userId: string): Promise<void> {
     try {
       await api.delete(`/ai/tutor/sessions/${sessionId}/user/${userId}`);
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to delete chat session');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      throw new Error(err.response?.data?.message || 'Failed to delete chat session');
     }
   }
 }

@@ -9,7 +9,7 @@ export class AiQuizQueue {
   private readonly logger = new Logger(AiQuizQueue.name);
 
   constructor(
-    @InjectQueue('ai-quiz') private aiQuizQueue: Queue,
+    @InjectQueue('ai-quiz') private aiQuizQueue: Queue<CreateAiQuizJobDto>,
     private readonly jobsService: JobsService,
   ) {}
 
@@ -69,7 +69,9 @@ export class AiQuizQueue {
         message: 'AI quiz generation job queued successfully',
       };
     } catch (error) {
-      this.logger.error(`Failed to add AI quiz job: ${error.message}`);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Failed to add AI quiz job: ${errorMessage}`);
       throw error;
     }
   }
@@ -79,7 +81,7 @@ export class AiQuizQueue {
    */
   async getJobStatus(jobId: string) {
     const job = await this.aiQuizQueue.getJob(jobId);
-    
+
     if (!job) {
       return null;
     }

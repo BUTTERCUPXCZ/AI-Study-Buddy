@@ -9,7 +9,7 @@ export class AiNotesQueue {
   private readonly logger = new Logger(AiNotesQueue.name);
 
   constructor(
-    @InjectQueue('ai-notes') private aiNotesQueue: Queue,
+    @InjectQueue('ai-notes') private aiNotesQueue: Queue<CreateAiNotesJobDto>,
     private readonly jobsService: JobsService,
   ) {}
 
@@ -70,7 +70,9 @@ export class AiNotesQueue {
         message: 'AI notes generation job queued successfully',
       };
     } catch (error) {
-      this.logger.error(`Failed to add AI notes job: ${error.message}`);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Failed to add AI notes job: ${errorMessage}`);
       throw error;
     }
   }
@@ -80,7 +82,7 @@ export class AiNotesQueue {
    */
   async getJobStatus(jobId: string) {
     const job = await this.aiNotesQueue.getJob(jobId);
-    
+
     if (!job) {
       return null;
     }
@@ -147,7 +149,9 @@ export class AiNotesQueue {
    */
   async cleanQueue(grace: number = 3600000) {
     const cleaned = await this.aiNotesQueue.clean(grace, 100, 'completed');
-    this.logger.log(`Cleaned ${cleaned.length} completed jobs from AI notes queue`);
+    this.logger.log(
+      `Cleaned ${cleaned.length} completed jobs from AI notes queue`,
+    );
     return cleaned.length;
   }
 }

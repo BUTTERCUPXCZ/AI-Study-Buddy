@@ -15,7 +15,8 @@ export class PdfNotesQueue {
   private readonly logger = new Logger(PdfNotesQueue.name);
 
   constructor(
-    @InjectQueue('pdf-notes') private pdfNotesQueue: Queue,
+    @InjectQueue('pdf-notes')
+    private pdfNotesQueue: Queue<CreatePdfNotesJobDto>,
     private readonly jobsService: JobsService,
   ) {}
 
@@ -75,7 +76,9 @@ export class PdfNotesQueue {
         message: 'PDF notes generation job queued successfully',
       };
     } catch (error) {
-      this.logger.error(`Failed to add PDF notes job: ${error.message}`);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Failed to add PDF notes job: ${errorMessage}`);
       throw error;
     }
   }
@@ -85,7 +88,7 @@ export class PdfNotesQueue {
    */
   async getJobStatus(jobId: string) {
     const job = await this.pdfNotesQueue.getJob(jobId);
-    
+
     if (!job) {
       return null;
     }

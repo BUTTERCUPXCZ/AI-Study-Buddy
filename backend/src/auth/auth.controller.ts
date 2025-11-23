@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Headers, Query, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Headers,
+  Query,
+  BadRequestException,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/Register-dto';
 import { Provider } from '@supabase/supabase-js';
@@ -18,7 +26,7 @@ export class AuthController {
   }
 
   @Get('me')
-  async getMe(@Headers('authorization') authHeader: string){
+  async getMe(@Headers('authorization') authHeader: string) {
     const token = authHeader?.split(' ')[1];
     return this.authService.verifyToken(token);
   }
@@ -30,10 +38,19 @@ export class AuthController {
    */
   @Get('oauth')
   async initiateOAuth(@Query('provider') provider: string) {
-    const validProviders = ['google', 'github', 'facebook', 'twitter', 'azure', 'linkedin'];
-    
+    const validProviders = [
+      'google',
+      'github',
+      'facebook',
+      'twitter',
+      'azure',
+      'linkedin',
+    ];
+
     if (!provider || !validProviders.includes(provider.toLowerCase())) {
-      throw new BadRequestException(`Invalid provider. Valid providers: ${validProviders.join(', ')}`);
+      throw new BadRequestException(
+        `Invalid provider. Valid providers: ${validProviders.join(', ')}`,
+      );
     }
 
     return this.authService.getOAuthUrl(provider as Provider);
@@ -52,5 +69,4 @@ export class AuthController {
 
     return this.authService.handleOAuthCallback(accessToken);
   }
-
 }

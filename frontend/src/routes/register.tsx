@@ -8,7 +8,7 @@ import { Separator } from '@/components/ui/separator'
 import { Eye, EyeOff } from 'lucide-react'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useForm } from 'react-hook-form'
+import { useForm, UseFormRegisterReturn } from 'react-hook-form'
 import { useRegister } from '@/hooks/useAuth'
 import { authService } from '@/services/AuthService'
  
@@ -74,9 +74,10 @@ function RouteComponent() {
       await authService.signInWithOAuth(provider, 'register')
       
       // The redirect will happen automatically
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('OAuth error:', error)
-      setOauthError(error.message || `Failed to sign up with ${provider}. Please try again.`)
+      const message = (error as { message?: string }).message || `Failed to sign up with ${provider}. Please try again.`
+      setOauthError(message)
     } finally {
       setOauthLoading(false)
     }
@@ -203,7 +204,7 @@ function PasswordField({
 }: {
   id: string
   placeholder?: string
-  registerProps?: any
+  registerProps?: UseFormRegisterReturn
   error?: string
 }) {
   const [show, setShow] = useState(false)

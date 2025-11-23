@@ -99,7 +99,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 onClick={async () => {
                   try {
                     await authService.logout()
-                  } catch (err) {
+                  } catch {
                     // ignore
                   }
                   localStorage.removeItem('access_token')

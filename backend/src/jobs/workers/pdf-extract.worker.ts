@@ -7,7 +7,10 @@ import { JobsService } from '../jobs.service';
 import { AiNotesQueue } from '../queues/ai-notes.queue';
 import { JobsWebSocketGateway } from '../../websocket/websocket.gateway';
 import { PdfParserUtil } from '../utils/pdf-parser.util';
-import { CreatePdfExtractJobDto, PdfExtractJobResult } from '../dto/pdf-extract.dto';
+import {
+  CreatePdfExtractJobDto,
+  PdfExtractJobResult,
+} from '../dto/pdf-extract.dto';
 import { JobStatus } from '@prisma/client';
 
 @Processor('pdf-extract')
@@ -24,11 +27,15 @@ export class PdfExtractWorker extends WorkerHost {
     super();
   }
 
-  async process(job: Job<CreatePdfExtractJobDto>): Promise<PdfExtractJobResult> {
+  async process(
+    job: Job<CreatePdfExtractJobDto>,
+  ): Promise<PdfExtractJobResult> {
     const startTime = Date.now();
     const { fileId, fileUrl, fileName, userId } = job.data;
 
-    this.logger.log(`Processing PDF extraction job ${job.id} for file: ${fileName}`);
+    this.logger.log(
+      `Processing PDF extraction job ${job.id} for file: ${fileName}`,
+    );
 
     try {
       // Update job status to processing and set stage to processing
@@ -36,19 +43,25 @@ export class PdfExtractWorker extends WorkerHost {
         progress: 0,
       });
       await this.jobsService.setJobStage(job.id!, 'processing');
-      await this.wsGateway.emitJobUpdate(job.id!, 'processing', { fileId, userId });
+      this.wsGateway.emitJobUpdate(job.id!, 'processing', {
+        fileId,
+        userId,
+        jobId: job.id!,
+        progress: 0,
+        message: 'Processing started',
+      });
 
-  // Step 1: Download/Load PDF from URL (10%)
-  await job.updateProgress(10);
-  await this.jobsService.setJobStage(job.id!, 'extracting');
-  await this.wsGateway.emitJobProgress(job.id!, 10, 'Downloading PDF');
-  this.logger.log(`Downloading PDF from: ${fileUrl}`);
+      // Step 1: Download/Load PDF from URL (10%)
+      await job.updateProgress(10);
+      await this.jobsService.setJobStage(job.id!, 'extracting');
+      this.wsGateway.emitJobProgress(job.id!, 10, 'Downloading PDF');
+      this.logger.log(`Downloading PDF from: ${fileUrl}`);
 
-  // Step 2: Extract text from PDF (50%)
-  await job.updateProgress(50);
-  await this.wsGateway.emitJobProgress(job.id!, 50, 'Extracting text');
-  this.logger.log(`Extracting text from PDF...`);
-      
+      // Step 2: Extract text from PDF (50%)
+      await job.updateProgress(50);
+      this.wsGateway.emitJobProgress(job.id!, 50, 'Extracting text');
+      this.logger.log(`Extracting text from PDF...`);
+
       let text: string;
       let pageCount: number;
 
@@ -58,14 +71,20 @@ export class PdfExtractWorker extends WorkerHost {
         text = result.text;
         pageCount = result.pageCount;
       } catch (urlError) {
-        this.logger.warn(`Failed to extract from URL: ${urlError.message}, trying direct Supabase download...`);
-        
+        const urlErrorMessage =
+          urlError instanceof Error ? urlError.message : 'Unknown error';
+        this.logger.warn(
+          `Failed to extract from URL: ${urlErrorMessage}, trying direct Supabase download...`,
+        );
+
         // Fallback: Try downloading directly from Supabase storage
         // Extract the file path from the URL or use the stored path
         try {
           const supabaseUrl = this.configService.get<string>('SUPABASE_URL');
-          const supabaseKey = this.configService.get<string>('SUPABASE_SERVICE_ROLE_KEY');
-          
+          const supabaseKey = this.configService.get<string>(
+            'SUPABASE_SERVICE_ROLE_KEY',
+          );
+
           // Get the file record to retrieve the storage path
           const fileRecord = await this.databaseService.file.findUnique({
             where: { id: fileId },
@@ -77,47 +96,59 @@ export class PdfExtractWorker extends WorkerHost {
 
           // Use the stored path (which should be the storage path)
           const filePath = fileRecord.url;
-          
-          this.logger.log(`Attempting direct download from Supabase storage: ${filePath}`);
-          
+
+          this.logger.log(
+            `Attempting direct download from Supabase storage: ${filePath}`,
+          );
+
           const buffer = await PdfParserUtil.downloadFromSupabase(
             supabaseUrl!,
             supabaseKey!,
             'pdfs', // bucket name
             filePath,
           );
-          
+
           const result = await PdfParserUtil.extractTextFromBuffer(buffer);
           text = result.text;
           pageCount = result.pageCount;
-          
-          this.logger.log('Successfully extracted text using direct Supabase download');
+
+          this.logger.log(
+            'Successfully extracted text using direct Supabase download',
+          );
         } catch (supabaseError) {
-          this.logger.error(`Fallback also failed: ${supabaseError.message}`);
-          throw new Error(`Failed to extract PDF text: ${urlError.message}. Fallback error: ${supabaseError.message}`);
+          const supabaseErrorMessage =
+            supabaseError instanceof Error
+              ? supabaseError.message
+              : 'Unknown error';
+          this.logger.error(`Fallback also failed: ${supabaseErrorMessage}`);
+          throw new Error(
+            `Failed to extract PDF text: ${urlErrorMessage}. Fallback error: ${supabaseErrorMessage}`,
+          );
         }
       }
-      
+
       if (!text || text.trim().length === 0) {
         throw new Error('No text could be extracted from the PDF');
       }
 
-      this.logger.log(`Extracted ${text.length} characters from ${pageCount} pages`);
+      this.logger.log(
+        `Extracted ${text.length} characters from ${pageCount} pages`,
+      );
 
-  // Step 3: Clean the extracted text (70%)
-  await job.updateProgress(70);
-  await this.wsGateway.emitJobProgress(job.id!, 70, 'Cleaning extracted text');
-  const cleanedText = PdfParserUtil.cleanText(text);
+      // Step 3: Clean the extracted text (70%)
+      await job.updateProgress(70);
+      this.wsGateway.emitJobProgress(job.id!, 70, 'Cleaning extracted text');
+      const cleanedText = PdfParserUtil.cleanText(text);
 
-  // Step 4: Save to database (85%)
-  await job.updateProgress(85);
-  await this.wsGateway.emitJobProgress(job.id!, 85, 'Saving extracted text');
-  this.logger.log(`Saving extracted text to database...`);
+      // Step 4: Save to database (85%)
+      await job.updateProgress(85);
+      this.wsGateway.emitJobProgress(job.id!, 85, 'Saving extracted text');
+      this.logger.log(`Saving extracted text to database...`);
 
       // Update the File record with extracted text
       // You may want to add an extractedText field to your File model
       // For now, we'll store it in a separate table or update the existing one
-      
+
       // Option 1: Add extractedText field to File model (requires migration)
       // await this.databaseService.file.update({
       //   where: { id: fileId },
@@ -125,7 +156,7 @@ export class PdfExtractWorker extends WorkerHost {
       // });
 
       // Option 2: Create a Note from the extracted text
-      const extractNote = await this.databaseService.note.create({
+      await this.databaseService.note.create({
         data: {
           title: `Extracted from: ${fileName}`,
           content: cleanedText,
@@ -137,7 +168,13 @@ export class PdfExtractWorker extends WorkerHost {
       // Step 5: Queue AI Notes Generation (95%)
       await job.updateProgress(95);
       await this.jobsService.setJobStage(job.id!, 'generating_notes');
-      await this.wsGateway.emitJobUpdate(job.id!, 'generating_notes', { fileId, userId });
+      this.wsGateway.emitJobUpdate(job.id!, 'generating_notes', {
+        fileId,
+        userId,
+        jobId: job.id!,
+        progress: 95,
+        message: 'Generating notes',
+      });
       this.logger.log('Queueing AI notes generation...');
 
       await this.aiNotesQueue.addAiNotesJob({
@@ -174,13 +211,15 @@ export class PdfExtractWorker extends WorkerHost {
 
       return result;
     } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(
-        `Failed to process PDF extraction job ${job.id}: ${error.message}`,
+        `Failed to process PDF extraction job ${job.id}: ${errorMessage}`,
       );
 
       // Update job status to failed
       await this.jobsService.updateJobStatus(job.id!, JobStatus.failed, {
-        failedReason: error.message,
+        failedReason: errorMessage,
         failedAt: new Date(),
         attempts: job.attemptsMade,
       });

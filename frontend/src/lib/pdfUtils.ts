@@ -6,6 +6,7 @@ import { jsPDF } from 'jspdf';
 export const cleanText = (text: string): string => {
   return text
     // Remove emojis (surrogates and other ranges)
+    // eslint-disable-next-line no-misleading-character-class
     .replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F900}-\u{1F9FF}\u{1F018}-\u{1F270}\u{238C}-\u{2454}\u{20D0}-\u{20FF}]/gu, '')
     // Remove markdown headings (# Title)
     .replace(/^#+\s+/gm, '')
@@ -18,9 +19,9 @@ export const cleanText = (text: string): string => {
     // Remove inline code (`text`)
     .replace(/`([^`]+)`/g, '$1')
     // Remove links ([text](url))
-    .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
     // Remove images (![alt](url))
-    .replace(/!\[([^\]]*)\]\([^\)]+\)/g, '')
+    .replace(/!\[([^\]]*)\]\([^)]+\)/g, '')
     // Remove blockquotes (>)
     .replace(/^>\s+/gm, '')
     // Remove horizontal rules (---)

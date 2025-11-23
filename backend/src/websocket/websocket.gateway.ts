@@ -19,7 +19,9 @@ import { RedisService } from '../redis/redis.service';
   },
   namespace: '/jobs', // Namespace for job updates
 })
-export class JobsWebSocketGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
+export class JobsWebSocketGateway
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
+{
   @WebSocketServer()
   server: Server;
 
@@ -28,7 +30,7 @@ export class JobsWebSocketGateway implements OnGatewayInit, OnGatewayConnection,
 
   constructor(private readonly redisService: RedisService) {}
 
-  afterInit(server: Server) {
+  afterInit() {
     this.logger.log('WebSocket Gateway initialized');
   }
 
@@ -38,7 +40,11 @@ export class JobsWebSocketGateway implements OnGatewayInit, OnGatewayConnection,
     this.storeClientConnection(client.id, {
       connectedAt: new Date().toISOString(),
       address: client.handshake.address,
-    });
+    }).catch((err) =>
+      this.logger.error(
+        `Failed to store client connection: ${(err as Error).message}`,
+      ),
+    );
   }
 
   async handleDisconnect(client: Socket) {
@@ -51,16 +57,26 @@ export class JobsWebSocketGateway implements OnGatewayInit, OnGatewayConnection,
    * Subscribe a client to job updates
    */
   @SubscribeMessage('subscribe:jobs')
-  async handleSubscribeToJobs(
+  handleSubscribeToJobs(
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { userId?: string; jobId?: string },
   ) {
-    const room = data.jobId ? `job:${data.jobId}` : data.userId ? `user:${data.userId}` : 'all-jobs';
-    client.join(room);
+    const room = data.jobId
+      ? `job:${data.jobId}`
+      : data.userId
+        ? `user:${data.userId}`
+        : 'all-jobs';
+    void client.join(room);
     this.logger.log(`Client ${client.id} subscribed to ${room}`);
 
     // Store subscription in Redis
-    await this.redisService.sadd(`subscriptions:${client.id}`, room);
+    void this.redisService
+      .sadd(`subscriptions:${client.id}`, room)
+      .catch((err) =>
+        this.logger.error(
+          `Failed to store subscription: ${(err as Error).message}`,
+        ),
+      );
 
     return { success: true, room, message: 'Subscribed to job updates' };
   }
@@ -69,16 +85,26 @@ export class JobsWebSocketGateway implements OnGatewayInit, OnGatewayConnection,
    * Unsubscribe from job updates
    */
   @SubscribeMessage('unsubscribe:jobs')
-  async handleUnsubscribeFromJobs(
+  handleUnsubscribeFromJobs(
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { userId?: string; jobId?: string },
   ) {
-    const room = data.jobId ? `job:${data.jobId}` : data.userId ? `user:${data.userId}` : 'all-jobs';
-    client.leave(room);
+    const room = data.jobId
+      ? `job:${data.jobId}`
+      : data.userId
+        ? `user:${data.userId}`
+        : 'all-jobs';
+    void client.leave(room);
     this.logger.log(`Client ${client.id} unsubscribed from ${room}`);
 
     // Remove subscription from Redis
-    await this.redisService.srem(`subscriptions:${client.id}`, room);
+    void this.redisService
+      .srem(`subscriptions:${client.id}`, room)
+      .catch((err) =>
+        this.logger.error(
+          `Failed to remove subscription: ${(err as Error).message}`,
+        ),
+      );
 
     return { success: true, room, message: 'Unsubscribed from job updates' };
   }
@@ -86,10 +112,19 @@ export class JobsWebSocketGateway implements OnGatewayInit, OnGatewayConnection,
   /**
    * Emit job status update to subscribed clients
    */
-  async emitJobUpdate(jobId: string, status: string, payload: any) {
+  emitJobUpdate(
+    jobId: string,
+    status: string,
+    payload: {
+      userId: string;
+      jobId: string;
+      progress: number;
+      message: string;
+    },
+  ) {
     const userRoom = `user:${payload.userId}`;
     const jobRoom = `job:${payload.jobId}`;
-    
+
     const updateData = {
       jobId: payload.jobId,
       progress: payload.progress,
@@ -101,8 +136,10 @@ export class JobsWebSocketGateway implements OnGatewayInit, OnGatewayConnection,
     // Emit to both user room and job-specific room
     this.server.to(userRoom).emit('job:progress', updateData);
     this.server.to(jobRoom).emit('job:progress', updateData);
-    
-    this.logger.log(`Job update emitted for job ${jobId} to ${userRoom} and ${jobRoom}`);
+
+    this.logger.log(
+      `Job update emitted for job ${jobId} to ${userRoom} and ${jobRoom}`,
+    );
   }
 
   /**
@@ -112,20 +149,23 @@ export class JobsWebSocketGateway implements OnGatewayInit, OnGatewayConnection,
     const payload = {
       jobId,
       status: 'completed',
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       result,
       timestamp: new Date().toISOString(),
     };
 
     await this.storeJobUpdate(jobId, payload);
-    
+
     // Emit to job-specific room
     this.server.to(`job:${jobId}`).emit('job:completed', payload);
-    
+
     // Emit to user room if userId is provided
-    if (result.userId) {
+
+    if (result && typeof result === 'object' && 'userId' in result) {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       this.server.to(`user:${result.userId}`).emit('job:completed', payload);
     }
-    
+
     // Emit to all jobs room
     this.server.to('all-jobs').emit('job:completed', payload);
 
@@ -136,23 +176,26 @@ export class JobsWebSocketGateway implements OnGatewayInit, OnGatewayConnection,
    * Emit job error
    */
   async emitJobError(jobId: string, error: any) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     const payload = {
       jobId,
       status: 'failed',
-      error: error.message || error,
+      error: errorMessage,
       timestamp: new Date().toISOString(),
     };
 
     await this.storeJobUpdate(jobId, payload);
-    
+
     // Emit to job-specific room
     this.server.to(`job:${jobId}`).emit('job:error', payload);
-    
+
     // Emit to user room if userId is provided in error
-    if (error.userId) {
+
+    if (error && typeof error === 'object' && 'userId' in error) {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       this.server.to(`user:${error.userId}`).emit('job:error', payload);
     }
-    
+
     // Emit to all jobs room
     this.server.to('all-jobs').emit('job:error', payload);
 
@@ -162,7 +205,7 @@ export class JobsWebSocketGateway implements OnGatewayInit, OnGatewayConnection,
   /**
    * Emit job progress update
    */
-  async emitJobProgress(jobId: string, progress: number, message?: string) {
+  emitJobProgress(jobId: string, progress: number, message?: string) {
     const payload = {
       jobId,
       status: 'in_progress',
@@ -187,15 +230,22 @@ export class JobsWebSocketGateway implements OnGatewayInit, OnGatewayConnection,
       );
       await this.redisService.expire(`client:${clientId}`, 3600); // 1 hour expiry
     } catch (error) {
-      this.logger.error(`Failed to store client connection: ${error.message}`);
+      this.logger.error(
+        `Failed to store client connection: ${(error as Error).message}`,
+      );
     }
   }
 
   private async removeClientConnection(clientId: string) {
     try {
-      await this.redisService.del(`client:${clientId}`, `subscriptions:${clientId}`);
+      await this.redisService.del(
+        `client:${clientId}`,
+        `subscriptions:${clientId}`,
+      );
     } catch (error) {
-      this.logger.error(`Failed to remove client connection: ${error.message}`);
+      this.logger.error(
+        `Failed to remove client connection: ${(error as Error).message}`,
+      );
     }
   }
 
@@ -208,7 +258,9 @@ export class JobsWebSocketGateway implements OnGatewayInit, OnGatewayConnection,
       // Set expiry to 24 hours
       await this.redisService.expire(key, 86400);
     } catch (error) {
-      this.logger.error(`Failed to store job update: ${error.message}`);
+      this.logger.error(
+        `Failed to store job update: ${(error as Error).message}`,
+      );
     }
   }
 
@@ -219,9 +271,12 @@ export class JobsWebSocketGateway implements OnGatewayInit, OnGatewayConnection,
     try {
       const key = `job-history:${jobId}`;
       const history = await this.redisService.lrange(key, 0, limit - 1);
-      return history.map((item) => JSON.parse(item));
+
+      return history.map((item) => JSON.parse(item) as unknown);
     } catch (error) {
-      this.logger.error(`Failed to get job history: ${error.message}`);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Failed to get job history: ${errorMessage}`);
       return [];
     }
   }

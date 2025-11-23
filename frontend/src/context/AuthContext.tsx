@@ -1,24 +1,14 @@
 // src/context/AuthContext.tsx
-import { createContext, useContext, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import { api } from '@/lib/api'
-
-interface AuthContextProps {
-  user: any | null // could be Supabase User or our backend user shape
-  loading: boolean
-  refetch: () => void
-}
-
-const AuthContext = createContext<AuthContextProps>({
-  user: null,
-  loading: true,
-  refetch: () => {}
-})
+import { AuthContext } from './AuthContextDefinition'
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const queryClient = useQueryClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [user, setUser] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -36,15 +26,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           if (!mounted) return
           // backend returns user info
           setUser(res.data)
-        } catch (err) {
+        } catch {
           // Token invalid or expired: clear it and ensure unauthenticated state
           localStorage.removeItem('access_token')
           localStorage.removeItem('token')
           if (!mounted) return
           setUser(null)
         } finally {
-          if (!mounted) return
-          setLoading(false)
+          if (mounted) {
+            setLoading(false)
+          }
         }
       } else {
         // No local token — try Supabase client session as fallback (for flows that rely on Supabase JS SDK)
@@ -52,12 +43,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const { data } = await supabase.auth.getSession()
           if (!mounted) return
           setUser(data.session?.user ?? null)
-        } catch (e) {
+        } catch {
           if (!mounted) return
           setUser(null)
         } finally {
-          if (!mounted) return
-          setLoading(false)
+          if (mounted) {
+            setLoading(false)
+          }
         }
       }
     }
@@ -109,5 +101,3 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     </AuthContext.Provider>
   )
 }
-
-export const useAuth = () => useContext(AuthContext)

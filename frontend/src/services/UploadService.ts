@@ -17,7 +17,7 @@ export interface JobStatus {
   opts?: {
     stage?: string;
   };
-  data?: any;
+  data?: unknown;
   result?: {
     noteId?: string;
     fileId?: string;
@@ -55,8 +55,9 @@ class UploadService {
       });
 
       return response.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Upload failed');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      throw new Error(err.response?.data?.message || 'Upload failed');
     }
   }
 
@@ -67,8 +68,9 @@ class UploadService {
     try {
       const response = await api.get(`/jobs/${jobId}`);
       return response.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to get job status');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      throw new Error(err.response?.data?.message || 'Failed to get job status');
     }
   }
 
@@ -129,8 +131,9 @@ class UploadService {
     try {
       const response = await api.get(`/upload/user/${userId}`);
       return response.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to fetch files');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      throw new Error(err.response?.data?.message || 'Failed to fetch files');
     }
   }
 
@@ -141,8 +144,9 @@ class UploadService {
     try {
       const response = await api.get(`/upload/${fileId}`);
       return response.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to fetch file');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      throw new Error(err.response?.data?.message || 'Failed to fetch file');
     }
   }
 
@@ -153,8 +157,9 @@ class UploadService {
     try {
       const response = await api.delete(`/upload/${fileId}?userId=${userId}`);
       return response.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to delete file');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      throw new Error(err.response?.data?.message || 'Failed to delete file');
     }
   }
 }

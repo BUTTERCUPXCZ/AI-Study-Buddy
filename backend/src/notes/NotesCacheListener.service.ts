@@ -14,9 +14,9 @@ export class NotesCacheListener {
   @OnEvent('note.created')
   @OnEvent('note.updated')
   @OnEvent('note.deleted')
-  async handleNoteChange(payload: { userId: string, noteId?: string }) {
+  async handleNoteChange(payload: { userId: string; noteId?: string }) {
     await this.invalidateUserNotesCache(payload.userId);
-    
+
     if (payload.noteId) {
       await this.invalidateNoteCache(payload.userId, payload.noteId);
     }

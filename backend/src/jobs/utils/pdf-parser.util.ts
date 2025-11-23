@@ -13,7 +13,7 @@ export class PdfParserUtil {
   }> {
     try {
       this.logger.log(`Fetching PDF from URL: ${url.substring(0, 100)}...`);
-      
+
       // Fetch the PDF from the URL with proper headers
       const response = await fetch(url, {
         method: 'GET',
@@ -21,30 +21,40 @@ export class PdfParserUtil {
           'User-Agent': 'TaskFlow-PDF-Extractor/1.0',
         },
       });
-      
+
       if (!response.ok) {
         this.logger.error(`HTTP ${response.status}: ${response.statusText}`);
-        throw new Error(`Failed to fetch PDF: ${response.status} ${response.statusText}`);
+        throw new Error(
+          `Failed to fetch PDF: ${response.status} ${response.statusText}`,
+        );
       }
 
       // Verify content type
       const contentType = response.headers.get('content-type');
       this.logger.log(`Content-Type: ${contentType}`);
-      
-      if (contentType && !contentType.includes('application/pdf') && !contentType.includes('application/octet-stream')) {
-        this.logger.warn(`Unexpected content type: ${contentType}, but will try to parse as PDF`);
+
+      if (
+        contentType &&
+        !contentType.includes('application/pdf') &&
+        !contentType.includes('application/octet-stream')
+      ) {
+        this.logger.warn(
+          `Unexpected content type: ${contentType}, but will try to parse as PDF`,
+        );
       }
 
       // Get the PDF as a buffer
       const arrayBuffer = await response.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
-      
+
       this.logger.log(`Downloaded ${buffer.length} bytes`);
 
       // Parse the PDF
       return await this.extractTextFromBuffer(buffer);
     } catch (error) {
-      this.logger.error(`Error extracting text from URL: ${error.message}`);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Error extracting text from URL: ${errorMessage}`);
       throw error;
     }
   }
@@ -58,20 +68,35 @@ export class PdfParserUtil {
   }> {
     try {
       // Use require for CommonJS module (pdf-parse)
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment
       const pdfParse = require('pdf-parse');
-      
+
       this.logger.log('Parsing PDF buffer...');
-      const data = await pdfParse(buffer);
-      
-      this.logger.log(`Successfully parsed PDF: ${data.numpages} pages, ${data.text.length} characters`);
-      
+
+      interface PdfParseResult {
+        numpages: number;
+        numrender: number;
+        info: unknown;
+        metadata: unknown;
+        version: string;
+        text: string;
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+      const data = (await pdfParse(buffer)) as PdfParseResult;
+
+      this.logger.log(
+        `Successfully parsed PDF: ${data.numpages} pages, ${data.text.length} characters`,
+      );
+
       return {
         text: data.text,
         pageCount: data.numpages,
       };
     } catch (error) {
-      this.logger.error(`Error parsing PDF: ${error.message}`);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Error parsing PDF: ${errorMessage}`);
       throw error;
     }
   }
@@ -86,7 +111,10 @@ export class PdfParserUtil {
     filePath: string,
   ): Promise<Buffer> {
     try {
-      const supabase: SupabaseClient = createClient(supabaseUrl, supabaseKey);
+      const supabase = createClient(
+        supabaseUrl,
+        supabaseKey,
+      ) as unknown as SupabaseClient;
 
       const { data, error } = await supabase.storage
         .from(bucketName)
@@ -100,7 +128,9 @@ export class PdfParserUtil {
       const arrayBuffer = await data.arrayBuffer();
       return Buffer.from(arrayBuffer);
     } catch (error) {
-      this.logger.error(`Error downloading from Supabase: ${error.message}`);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Error downloading from Supabase: ${errorMessage}`);
       throw error;
     }
   }

@@ -36,41 +36,51 @@ export class PdfNotesWorker extends WorkerHost {
     private readonly wsGateway: JobsWebSocketGateway,
   ) {
     super();
-    
+
     this.supabase = createClient(
       this.configService.get<string>('SUPABASE_URL')!,
       this.configService.get<string>('SUPABASE_SERVICE_ROLE_KEY')!,
-    );
+    ) as unknown as SupabaseClient;
   }
 
   async process(job: Job<CreatePdfNotesJobDto>): Promise<PdfNotesJobResult> {
     const startTime = Date.now();
     const { fileId, filePath, fileName, userId } = job.data;
 
-    this.logger.log(`Processing PDF notes generation job ${job.id} for file: ${fileName}`);
+    this.logger.log(
+      `Processing PDF notes generation job ${job.id} for file: ${fileName}`,
+    );
 
     try {
       // Set initial status
-      await this.jobsService.updateJobStatus(job.id!, JobStatus.processing, { progress: 0 });
+      await this.jobsService.updateJobStatus(job.id!, JobStatus.processing, {
+        progress: 0,
+      });
       await this.jobsService.setJobStage(job.id!, 'processing');
-      await this.wsGateway.emitJobUpdate(job.id!, 'processing', {  
-        jobId: job.id,
+      this.wsGateway.emitJobUpdate(job.id!, 'processing', {
+        jobId: job.id!,
         userId,
         progress: 10,
-        status: 'processing',
-        message: 'Processing PDF...' 
+        message: 'Processing PDF...',
       });
 
       // Step 1: Download PDF (20%)
       await job.updateProgress(20);
       await this.jobsService.setJobStage(job.id!, 'downloading');
-      await this.wsGateway.emitJobProgress(job.id!, 20, 'Downloading PDF from storage');
+      this.wsGateway.emitJobProgress(
+        job.id!,
+        20,
+        'Downloading PDF from storage',
+      );
 
       this.logger.log(`Downloading PDF from Supabase: ${filePath}`);
-      const { data: pdfData, error: downloadError } = await this.supabase.storage.from('pdfs').download(filePath);
+      const { data: pdfData, error: downloadError } =
+        await this.supabase.storage.from('pdfs').download(filePath);
 
       if (downloadError || !pdfData) {
-        throw new Error(`Failed to download PDF: ${downloadError?.message || 'Unknown error'}`);
+        throw new Error(
+          `Failed to download PDF: ${downloadError?.message || 'Unknown error'}`,
+        );
       }
 
       const arrayBuffer = await pdfData.arrayBuffer();
@@ -80,7 +90,7 @@ export class PdfNotesWorker extends WorkerHost {
       // Step 2: Send PDF to Gemini for analysis (40%)
       await job.updateProgress(40);
       await this.jobsService.setJobStage(job.id!, 'generating_notes');
-      await this.wsGateway.emitJobProgress(job.id!, 40, 'Analyzing PDF with AI');
+      this.wsGateway.emitJobProgress(job.id!, 40, 'Analyzing PDF with AI');
 
       this.logger.log('Sending PDF to Gemini for note generation...');
       const notesResult = await this.aiService.generateNotesFromPDF(
@@ -93,8 +103,14 @@ export class PdfNotesWorker extends WorkerHost {
 
       // Step 3: Notes generated (90%)
       await job.updateProgress(90);
-      await this.wsGateway.emitJobProgress(job.id!, 90, 'Notes generated successfully');
-      this.logger.log(`Notes generated and saved with ID: ${notesResult.noteId}`);
+      this.wsGateway.emitJobProgress(
+        job.id!,
+        90,
+        'Notes generated successfully',
+      );
+      this.logger.log(
+        `Notes generated and saved with ID: ${notesResult.noteId}`,
+      );
 
       // Step 4: Complete (100%)
       await job.updateProgress(100);
@@ -105,7 +121,11 @@ export class PdfNotesWorker extends WorkerHost {
       });
 
       // Emit final progress with status 'completed'
-      await this.wsGateway.emitJobProgress(job.id!, 100, 'Notes generation completed');
+      this.wsGateway.emitJobProgress(
+        job.id!,
+        100,
+        'Notes generation completed',
+      );
       await this.wsGateway.emitJobCompleted(job.id!, {
         status: 'completed',
         noteId: notesResult.noteId,
@@ -114,7 +134,9 @@ export class PdfNotesWorker extends WorkerHost {
       });
 
       const processingTime = Date.now() - startTime;
-      this.logger.log(`PDF notes generation completed in ${processingTime}ms for job ${job.id}`);
+      this.logger.log(
+        `PDF notes generation completed in ${processingTime}ms for job ${job.id}`,
+      );
 
       return {
         noteId: notesResult.noteId,
@@ -123,16 +145,20 @@ export class PdfNotesWorker extends WorkerHost {
         processingTime,
       };
     } catch (error) {
-      this.logger.error(`Failed to process PDF notes job ${job.id}: ${error.message}`);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(
+        `Failed to process PDF notes job ${job.id}: ${errorMessage}`,
+      );
 
       // Update job status to failed
       await this.jobsService.updateJobStatus(job.id!, JobStatus.failed, {
-        failedReason: error.message,
+        failedReason: errorMessage,
         failedAt: new Date(),
         attempts: job.attemptsMade,
       });
 
-      await this.wsGateway.emitJobProgress(job.id!, 100, 'Processing failed');
+      this.wsGateway.emitJobProgress(job.id!, 100, 'Processing failed');
 
       throw error;
     }
@@ -140,7 +166,9 @@ export class PdfNotesWorker extends WorkerHost {
 
   @OnWorkerEvent('completed')
   onCompleted(job: Job) {
-    this.logger.log(`Job ${job.id} completed successfully - Notes generated from PDF`);
+    this.logger.log(
+      `Job ${job.id} completed successfully - Notes generated from PDF`,
+    );
   }
 
   @OnWorkerEvent('failed')

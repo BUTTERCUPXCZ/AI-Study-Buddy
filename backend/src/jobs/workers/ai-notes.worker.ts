@@ -23,9 +23,11 @@ export class AiNotesWorker extends WorkerHost {
 
   async process(job: Job<CreateAiNotesJobDto>): Promise<AiNotesJobResult> {
     const startTime = Date.now();
-    const { extractedText, fileName, userId, fileId, pdfExtractJobId } = job.data;
+    const { extractedText, fileName, userId, fileId } = job.data;
 
-    this.logger.log(`Processing AI notes generation job ${job.id} for file: ${fileName}`);
+    this.logger.log(
+      `Processing AI notes generation job ${job.id} for file: ${fileName}`,
+    );
 
     try {
       // Update job status to processing and set stage
@@ -33,22 +35,36 @@ export class AiNotesWorker extends WorkerHost {
         progress: 0,
       });
       await this.jobsService.setJobStage(job.id!, 'processing');
-      await this.wsGateway.emitJobUpdate(job.id!, 'processing', { fileId, userId });
+      this.wsGateway.emitJobUpdate(job.id!, 'processing', {
+        fileId,
+        userId,
+        jobId: job.id!,
+        progress: 0,
+        message: 'Processing started',
+      });
 
-  // Step 1: Validate extracted text (10%)
-  await job.updateProgress(10);
-  await this.wsGateway.emitJobProgress(job.id!, 10, 'Validating extracted text');
+      // Step 1: Validate extracted text (10%)
+      await job.updateProgress(10);
+      this.wsGateway.emitJobProgress(job.id!, 10, 'Validating extracted text');
       if (!extractedText || extractedText.trim().length < 100) {
-        throw new Error('Extracted text is too short to generate meaningful notes');
+        throw new Error(
+          'Extracted text is too short to generate meaningful notes',
+        );
       }
 
       this.logger.log(`Processing ${extractedText.length} characters of text`);
 
-  // Step 2: Generate structured notes using Gemini AI (60%)
-  await job.updateProgress(30);
-  await this.jobsService.setJobStage(job.id!, 'generating_notes');
-  await this.wsGateway.emitJobUpdate(job.id!, 'generating_notes', { fileId, userId });
-  this.logger.log('Calling Gemini AI to generate study notes...');
+      // Step 2: Generate structured notes using Gemini AI (60%)
+      await job.updateProgress(30);
+      await this.jobsService.setJobStage(job.id!, 'generating_notes');
+      this.wsGateway.emitJobUpdate(job.id!, 'generating_notes', {
+        fileId,
+        userId,
+        jobId: job.id!,
+        progress: 30,
+        message: 'Generating notes',
+      });
+      this.logger.log('Calling Gemini AI to generate study notes...');
 
       const notesResult = await this.aiService.generateStructuredNotes(
         extractedText,
@@ -57,14 +73,22 @@ export class AiNotesWorker extends WorkerHost {
         fileId,
       );
 
-  await job.updateProgress(70);
-  await this.wsGateway.emitJobProgress(job.id!, 70, 'Notes generated and saved');
-  this.logger.log(`Notes generated and saved with ID: ${notesResult.noteId}`);
+      await job.updateProgress(70);
+      this.wsGateway.emitJobProgress(job.id!, 70, 'Notes generated and saved');
+      this.logger.log(
+        `Notes generated and saved with ID: ${notesResult.noteId}`,
+      );
 
       // Step 3: Queue AI Quiz Generation (85%)
       await job.updateProgress(85);
       await this.jobsService.setJobStage(job.id!, 'generating_quiz');
-      await this.wsGateway.emitJobUpdate(job.id!, 'generating_quiz', { noteId: notesResult.noteId, userId });
+      this.wsGateway.emitJobUpdate(job.id!, 'generating_quiz', {
+        noteId: notesResult.noteId,
+        userId,
+        jobId: job.id!,
+        progress: 85,
+        message: 'Generating quiz',
+      });
       this.logger.log('Queueing AI quiz generation...');
 
       await this.aiQuizQueue.addAiQuizJob({
@@ -89,7 +113,10 @@ export class AiNotesWorker extends WorkerHost {
         progress: 100,
         finishedAt: new Date(),
       });
-      await this.wsGateway.emitJobCompleted(job.id!, { noteId: notesResult.noteId, userId });
+      await this.wsGateway.emitJobCompleted(job.id!, {
+        noteId: notesResult.noteId,
+        userId,
+      });
 
       const result: AiNotesJobResult = {
         noteId: notesResult.noteId,
@@ -101,13 +128,15 @@ export class AiNotesWorker extends WorkerHost {
 
       return result;
     } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(
-        `Failed to process AI notes generation job ${job.id}: ${error.message}`,
+        `Failed to process AI notes generation job ${job.id}: ${errorMessage}`,
       );
 
       // Update job status to failed
       await this.jobsService.updateJobStatus(job.id!, JobStatus.failed, {
-        failedReason: error.message,
+        failedReason: errorMessage,
         failedAt: new Date(),
         attempts: job.attemptsMade,
       });
@@ -123,9 +152,7 @@ export class AiNotesWorker extends WorkerHost {
 
   @OnWorkerEvent('failed')
   onFailed(job: Job, error: Error) {
-    this.logger.error(
-      `Job ${job.id} failed with error: ${error.message}`,
-    );
+    this.logger.error(`Job ${job.id} failed with error: ${error.message}`);
   }
 
   @OnWorkerEvent('active')

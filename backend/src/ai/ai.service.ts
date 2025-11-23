@@ -1,5 +1,5 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
 import type { Response } from 'express';
 import { DatabaseService } from '../database/database.service';
 import { NotesService } from '../notes/notes.service';
@@ -13,12 +13,13 @@ import {
   TutorChatResponse,
   QuizQuestion,
 } from './interfaces/ai-response.interface';
+import { ChatSession, ChatMessage, Note } from '@prisma/client';
 
 @Injectable()
 export class AiService {
   private readonly logger = new Logger(AiService.name);
   private genAI: GoogleGenerativeAI;
-  private model: any;
+  private model: GenerativeModel;
 
   constructor(
     private readonly databaseService: DatabaseService,
@@ -47,7 +48,7 @@ export class AiService {
       this.logger.log('Generating study notes...');
       const prompt = NOTES_GENERATION_PROMPT(pdfText);
       const result = await this.model.generateContent(prompt);
-      const response = await result.response;
+      const response = result.response;
       const notes = this.cleanGeneratedText(response.text());
 
       // Save notes to database using NotesService
@@ -67,10 +68,12 @@ export class AiService {
       };
     } catch (error) {
       this.logger.error('Error generating notes:', error);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
       return {
         notes: '',
         success: false,
-        error: error.message,
+        error: errorMessage,
       };
     }
   }
@@ -95,9 +98,9 @@ export class AiService {
 
       // Create enhanced prompt for structured note generation
       const prompt = this.createStructuredNotesPrompt(extractedText, fileName);
-      
+
       const result = await this.model.generateContent(prompt);
-      const response = await result.response;
+      const response = result.response;
       const generatedContent = this.cleanGeneratedText(response.text());
 
       // Generate a title from the filename or content
@@ -153,7 +156,7 @@ export class AiService {
       // Generate a title from the filename
       const title = this.generateTitleFromFileName(fileName);
 
-     const prompt = `
+      const prompt = `
 You are an advanced study assistant. Analyze the PDF content and generate high-quality, exam-ready study notes.
 
 Your output must follow this structure and tone:
@@ -209,7 +212,6 @@ Wrap up the entire content with a concise, easy-to-understand summary.
 Now analyze the PDF and produce polished, comprehensive study notes following the structure above.
 `;
 
-
       // Send PDF to Gemini with inline data
       const result = await this.model.generateContent([
         {
@@ -221,10 +223,12 @@ Now analyze the PDF and produce polished, comprehensive study notes following th
         prompt,
       ]);
 
-      const response = await result.response;
+      const response = result.response;
       const generatedContent = this.cleanGeneratedText(response.text());
 
-      this.logger.log(`Generated ${generatedContent.length} characters of notes`);
+      this.logger.log(
+        `Generated ${generatedContent.length} characters of notes`,
+      );
 
       // Save notes to database
       const noteRecord = await this.notesService.createNote(
@@ -256,9 +260,11 @@ Now analyze the PDF and produce polished, comprehensive study notes following th
    */
   private cleanGeneratedText(text: string): string {
     // Remove markdown code blocks if present (e.g. ```markdown ... ``` or just ``` ... ```)
-    let cleaned = text.replace(/^```(?:markdown)?\s*/i, '').replace(/^```\s*/, '');
+    let cleaned = text
+      .replace(/^```(?:markdown)?\s*/i, '')
+      .replace(/^```\s*/, '');
     cleaned = cleaned.replace(/```\s*$/, '');
-    
+
     // Remove any other potential leading/trailing whitespace
     return cleaned.trim();
   }
@@ -325,13 +331,13 @@ Make the notes:
   private generateTitleFromFileName(fileName: string): string {
     // Remove extension
     let title = fileName.replace(/\.[^/.]+$/, '');
-    
+
     // Replace special characters with spaces
     title = title.replace(/[-_]/g, ' ');
-    
+
     // Capitalize first letter of each word
     title = title.replace(/\b\w/g, (char) => char.toUpperCase());
-    
+
     return title.trim() || 'Study Notes';
   }
 
@@ -348,7 +354,7 @@ Make the notes:
       this.logger.log('Generating quiz questions...');
       const prompt = QUIZ_GENERATION_PROMPT(studyNotes);
       const result = await this.model.generateContent(prompt);
-      const response = await result.response;
+      const response = result.response;
       const text = response.text();
 
       // Extract JSON from the response (handle markdown code blocks)
@@ -359,7 +365,7 @@ Make the notes:
         jsonText = jsonText.replace(/```\n?/g, '');
       }
 
-      const questions: QuizQuestion[] = JSON.parse(jsonText);
+      const questions = JSON.parse(jsonText) as QuizQuestion[];
 
       // Save quiz to database using QuizzesService
       const quizRecord = await this.quizzesService.createQuiz(
@@ -378,10 +384,12 @@ Make the notes:
       };
     } catch (error) {
       this.logger.error('Error generating quiz:', error);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
       return {
         questions: [],
         success: false,
-        error: error.message,
+        error: errorMessage,
       };
     }
   }
@@ -400,7 +408,10 @@ Make the notes:
       this.logger.log('Processing tutor chat...');
 
       // Get or create chat session
-      let chatSession;
+
+      let chatSession:
+        | (ChatSession & { messages: ChatMessage[]; note: Note | null })
+        | null;
       if (sessionId) {
         chatSession = await this.databaseService.chatSession.findFirst({
           where: {
@@ -447,7 +458,7 @@ Make the notes:
       }
 
       // Save user message
-      const userMessage = await this.databaseService.chatMessage.create({
+      await this.databaseService.chatMessage.create({
         data: {
           role: 'user',
           content: userQuestion,
@@ -458,11 +469,11 @@ Make the notes:
       // Generate AI response
       // Pass context only if available, otherwise use general knowledge
       const prompt = TUTOR_PROMPT(
-        userQuestion, 
-        learningMaterialsContext || undefined
+        userQuestion,
+        learningMaterialsContext || undefined,
       );
       const result = await this.model.generateContent(prompt);
-      const response = await result.response;
+      const response = result.response;
       const answer = response.text();
 
       // Save AI response
@@ -484,10 +495,12 @@ Make the notes:
       };
     } catch (error) {
       this.logger.error('Error in tutor chat:', error);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
       return {
         answer: '',
         success: false,
-        error: error.message,
+        error: errorMessage,
       };
     }
   }
@@ -507,7 +520,10 @@ Make the notes:
       this.logger.log('Processing tutor chat with streaming...');
 
       // Get or create chat session
-      let chatSession;
+
+      let chatSession:
+        | (ChatSession & { messages: ChatMessage[]; note: Note | null })
+        | null;
       if (sessionId) {
         chatSession = await this.databaseService.chatSession.findFirst({
           where: {
@@ -573,8 +589,8 @@ Make the notes:
       // Generate AI response with streaming
       // Pass context only if available, otherwise use general knowledge
       const prompt = TUTOR_PROMPT(
-        userQuestion, 
-        learningMaterialsContext || undefined
+        userQuestion,
+        learningMaterialsContext || undefined,
       );
       const result = await this.model.generateContentStream(prompt);
 
@@ -618,10 +634,12 @@ Make the notes:
       res.end();
     } catch (error) {
       this.logger.error('Error in streaming tutor chat:', error);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
       res.write(
         `data: ${JSON.stringify({
           type: 'error',
-          error: error.message,
+          error: errorMessage,
         })}\n\n`,
       );
       res.end();
@@ -679,7 +697,7 @@ Make the notes:
    */
   async deleteChatSession(sessionId: string, userId: string) {
     const session = await this.getChatSession(sessionId, userId);
-    
+
     return this.databaseService.chatSession.delete({
       where: { id: session.id },
     });
@@ -688,9 +706,13 @@ Make the notes:
   /**
    * Update chat session title
    */
-  async updateChatSessionTitle(sessionId: string, userId: string, title: string) {
+  async updateChatSessionTitle(
+    sessionId: string,
+    userId: string,
+    title: string,
+  ) {
     const session = await this.getChatSession(sessionId, userId);
-    
+
     return this.databaseService.chatSession.update({
       where: { id: session.id },
       data: { title },

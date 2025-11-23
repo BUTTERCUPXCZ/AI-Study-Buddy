@@ -1,5 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class QuizzesService {
@@ -13,7 +14,7 @@ export class QuizzesService {
   async createQuiz(
     userId: string,
     title: string,
-    questions: any,
+    questions: Prisma.InputJsonValue,
     noteId?: string,
   ) {
     this.logger.log(`Creating quiz for user: ${userId}`);
@@ -21,7 +22,7 @@ export class QuizzesService {
     return this.databaseService.quiz.create({
       data: {
         title,
-        questions: questions as any, // Prisma Json type
+        questions: questions, // Prisma Json type
         userId,
         noteId: noteId || null,
       },

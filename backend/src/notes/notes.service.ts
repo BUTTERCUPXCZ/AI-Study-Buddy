@@ -7,7 +7,6 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 export class NotesService {
   private readonly logger = new Logger(NotesService.name);
 
-
   constructor(
     private readonly databaseService: DatabaseService,
     private readonly eventEmitter: EventEmitter2,
@@ -24,7 +23,7 @@ export class NotesService {
     source?: string,
   ) {
     this.logger.log(`Creating note for user: ${userId}`);
-    
+
     const note = await this.databaseService.note.create({
       data: {
         title,
@@ -35,10 +34,7 @@ export class NotesService {
     });
 
     // Emit an event instead of invalidating cache
-    this.eventEmitter.emit(
-      'note.created',
-      { userId }
-    );
+    this.eventEmitter.emit('note.created', { userId });
 
     return note;
   }
@@ -48,7 +44,7 @@ export class NotesService {
    */
   async getUserNotes(userId: string) {
     const cacheKey = `user:${userId}:notes`;
-    
+
     // Try to get from cache first
     const cachedNotes = await this.redisService.get(cacheKey);
     if (cachedNotes) {
@@ -63,7 +59,7 @@ export class NotesService {
     });
 
     // Cache the result
-    await this.redisService.set(cacheKey, notes, 3600); // Cache for 1 hour
+    await this.redisService.set(cacheKey, JSON.stringify(notes), 3600); // Cache for 1 hour
 
     return notes;
   }
@@ -81,7 +77,9 @@ export class NotesService {
       return cachedNote;
     }
 
-    this.logger.log(`Fetching note ${noteId} from database for user: ${userId}`);
+    this.logger.log(
+      `Fetching note ${noteId} from database for user: ${userId}`,
+    );
     const note = await this.databaseService.note.findFirst({
       where: {
         id: noteId,
@@ -94,7 +92,7 @@ export class NotesService {
     }
 
     // Cache the result
-    await this.redisService.set(cacheKey, note, 3600); // Cache for 1 hour
+    await this.redisService.set(cacheKey, JSON.stringify(note), 3600); // Cache for 1 hour
 
     return note;
   }
@@ -108,7 +106,7 @@ export class NotesService {
     content: string,
     title?: string,
   ) {
-    const note = await this.getNoteById(noteId, userId);
+    await this.getNoteById(noteId, userId);
 
     const updatedNote = await this.databaseService.note.update({
       where: { id: noteId },
@@ -119,10 +117,7 @@ export class NotesService {
     });
 
     // Emit an event
-    this.eventEmitter.emit(
-      'note.updated',
-      { userId, noteId }
-    );
+    this.eventEmitter.emit('note.updated', { userId, noteId });
 
     return updatedNote;
   }
@@ -131,20 +126,15 @@ export class NotesService {
    * Delete a note
    */
   async deleteNote(noteId: string, userId: string) {
-    const note = await this.getNoteById(noteId, userId);
+    await this.getNoteById(noteId, userId);
 
     const deletedNote = await this.databaseService.note.delete({
       where: { id: noteId },
     });
 
-   // Emit an event
-    this.eventEmitter.emit(
-      'note.deleted',
-      { userId, noteId }
-    );
+    // Emit an event
+    this.eventEmitter.emit('note.deleted', { userId, noteId });
 
     return deletedNote;
   }
-
-
 }

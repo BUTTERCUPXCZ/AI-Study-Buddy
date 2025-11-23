@@ -1,13 +1,12 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { FileText, Trash2, Search, FolderOpen, Calendar, SortAsc, SortDesc, ArrowUpDown } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import AppLayout from '@/components/app-layout'
-import { useAuth } from '@/context/AuthContext'
+import { useAuth } from '@/context/AuthContextDefinition'
 import { useUserFiles, useDeleteFile } from '@/hooks/useUpload'
-import { useState, useMemo, memo, useCallback } from 'react'
+import { useState, useMemo, memo, useCallback, useEffect } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -31,6 +30,7 @@ const FileRow = memo(({
   file, 
   onDelete 
 }: { 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   file: any, 
   onDelete: (id: string, name: string) => void 
 }) => (
@@ -92,7 +92,7 @@ function RouteComponent() {
 
   // Filter and sort files
   const filteredAndSortedFiles = useMemo(() => {
-    let result = files.filter(file =>
+    const result = files.filter(file =>
       file.name.toLowerCase().includes(searchQuery.toLowerCase())
     )
 
@@ -116,7 +116,7 @@ function RouteComponent() {
   }, [files, searchQuery, sortBy])
 
   // Reset to page 1 when search or sort changes
-  useMemo(() => {
+  useEffect(() => {
     setCurrentPage(1)
   }, [searchQuery, sortBy])
 
@@ -185,15 +185,6 @@ function RouteComponent() {
     if (sortBy.includes('asc')) return <SortAsc className="h-4 w-4" />
     if (sortBy.includes('desc')) return <SortDesc className="h-4 w-4" />
     return <ArrowUpDown className="h-4 w-4" />
-  }
-
-  const getSortLabel = () => {
-    switch (sortBy) {
-      case 'name-asc': return 'Name (A-Z)'
-      case 'name-desc': return 'Name (Z-A)'
-      case 'date-asc': return 'Oldest First'
-      case 'date-desc': return 'Newest First'
-    }
   }
 
   const handleSetFileToDelete = useCallback((id: string, name: string) => {
@@ -318,7 +309,7 @@ function RouteComponent() {
                 <FileRow 
                   key={file.id}
                   file={file}
-                  onDelete={(id, name) => setFileToDelete({ id, name })}
+                  onDelete={handleSetFileToDelete}
                 />
               ))}
             </div>

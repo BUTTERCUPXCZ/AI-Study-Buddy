@@ -52,9 +52,10 @@ class QuizService {
         noteId,
       });
       return response.data;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
       throw new Error(
-        error.response?.data?.message || 'Failed to generate quiz'
+        err.response?.data?.message || 'Failed to generate quiz'
       );
     }
   }
@@ -66,9 +67,10 @@ class QuizService {
     try {
       const response = await api.get(`/quizzes/user/${userId}`);
       return response.data;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
       throw new Error(
-        error.response?.data?.message || 'Failed to fetch quizzes'
+        err.response?.data?.message || 'Failed to fetch quizzes'
       );
     }
   }
@@ -80,9 +82,10 @@ class QuizService {
     try {
       const response = await api.get(`/quizzes/${quizId}/user/${userId}`);
       return response.data;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
       throw new Error(
-        error.response?.data?.message || 'Failed to fetch quiz'
+        err.response?.data?.message || 'Failed to fetch quiz'
       );
     }
   }
@@ -100,9 +103,10 @@ class QuizService {
         score,
       });
       return response.data;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
       throw new Error(
-        error.response?.data?.message || 'Failed to update quiz score'
+        err.response?.data?.message || 'Failed to update quiz score'
       );
     }
   }
@@ -113,9 +117,10 @@ class QuizService {
   async deleteQuiz(quizId: string, userId: string): Promise<void> {
     try {
       await api.delete(`/quizzes/${quizId}/user/${userId}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
       throw new Error(
-        error.response?.data?.message || 'Failed to delete quiz'
+        err.response?.data?.message || 'Failed to delete quiz'
       );
     }
   }

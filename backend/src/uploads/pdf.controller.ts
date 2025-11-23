@@ -3,7 +3,6 @@ import {
   Get,
   Post,
   Body,
-  Patch,
   Param,
   Delete,
   UseInterceptors,
@@ -14,7 +13,6 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { PdfService } from './pdf.service';
 import { CreatePdfDto } from './dto/create-pdf.dto';
-import { UpdatePdfDto } from './dto/update-pdf.dto';
 
 @Controller('upload')
 export class PdfController {

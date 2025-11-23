@@ -28,8 +28,9 @@ class AuthService {
         Fullname: fullname,
       });
       return response.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Registration failed');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      throw new Error(err.response?.data?.message || 'Registration failed');
     }
   }
 
@@ -48,8 +49,9 @@ class AuthService {
       }
       
       return response.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Login failed');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      throw new Error(err.response?.data?.message || 'Login failed');
     }
   }
 
@@ -64,8 +66,9 @@ class AuthService {
       
       // Redirect user to OAuth provider
       window.location.href = response.data.url;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'OAuth initiation failed');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      throw new Error(err.response?.data?.message || 'OAuth initiation failed');
     }
   }
 
@@ -94,8 +97,9 @@ class AuthService {
       }
 
       // The redirect will happen automatically
-    } catch (error: any) {
-      throw new Error(error.message || 'OAuth sign-in failed');
+    } catch (error: unknown) {
+      const err = error as { message?: string };
+      throw new Error(err.message || 'OAuth sign-in failed');
     }
   }
 
@@ -121,8 +125,9 @@ class AuthService {
       localStorage.setItem('access_token', session.access_token);
 
       return response.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'OAuth callback handling failed');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      throw new Error(err.response?.data?.message || 'OAuth callback handling failed');
     }
   }
 
@@ -143,8 +148,9 @@ class AuthService {
       });
 
       return response.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to get current user');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      throw new Error(err.response?.data?.message || 'Failed to get current user');
     }
   }
 
@@ -155,8 +161,9 @@ class AuthService {
     try {
       await supabase.auth.signOut();
       localStorage.removeItem('access_token');
-    } catch (error: any) {
-      throw new Error(error.message || 'Logout failed');
+    } catch (error: unknown) {
+      const err = error as { message?: string };
+      throw new Error(err.message || 'Logout failed');
     }
   }
 
@@ -175,15 +182,14 @@ class AuthService {
   }
 
   /**
-   * Get the OAuth mode (login or register)
+   * Get OAuth mode from storage
    */
   getOAuthMode(): 'login' | 'register' {
-    const mode = localStorage.getItem('oauth_mode');
-    return mode === 'register' ? 'register' : 'login';
+    return (localStorage.getItem('oauth_mode') as 'login' | 'register') || 'login';
   }
 
   /**
-   * Clear the OAuth mode from storage
+   * Clear OAuth mode from storage
    */
   clearOAuthMode(): void {
     localStorage.removeItem('oauth_mode');

@@ -16,8 +16,8 @@ export class CompletionWorker extends WorkerHost {
     super();
   }
 
-  async process(job: Job<any>) {
-    const { jobId, userId, result } = job.data;
+  async process(job: Job<{ jobId: string; userId: string; result: unknown }>) {
+    const { jobId, result } = job.data;
 
     try {
       this.logger.log(`Finalizing job lifecycle for ${jobId}`);
@@ -30,14 +30,22 @@ export class CompletionWorker extends WorkerHost {
       });
 
       // Emit websocket completion
-      await this.wsGateway.emitJobCompleted(jobId, result || { message: 'Job completed' });
+      await this.wsGateway.emitJobCompleted(
+        jobId,
+        result || { message: 'Job completed' },
+      );
 
       return { success: true };
     } catch (error) {
-      this.logger.error(`Completion worker failed for ${jobId}: ${error.message}`);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(
+        `Completion worker failed for ${jobId}: ${errorMessage}`,
+      );
       await this.jobsService.updateJobStatus(jobId, JobStatus.failed, {
-        failedReason: error.message,
+        failedReason: errorMessage,
         failedAt: new Date(),
+        attempts: job.attemptsMade,
       });
       await this.wsGateway.emitJobError(jobId, error);
       throw error;

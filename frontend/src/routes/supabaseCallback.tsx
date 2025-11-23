@@ -58,9 +58,10 @@ function RouteComponent() {
 
         // Redirect to notes on success
         window.location.href = '/notes'
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('OAuth callback error:', err)
-        setError(err.message || 'Authentication failed')
+        const message = (err as { message?: string }).message || 'Authentication failed'
+        setError(message)
         setTimeout(() => {
           window.location.href = '/login'
         }, 3000)

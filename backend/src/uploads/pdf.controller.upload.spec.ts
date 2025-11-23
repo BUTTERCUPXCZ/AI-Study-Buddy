@@ -5,7 +5,6 @@ import { BadRequestException } from '@nestjs/common';
 
 describe('PdfController - Upload Tests', () => {
   let controller: PdfController;
-  let service: PdfService;
 
   const mockPdfService = {
     uploadPdf: jest.fn(),
@@ -28,7 +27,6 @@ describe('PdfController - Upload Tests', () => {
     }).compile();
 
     controller = module.get<PdfController>(PdfController);
-    service = module.get<PdfService>(PdfService);
   });
 
   it('should be defined', () => {
@@ -44,11 +42,12 @@ describe('PdfController - Upload Tests', () => {
         mimetype: 'application/pdf',
         size: 1024,
         buffer: Buffer.from('test'),
-        stream: null as any,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        stream: null as unknown as any,
         destination: '',
         filename: '',
         path: '',
-      };
+      } as unknown as Express.Multer.File;
 
       const createPdfDto = {
         userId: 'user123',
@@ -68,7 +67,10 @@ describe('PdfController - Upload Tests', () => {
       const result = await controller.uploadPdf(mockFile, createPdfDto);
 
       expect(result).toEqual(expectedResult);
-      expect(mockPdfService.uploadPdf).toHaveBeenCalledWith(mockFile, createPdfDto);
+      expect(mockPdfService.uploadPdf).toHaveBeenCalledWith(
+        mockFile,
+        createPdfDto,
+      );
     });
 
     it('should throw BadRequestException when no file is provided', async () => {
@@ -77,9 +79,12 @@ describe('PdfController - Upload Tests', () => {
         fileName: 'test.pdf',
       };
 
-      await expect(controller.uploadPdf(null as any, createPdfDto)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        controller.uploadPdf(
+          null as unknown as Express.Multer.File,
+          createPdfDto,
+        ),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 });

@@ -33,7 +33,7 @@ import {
 import { useState, useCallback, useEffect, memo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import AppLayout from '@/components/app-layout'
-import { useAuth } from '@/context/AuthContext'
+import { useAuth } from '@/context/AuthContextDefinition'
 import { useNotes, useDeleteNote } from '@/hooks/useNotes'
 import { useUploadPdf } from '@/hooks/useUpload'
 import { useJobWebSocket } from '@/hooks/useJobWebSocket'
@@ -81,7 +81,7 @@ const ProcessingJobCard = memo(({
   usingPolling, 
   isConnected 
 }: { 
-  processingJob: any, 
+  processingJob: { status: string; fileName: string; stage?: string; progress: number }, 
   usingPolling: boolean, 
   isConnected: boolean 
 }) => (
@@ -142,7 +142,7 @@ const ProcessingJobCard = memo(({
         <>
           <div className="space-y-2">
             <div className="flex justify-between text-xs font-medium text-muted-foreground">
-              <span>{getStageMessage(processingJob.stage)}</span>
+              <span>{getStageMessage(processingJob.stage || '')}</span>
               <span>{Math.round(processingJob.progress)}%</span>
             </div>
             <Progress value={processingJob.progress} className="h-2" />
@@ -175,8 +175,9 @@ const NoteCard = memo(({
   onDelete,
   onPrefetch
 }: { 
-  note: any, 
-  navigate: any, 
+  note: { id: string; title: string; content: string; source?: string; createdAt: string }, 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  navigate: (opts: any) => void, 
   onDownload: (id: string, title: string, content: string, e: React.MouseEvent) => void,
   onDelete: (id: string, title: string, e: React.MouseEvent) => void,
   onPrefetch: (noteId: string) => void
@@ -499,11 +500,12 @@ function RouteComponent() {
 
       // Success is handled by the WebSocket/polling callbacks
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to generate notes:', error)
       
       // Show error state
-      setProcessingJob(prev => prev ? { ...prev, status: 'failed', stage: error.message } : null);
+      const errorMessage = (error as { message?: string }).message || 'Unknown error';
+      setProcessingJob(prev => prev ? { ...prev, status: 'failed', stage: errorMessage } : null);
       
       // Reset states after showing error
       setTimeout(() => {

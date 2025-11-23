@@ -15,7 +15,7 @@ describe('PdfController', () => {
       user: {
         findUnique: jest.fn(),
       },
-    } as any;
+    } as unknown as DatabaseService;
 
     const mockConfigService = {
       get: (key: string) => {
@@ -23,7 +23,7 @@ describe('PdfController', () => {
         if (key === 'SUPABASE_SERVICE_ROLE_KEY') return 'service-key';
         return null;
       },
-    } as any;
+    } as unknown as ConfigService;
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [PdfController],

@@ -1,4 +1,7 @@
-export const TUTOR_PROMPT = (userQuestion: string, context?: string): string => {
+export const TUTOR_PROMPT = (
+  userQuestion: string,
+  context?: string,
+): string => {
   if (context && context.trim()) {
     return `You are a helpful study tutor. Use the following learning materials as context to answer the student's question. Base your explanation on the provided materials.
 

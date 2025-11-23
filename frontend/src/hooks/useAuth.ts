@@ -17,9 +17,9 @@ export const useLogin = () => {
       try {
         const res = await api.post<AuthResponse>('/auth/login', credentials);
         return res.data;
-      } catch (error: any) {
+      } catch (error: unknown) {
         // Surface backend message (e.g. "Account does not exist") so the UI can show it
-        const message = error?.response?.data?.message || 'Login failed';
+        const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Login failed';
         throw new Error(message);
       }
     },

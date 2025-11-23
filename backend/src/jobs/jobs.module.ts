@@ -18,13 +18,13 @@ import { CompletionQueue } from './queues/completion.queue';
 
 @Module({
   imports: [
-  ConfigModule,
-  DatabaseModule,
-  AiModule,
-  WebsocketModule,
+    ConfigModule,
+    DatabaseModule,
+    AiModule,
+    WebsocketModule,
     BullModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => {
+      useFactory: (configService: ConfigService) => {
         // BullMQ requires a standard Redis connection (not Upstash REST API)
         // You'll need to add REDIS_HOST, REDIS_PORT, REDIS_PASSWORD to your .env
         // For Upstash, use their Redis TCP endpoint
@@ -65,6 +65,13 @@ import { CompletionQueue } from './queues/completion.queue';
     AiNotesWorker,
     CompletionWorker,
   ],
-  exports: [JobsService, PdfExtractQueue, PdfNotesQueue, AiNotesQueue, AiQuizQueue, CompletionQueue],
+  exports: [
+    JobsService,
+    PdfExtractQueue,
+    PdfNotesQueue,
+    AiNotesQueue,
+    AiQuizQueue,
+    CompletionQueue,
+  ],
 })
 export class JobsModule {}

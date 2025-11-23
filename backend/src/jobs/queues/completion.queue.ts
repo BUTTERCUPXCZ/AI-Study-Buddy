@@ -12,7 +12,11 @@ export class CompletionQueue {
     private readonly jobsService: JobsService,
   ) {}
 
-  async addCompletionJob(data: { jobId: string; userId?: string; result?: any }) {
+  async addCompletionJob(data: {
+    jobId: string;
+    userId?: string;
+    result?: any;
+  }) {
     const job = await this.completionQueue.add('finalize', data, {
       removeOnComplete: { age: 3600 },
       attempts: 2,

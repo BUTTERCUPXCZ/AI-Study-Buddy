@@ -9,7 +9,8 @@ export class PdfExtractQueue {
   private readonly logger = new Logger(PdfExtractQueue.name);
 
   constructor(
-    @InjectQueue('pdf-extract') private pdfExtractQueue: Queue,
+    @InjectQueue('pdf-extract')
+    private pdfExtractQueue: Queue<CreatePdfExtractJobDto>,
     private readonly jobsService: JobsService,
   ) {}
 
@@ -65,7 +66,9 @@ export class PdfExtractQueue {
         message: 'PDF extraction job queued successfully',
       };
     } catch (error) {
-      this.logger.error(`Failed to add PDF extract job: ${error.message}`);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Failed to add PDF extract job: ${errorMessage}`);
       throw error;
     }
   }
@@ -75,7 +78,7 @@ export class PdfExtractQueue {
    */
   async getJobStatus(jobId: string) {
     const job = await this.pdfExtractQueue.getJob(jobId);
-    
+
     if (!job) {
       return null;
     }

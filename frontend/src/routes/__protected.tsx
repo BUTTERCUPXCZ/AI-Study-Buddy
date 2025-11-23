@@ -34,7 +34,7 @@ export const Route = createFileRoute('/__protected')({
         return { session }
       }
     } catch (error) {
-      if ((error as any).to === '/login') {
+      if ((error as { to?: string }).to === '/login') {
         // This is our redirect, re-throw it
         throw error;
       }
