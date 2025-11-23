@@ -13,7 +13,7 @@ import {
   TutorChatResponse,
   QuizQuestion,
 } from './interfaces/ai-response.interface';
-import { ChatSession, ChatMessage, Note, Quiz, Prisma } from '@prisma/client';
+import { ChatSession, ChatMessage, Note, Prisma } from '@prisma/client';
 
 @Injectable()
 export class AiService {
@@ -52,7 +52,7 @@ export class AiService {
       const notes = this.cleanGeneratedText(response.text());
 
       // Save notes to database using NotesService
-      const noteRecord: Note = await this.notesService.createNote(
+      const noteRecord = await this.notesService.createNote(
         userId,
         title,
         notes,
@@ -66,7 +66,7 @@ export class AiService {
         success: true,
         noteId: noteRecord.id,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Error generating notes:', error);
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
@@ -107,7 +107,7 @@ export class AiService {
       const title = this.generateTitleFromFileName(fileName);
 
       // Save notes to database
-      const noteRecord: Note = await this.notesService.createNote(
+      const noteRecord = await this.notesService.createNote(
         userId,
         title,
         generatedContent,
@@ -125,7 +125,7 @@ export class AiService {
         content: noteRecord.content,
         summary,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Error generating structured notes:', error);
       throw error;
     }
@@ -231,7 +231,7 @@ Now analyze the PDF and produce polished, comprehensive study notes following th
       );
 
       // Save notes to database
-      const noteRecord: Note = await this.notesService.createNote(
+      const noteRecord = await this.notesService.createNote(
         userId,
         title,
         generatedContent,
@@ -249,7 +249,7 @@ Now analyze the PDF and produce polished, comprehensive study notes following th
         content: noteRecord.content,
         summary,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Error generating notes from PDF:', error);
       throw error;
     }
@@ -368,7 +368,7 @@ Make the notes:
       const questions = JSON.parse(jsonText) as QuizQuestion[];
 
       // Save quiz to database using QuizzesService
-      const quizRecord: Quiz = await this.quizzesService.createQuiz(
+      const quizRecord = await this.quizzesService.createQuiz(
         userId,
         title,
         questions as unknown as Prisma.InputJsonValue,
@@ -382,7 +382,7 @@ Make the notes:
         success: true,
         quizId: quizRecord.id,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Error generating quiz:', error);
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
@@ -479,14 +479,13 @@ Make the notes:
       const answer = response.text();
 
       // Save AI response
-      const assistantMessage: ChatMessage =
-        await this.databaseService.chatMessage.create({
-          data: {
-            role: 'assistant',
-            content: answer,
-            sessionId: chatSession.id,
-          },
-        });
+      const assistantMessage = await this.databaseService.chatMessage.create({
+        data: {
+          role: 'assistant',
+          content: answer,
+          sessionId: chatSession.id,
+        },
+      });
 
       this.logger.log(`Chat message saved in session: ${chatSession.id}`);
 
@@ -496,7 +495,7 @@ Make the notes:
         sessionId: chatSession.id,
         messageId: assistantMessage.id,
       };
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Error in tutor chat:', error);
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
@@ -566,7 +565,7 @@ Make the notes:
       if (chatSession.note) {
         learningMaterialsContext = chatSession.note.content;
       } else if (noteId) {
-        const note: Note | null = await this.databaseService.note.findUnique({
+        const note = await this.databaseService.note.findUnique({
           where: { id: noteId },
         });
         if (note) {
@@ -616,14 +615,13 @@ Make the notes:
       }
 
       // Save complete AI response to database
-      const assistantMessage: ChatMessage =
-        await this.databaseService.chatMessage.create({
-          data: {
-            role: 'assistant',
-            content: fullAnswer,
-            sessionId: chatSession.id,
-          },
-        });
+      const assistantMessage = await this.databaseService.chatMessage.create({
+        data: {
+          role: 'assistant',
+          content: fullAnswer,
+          sessionId: chatSession.id,
+        },
+      });
 
       // Send completion signal
       res.write(
@@ -638,7 +636,7 @@ Make the notes:
       );
 
       res.end();
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('Error in streaming tutor chat:', error);
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
@@ -671,7 +669,7 @@ Make the notes:
           },
         },
       },
-    });
+    }) as Promise<unknown>;
   }
 
   /**
@@ -697,7 +695,7 @@ Make the notes:
       throw new NotFoundException('Chat session not found');
     }
 
-    return session;
+    return session as unknown;
   }
 
   /**
@@ -711,7 +709,7 @@ Make the notes:
 
     return this.databaseService.chatSession.delete({
       where: { id: session.id },
-    });
+    }) as Promise<unknown>;
   }
 
   /**
@@ -730,6 +728,6 @@ Make the notes:
     return this.databaseService.chatSession.update({
       where: { id: session.id },
       data: { title },
-    });
+    }) as Promise<unknown>;
   }
 }

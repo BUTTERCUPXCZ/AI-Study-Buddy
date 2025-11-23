@@ -25,7 +25,7 @@ export class JobsService {
         queueName: data.queueName,
         data: data.data,
         opts: data.opts || {},
-        status: JobStatus.waiting as JobStatus,
+        status: JobStatus.waiting,
         userId: data.userId,
       },
       create: {
@@ -34,7 +34,7 @@ export class JobsService {
         queueName: data.queueName,
         data: data.data,
         opts: data.opts || {},
-        status: JobStatus.waiting as JobStatus,
+        status: JobStatus.waiting,
         userId: data.userId,
       },
     });
@@ -104,7 +104,7 @@ export class JobsService {
 
     return (await this.databaseService.job.deleteMany({
       where: {
-        status: JobStatus.completed as JobStatus,
+        status: JobStatus.completed,
         finishedAt: {
           lt: cutoffDate,
         },
@@ -118,11 +118,11 @@ export class JobsService {
    */
   async setJobStage(jobId: string, stage: string): Promise<Job> {
     // Read current job opts
-    const job: Job | null = await this.databaseService.job.findUnique({
+    const job = await this.databaseService.job.findUnique({
       where: { jobId },
     });
     const currentOpts = (job && (job.opts as Record<string, any>)) || {};
-    const newOpts = { ...currentOpts, stage };
+    const newOpts = { ...currentOpts, stage } as Record<string, any>;
 
     return await this.databaseService.job.update({
       where: { jobId },

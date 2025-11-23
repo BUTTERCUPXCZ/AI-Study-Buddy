@@ -8,7 +8,7 @@ import { DatabaseService } from '../database/database.service';
 import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { PdfNotesQueue } from '../jobs/queues/pdf-notes.queue';
-import { File, User } from '@prisma/client';
+import { File } from '@prisma/client';
 
 @Injectable()
 export class PdfService {
@@ -53,10 +53,9 @@ export class PdfService {
 
     try {
       // Validate that the user exists in the database
-      const userExists: User | null =
-        await this.databaseService.user.findUnique({
-          where: { id: createPdfDto.userId },
-        });
+      const userExists = await this.databaseService.user.findUnique({
+        where: { id: createPdfDto.userId },
+      });
 
       if (!userExists) {
         throw new BadRequestException(
@@ -85,7 +84,7 @@ export class PdfService {
       }
 
       // Save file metadata to database with the storage path
-      const fileRecord: File = await this.databaseService.file.create({
+      const fileRecord = await this.databaseService.file.create({
         data: {
           name: createPdfDto.fileName,
           url: uploadData.path, // Store the storage path
@@ -138,7 +137,7 @@ export class PdfService {
             },
           },
         },
-      })) as unknown[];
+      })) as unknown;
 
       return files;
     } catch (error) {
@@ -192,7 +191,7 @@ export class PdfService {
   async deleteFile(id: string, userId: string) {
     try {
       // Find the file
-      const file: File | null = await this.databaseService.file.findUnique({
+      const file = await this.databaseService.file.findUnique({
         where: { id },
       });
 

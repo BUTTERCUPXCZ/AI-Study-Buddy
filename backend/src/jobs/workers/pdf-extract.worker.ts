@@ -38,14 +38,10 @@ export class PdfExtractWorker extends WorkerHost {
     );
 
     try {
-      // Update job status to processing and set stage to processing
-      await this.jobsService.updateJobStatus(
-        job.id!,
-        JobStatus.processing as JobStatus,
-        {
-          progress: 0,
-        },
-      );
+      // Update job status to processing and set stage
+      await this.jobsService.updateJobStatus(job.id!, JobStatus.processing, {
+        progress: 0,
+      });
       await this.jobsService.setJobStage(job.id!, 'processing');
       this.wsGateway.emitJobUpdate(job.id!, 'processing', {
         fileId,
@@ -90,17 +86,16 @@ export class PdfExtractWorker extends WorkerHost {
           );
 
           // Get the file record to retrieve the storage path
-          const fileRecord: File | null =
-            await this.databaseService.file.findUnique({
-              where: { id: fileId },
-            });
+          const fileRecord = await this.databaseService.file.findUnique({
+            where: { id: fileId },
+          });
 
           if (!fileRecord) {
             throw new Error('File record not found in database');
           }
 
           // Use the stored path (which should be the storage path)
-          const filePath: string = fileRecord.url;
+          const filePath = fileRecord.url;
 
           this.logger.log(
             `Attempting direct download from Supabase storage: ${filePath}`,
@@ -161,14 +156,14 @@ export class PdfExtractWorker extends WorkerHost {
       // });
 
       // Option 2: Create a Note from the extracted text
-      await this.databaseService.note.create({
+      (await this.databaseService.note.create({
         data: {
           title: `Extracted from: ${fileName}`,
           content: cleanedText,
           source: fileId,
           userId: userId,
         },
-      });
+      })) as Note;
 
       // Step 5: Queue AI Notes Generation (95%)
       await job.updateProgress(95);
@@ -200,14 +195,10 @@ export class PdfExtractWorker extends WorkerHost {
 
       // Update job status to completed and stage
       await this.jobsService.setJobStage(job.id!, 'completed');
-      await this.jobsService.updateJobStatus(
-        job.id!,
-        JobStatus.completed as JobStatus,
-        {
-          progress: 100,
-          finishedAt: new Date(),
-        },
-      );
+      await this.jobsService.updateJobStatus(job.id!, JobStatus.completed, {
+        progress: 100,
+        finishedAt: new Date(),
+      });
       await this.wsGateway.emitJobCompleted(job.id!, { fileId, userId });
 
       const result: PdfExtractJobResult = {
@@ -227,15 +218,11 @@ export class PdfExtractWorker extends WorkerHost {
       );
 
       // Update job status to failed
-      await this.jobsService.updateJobStatus(
-        job.id!,
-        JobStatus.failed as JobStatus,
-        {
-          failedReason: errorMessage,
-          failedAt: new Date(),
-          attempts: job.attemptsMade,
-        },
-      );
+      await this.jobsService.updateJobStatus(job.id!, JobStatus.failed, {
+        failedReason: errorMessage,
+        failedAt: new Date(),
+        attempts: job.attemptsMade,
+      });
 
       throw error;
     }

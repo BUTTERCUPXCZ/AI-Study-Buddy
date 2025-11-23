@@ -12,7 +12,7 @@ export class JobsController {
    */
   @Get(':jobId')
   async getJob(@Param('jobId') jobId: string) {
-    const job: Job | null = await this.jobsService.getJob(jobId);
+    const job = await this.jobsService.getJob(jobId);
     return {
       success: true,
       job,

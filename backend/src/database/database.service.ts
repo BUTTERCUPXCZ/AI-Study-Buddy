@@ -7,10 +7,10 @@ export class DatabaseService
   implements OnModuleInit, OnModuleDestroy
 {
   async onModuleInit(): Promise<void> {
-    await this.$connect();
+    void ((await this.$connect()) as Promise<void>);
   }
 
   async onModuleDestroy(): Promise<void> {
-    await this.$disconnect();
+    void ((await this.$disconnect()) as Promise<void>);
   }
 }

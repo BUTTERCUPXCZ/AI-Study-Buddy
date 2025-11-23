@@ -9,7 +9,6 @@ import { DatabaseService } from '../database/database.service';
 import { ConfigService } from '@nestjs/config';
 import { createClient, Provider, SupabaseClient } from '@supabase/supabase-js';
 import * as bcrypt from 'bcryptjs';
-import { User } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -69,7 +68,7 @@ export class AuthService {
     const supabaseUser = data.user;
 
     // Check if user exists in our database
-    let dbUser: User | null = await this.databaseService.user.findUnique({
+    let dbUser = await this.databaseService.user.findUnique({
       where: { supabaseId: supabaseUser.id },
     });
 
@@ -117,10 +116,9 @@ export class AuthService {
   }
 
   async Register(registerDto: RegisterDto) {
-    const existingUser: User | null =
-      await this.databaseService.user.findUnique({
-        where: { email: registerDto.email },
-      });
+    const existingUser = await this.databaseService.user.findUnique({
+      where: { email: registerDto.email },
+    });
     if (existingUser) {
       throw new BadRequestException('User with this email already exists');
     }
@@ -163,10 +161,9 @@ export class AuthService {
     };
   }
   async Login(loginDto: LoginDto) {
-    const existingUser: User | null =
-      await this.databaseService.user.findUnique({
-        where: { email: loginDto.email },
-      });
+    const existingUser = await this.databaseService.user.findUnique({
+      where: { email: loginDto.email },
+    });
 
     if (!existingUser) {
       throw new BadRequestException(
@@ -222,7 +219,7 @@ export class AuthService {
     };
 
     // Check if user exists in our database, if not create them (OAuth users)
-    let dbUser: User | null = await this.databaseService.user.findUnique({
+    let dbUser = await this.databaseService.user.findUnique({
       where: { supabaseId: supabaseUser.id },
     });
 

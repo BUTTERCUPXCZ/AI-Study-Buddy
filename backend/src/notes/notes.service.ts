@@ -25,7 +25,7 @@ export class NotesService {
   ): Promise<Note> {
     this.logger.log(`Creating note for user: ${userId}`);
 
-    const note: Note = await this.databaseService.note.create({
+    const note = await this.databaseService.note.create({
       data: {
         title,
         content,
@@ -54,7 +54,7 @@ export class NotesService {
     }
 
     this.logger.log(`Fetching notes from database for user: ${userId}`);
-    const notes: Note[] = await this.databaseService.note.findMany({
+    const notes = await this.databaseService.note.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
     });
@@ -81,7 +81,7 @@ export class NotesService {
     this.logger.log(
       `Fetching note ${noteId} from database for user: ${userId}`,
     );
-    const note: Note | null = await this.databaseService.note.findFirst({
+    const note = await this.databaseService.note.findFirst({
       where: {
         id: noteId,
         userId,
@@ -109,7 +109,7 @@ export class NotesService {
   ): Promise<unknown> {
     await this.getNoteById(noteId, userId);
 
-    const updatedNote: Note = await this.databaseService.note.update({
+    const updatedNote = await this.databaseService.note.update({
       where: { id: noteId },
       data: {
         content,
@@ -129,7 +129,7 @@ export class NotesService {
   async deleteNote(noteId: string, userId: string): Promise<unknown> {
     await this.getNoteById(noteId, userId);
 
-    const deletedNote: Note = await this.databaseService.note.delete({
+    const deletedNote = await this.databaseService.note.delete({
       where: { id: noteId },
     });
 

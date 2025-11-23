@@ -44,29 +44,28 @@ export class QuizzesService {
           },
         },
       },
-    });
+    }) as Promise<unknown>;
   }
 
   /**
    * Get a specific quiz by ID
    */
   async getQuizById(quizId: string, userId: string): Promise<unknown> {
-    const quiz: (Quiz & { note: Note | null }) | null =
-      (await this.databaseService.quiz.findFirst({
-        where: {
-          id: quizId,
-          userId,
-        },
-        include: {
-          note: true,
-        },
-      })) as (Quiz & { note: Note | null }) | null;
+    const quiz = (await this.databaseService.quiz.findFirst({
+      where: {
+        id: quizId,
+        userId,
+      },
+      include: {
+        note: true,
+      },
+    })) as (Quiz & { note: Note | null }) | null;
 
     if (!quiz) {
       throw new NotFoundException('Quiz not found');
     }
 
-    return quiz;
+    return quiz as unknown;
   }
 
   /**
@@ -84,7 +83,7 @@ export class QuizzesService {
     return this.databaseService.quiz.update({
       where: { id: quiz.id },
       data: { score },
-    });
+    }) as Promise<unknown>;
   }
 
   /**
@@ -97,6 +96,6 @@ export class QuizzesService {
 
     return this.databaseService.quiz.delete({
       where: { id: quiz.id },
-    });
+    }) as Promise<unknown>;
   }
 }
