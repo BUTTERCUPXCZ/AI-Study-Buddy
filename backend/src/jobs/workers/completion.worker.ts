@@ -24,7 +24,7 @@ export class CompletionWorker extends WorkerHost {
 
       // Set final stage and mark job completed in DB
       await this.jobsService.setJobStage(jobId, 'completed');
-      await this.jobsService.updateJobStatus(jobId, JobStatus.completed, {
+      await this.jobsService.updateJobStatus(jobId, 'completed' as JobStatus, {
         progress: 100,
         finishedAt: new Date(),
       });
@@ -42,7 +42,7 @@ export class CompletionWorker extends WorkerHost {
       this.logger.error(
         `Completion worker failed for ${jobId}: ${errorMessage}`,
       );
-      await this.jobsService.updateJobStatus(jobId, JobStatus.failed, {
+      await this.jobsService.updateJobStatus(jobId, 'failed' as JobStatus, {
         failedReason: errorMessage,
         failedAt: new Date(),
         attempts: job.attemptsMade,

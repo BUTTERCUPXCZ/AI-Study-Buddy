@@ -55,7 +55,7 @@ export class PdfNotesWorker extends WorkerHost {
       // Set initial status
       await this.jobsService.updateJobStatus(
         job.id!,
-        JobStatus.processing as JobStatus,
+        'processing' as JobStatus,
         {
           progress: 0,
         },
@@ -119,7 +119,7 @@ export class PdfNotesWorker extends WorkerHost {
       // Step 4: Complete (100%)
       await job.updateProgress(100);
       await this.jobsService.setJobStage(job.id!, 'completed');
-      await this.jobsService.updateJobStatus(job.id!, JobStatus.completed, {
+      await this.jobsService.updateJobStatus(job.id!, 'completed' as JobStatus, {
         progress: 100,
         finishedAt: new Date(),
       });
@@ -156,7 +156,7 @@ export class PdfNotesWorker extends WorkerHost {
       );
 
       // Update job status to failed
-      await this.jobsService.updateJobStatus(job.id!, JobStatus.failed, {
+      await this.jobsService.updateJobStatus(job.id!, 'failed' as JobStatus, {
         failedReason: errorMessage,
         failedAt: new Date(),
         attempts: job.attemptsMade,

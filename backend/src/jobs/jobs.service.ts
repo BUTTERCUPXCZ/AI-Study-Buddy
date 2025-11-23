@@ -18,14 +18,14 @@ export class JobsService {
     opts?: Record<string, any>;
   }): Promise<Job> {
     // Use upsert to avoid unique constraint errors
-    return await this.databaseService.job.upsert({
+    const result = await this.databaseService.job.upsert({
       where: { jobId: data.jobId },
       update: {
         name: data.name,
         queueName: data.queueName,
         data: data.data,
         opts: data.opts || {},
-        status: JobStatus.waiting,
+        status: 'waiting' as JobStatus,
         userId: data.userId,
       },
       create: {
@@ -34,10 +34,11 @@ export class JobsService {
         queueName: data.queueName,
         data: data.data,
         opts: data.opts || {},
-        status: JobStatus.waiting,
+        status: 'waiting' as JobStatus,
         userId: data.userId,
       },
     });
+    return result;
   }
 
   /**
@@ -54,7 +55,7 @@ export class JobsService {
       attempts?: number;
     },
   ): Promise<Job> {
-    return await this.databaseService.job.update({
+    const result = await this.databaseService.job.update({
       where: { jobId },
       data: {
         status,
@@ -62,37 +63,41 @@ export class JobsService {
         updatedAt: new Date(),
       },
     });
+    return result;
   }
 
   /**
    * Get job by jobId
    */
   async getJob(jobId: string): Promise<Job | null> {
-    return await this.databaseService.job.findUnique({
+    const result = await this.databaseService.job.findUnique({
       where: { jobId },
     });
+    return result;
   }
 
   /**
    * Get jobs by user
    */
   async getUserJobs(userId: string, limit = 50): Promise<Job[]> {
-    return await this.databaseService.job.findMany({
+    const result = await this.databaseService.job.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
       take: limit,
     });
+    return result;
   }
 
   /**
    * Get jobs by queue name
    */
   async getQueueJobs(queueName: string, limit = 50): Promise<Job[]> {
-    return await this.databaseService.job.findMany({
+    const result = await this.databaseService.job.findMany({
       where: { queueName },
       orderBy: { createdAt: 'desc' },
       take: limit,
     });
+    return result;
   }
 
   /**
@@ -102,14 +107,15 @@ export class JobsService {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - days);
 
-    return (await this.databaseService.job.deleteMany({
+    const result = await this.databaseService.job.deleteMany({
       where: {
-        status: JobStatus.completed,
+        status: 'completed' as JobStatus,
         finishedAt: {
           lt: cutoffDate,
         },
       },
-    })) as { count: number };
+    });
+    return { count: result.count };
   }
 
   /**
@@ -118,18 +124,22 @@ export class JobsService {
    */
   async setJobStage(jobId: string, stage: string): Promise<Job> {
     // Read current job opts
-    const job = await this.databaseService.job.findUnique({
+    const existingJob = await this.databaseService.job.findUnique({
       where: { jobId },
     });
-    const currentOpts = (job && (job.opts as Record<string, any>)) || {};
+    const currentOpts =
+      (existingJob && typeof existingJob.opts === 'object' && existingJob.opts !== null
+        ? (existingJob.opts as Record<string, any>)
+        : {}) || {};
     const newOpts = { ...currentOpts, stage } as Record<string, any>;
 
-    return await this.databaseService.job.update({
+    const result = await this.databaseService.job.update({
       where: { jobId },
       data: {
         opts: newOpts,
         updatedAt: new Date(),
       },
     });
+    return result;
   }
 }

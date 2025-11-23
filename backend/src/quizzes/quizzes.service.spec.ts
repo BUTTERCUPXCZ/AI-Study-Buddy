@@ -5,6 +5,7 @@ import { DatabaseService } from '../database/database.service';
 
 describe('QuizzesService', () => {
   let service: QuizzesService;
+  let databaseService: DatabaseService;
 
   const mockDatabaseService = {
     quiz: {
@@ -36,8 +37,6 @@ describe('QuizzesService', () => {
   };
 
   beforeEach(async () => {
-    const mockDatabaseService = {};
-
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         QuizzesService,
@@ -46,6 +45,7 @@ describe('QuizzesService', () => {
     }).compile();
 
     service = module.get<QuizzesService>(QuizzesService);
+    databaseService = module.get<DatabaseService>(DatabaseService);
   });
 
   afterEach(() => {

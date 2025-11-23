@@ -68,11 +68,12 @@ export class AuthService {
     const supabaseUser = data.user;
 
     // Check if user exists in our database
-    let dbUser = await this.databaseService.user.findUnique({
+    const existingUser = await this.databaseService.user.findUnique({
       where: { supabaseId: supabaseUser.id },
     });
 
-    if (!dbUser) {
+    let dbUser;
+    if (!existingUser) {
       // Create new user from OAuth data
       const fullname =
         (supabaseUser.user_metadata?.full_name as string) ||
@@ -94,7 +95,7 @@ export class AuthService {
         (supabaseUser.user_metadata?.full_name as string) ||
         (supabaseUser.user_metadata?.fullname as string) ||
         (supabaseUser.user_metadata?.name as string) ||
-        dbUser.Fullname;
+        existingUser.Fullname;
 
       dbUser = await this.databaseService.user.update({
         where: { supabaseId: supabaseUser.id },
@@ -147,7 +148,7 @@ export class AuthService {
       throw new UnauthorizedException('User registration failed');
     }
 
-    await this.databaseService.user.create({
+    const newUser = await this.databaseService.user.create({
       data: {
         supabaseId: supabaseUser.id,
         Fullname: registerDto.Fullname,
@@ -156,16 +157,20 @@ export class AuthService {
       },
     });
 
+    if (!newUser) {
+      throw new BadRequestException('Failed to create user in database');
+    }
+
     return {
       message: 'User registered successfully. Please verify your email.',
     };
   }
   async Login(loginDto: LoginDto) {
-    const existingUser = await this.databaseService.user.findUnique({
+    const dbUser = await this.databaseService.user.findUnique({
       where: { email: loginDto.email },
     });
 
-    if (!existingUser) {
+    if (!dbUser) {
       throw new BadRequestException(
         'No account found with this email address.',
       );
@@ -200,9 +205,9 @@ export class AuthService {
       message: 'Login successful',
       access_token: session.access_token,
       user: {
-        id: existingUser.id, // Use database ID
+        id: dbUser.id, // Use database ID
         email: typedUser.email,
-        fullname: typedUser.user_metadata?.fullname || existingUser.Fullname,
+        fullname: typedUser.user_metadata?.fullname || dbUser.Fullname,
       },
     };
   }
@@ -219,11 +224,12 @@ export class AuthService {
     };
 
     // Check if user exists in our database, if not create them (OAuth users)
-    let dbUser = await this.databaseService.user.findUnique({
+    const existingDbUser = await this.databaseService.user.findUnique({
       where: { supabaseId: supabaseUser.id },
     });
 
-    if (!dbUser) {
+    let dbUser;
+    if (!existingDbUser) {
       // This is an OAuth user signing in for the first time
       // Create a record in our database
       dbUser = await this.databaseService.user.create({
@@ -238,6 +244,8 @@ export class AuthService {
           password: '', // OAuth users don't have passwords
         },
       });
+    } else {
+      dbUser = existingDbUser;
     }
 
     return {

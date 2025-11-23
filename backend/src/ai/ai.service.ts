@@ -127,7 +127,10 @@ export class AiService {
       };
     } catch (error: unknown) {
       this.logger.error('Error generating structured notes:', error);
-      throw error;
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Unknown error occurred while generating structured notes');
     }
   }
 
@@ -251,7 +254,10 @@ Now analyze the PDF and produce polished, comprehensive study notes following th
       };
     } catch (error: unknown) {
       this.logger.error('Error generating notes from PDF:', error);
-      throw error;
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Unknown error occurred while generating notes from PDF');
     }
   }
 
@@ -408,12 +414,14 @@ Make the notes:
       this.logger.log('Processing tutor chat...');
 
       // Get or create chat session
+      type ChatSessionWithRelations = ChatSession & {
+        messages: ChatMessage[];
+        note: Note | null;
+      };
 
-      let chatSession:
-        | (ChatSession & { messages: ChatMessage[]; note: Note | null })
-        | null;
+      let chatSession: ChatSessionWithRelations | null;
       if (sessionId) {
-        chatSession = (await this.databaseService.chatSession.findFirst({
+        chatSession = await this.databaseService.chatSession.findFirst({
           where: {
             id: sessionId,
             userId,
@@ -424,16 +432,14 @@ Make the notes:
             },
             note: true,
           },
-        })) as
-          | (ChatSession & { messages: ChatMessage[]; note: Note | null })
-          | null;
+        });
 
         if (!chatSession) {
           throw new NotFoundException('Chat session not found');
         }
       } else {
         // Create new session
-        chatSession = (await this.databaseService.chatSession.create({
+        chatSession = await this.databaseService.chatSession.create({
           data: {
             userId,
             noteId: noteId || null,
@@ -443,7 +449,7 @@ Make the notes:
             messages: true,
             note: true,
           },
-        })) as ChatSession & { messages: ChatMessage[]; note: Note | null };
+        });
       }
 
       // Get learning materials context (optional)
@@ -451,7 +457,7 @@ Make the notes:
       if (chatSession.note) {
         learningMaterialsContext = chatSession.note.content;
       } else if (noteId) {
-        const note: Note | null = await this.databaseService.note.findUnique({
+        const note = await this.databaseService.note.findUnique({
           where: { id: noteId },
         });
         if (note) {
@@ -522,12 +528,14 @@ Make the notes:
       this.logger.log('Processing tutor chat with streaming...');
 
       // Get or create chat session
+      type ChatSessionWithRelations = ChatSession & {
+        messages: ChatMessage[];
+        note: Note | null;
+      };
 
-      let chatSession:
-        | (ChatSession & { messages: ChatMessage[]; note: Note | null })
-        | null;
+      let chatSession: ChatSessionWithRelations | null;
       if (sessionId) {
-        chatSession = (await this.databaseService.chatSession.findFirst({
+        chatSession = await this.databaseService.chatSession.findFirst({
           where: {
             id: sessionId,
             userId,
@@ -538,16 +546,14 @@ Make the notes:
             },
             note: true,
           },
-        })) as
-          | (ChatSession & { messages: ChatMessage[]; note: Note | null })
-          | null;
+        });
 
         if (!chatSession) {
           throw new NotFoundException('Chat session not found');
         }
       } else {
         // Create new session
-        chatSession = (await this.databaseService.chatSession.create({
+        chatSession = await this.databaseService.chatSession.create({
           data: {
             userId,
             noteId: noteId || null,
@@ -557,7 +563,7 @@ Make the notes:
             messages: true,
             note: true,
           },
-        })) as ChatSession & { messages: ChatMessage[]; note: Note | null };
+        });
       }
 
       // Get learning materials context (optional)
@@ -653,8 +659,8 @@ Make the notes:
   /**
    * Get all chat sessions for a user
    */
-  getUserChatSessions(userId: string): Promise<unknown> {
-    return this.databaseService.chatSession.findMany({
+  async getUserChatSessions(userId: string): Promise<unknown> {
+    const sessions = await this.databaseService.chatSession.findMany({
       where: { userId },
       orderBy: { updatedAt: 'desc' },
       include: {
@@ -669,14 +675,15 @@ Make the notes:
           },
         },
       },
-    }) as Promise<unknown>;
+    });
+    return sessions;
   }
 
   /**
    * Get a specific chat session with all messages
    */
   async getChatSession(sessionId: string, userId: string): Promise<unknown> {
-    const session = (await this.databaseService.chatSession.findFirst({
+    const session = await this.databaseService.chatSession.findFirst({
       where: {
         id: sessionId,
         userId,
@@ -687,29 +694,29 @@ Make the notes:
         },
         note: true,
       },
-    })) as
-      | (ChatSession & { messages: ChatMessage[]; note: Note | null })
-      | null;
+    });
 
     if (!session) {
       throw new NotFoundException('Chat session not found');
     }
 
-    return session as unknown;
+    return session;
   }
 
   /**
    * Delete a chat session
    */
   async deleteChatSession(sessionId: string, userId: string): Promise<unknown> {
-    const session = (await this.getChatSession(
-      sessionId,
-      userId,
-    )) as ChatSession & { messages: ChatMessage[]; note: Note | null };
+    const session = await this.getChatSession(sessionId, userId);
 
-    return this.databaseService.chatSession.delete({
-      where: { id: session.id },
-    }) as Promise<unknown>;
+    if (!session || typeof session !== 'object' || !('id' in session)) {
+      throw new NotFoundException('Chat session not found');
+    }
+
+    const result = await this.databaseService.chatSession.delete({
+      where: { id: session.id as string },
+    });
+    return result;
   }
 
   /**
@@ -720,14 +727,16 @@ Make the notes:
     userId: string,
     title: string,
   ): Promise<unknown> {
-    const session = (await this.getChatSession(
-      sessionId,
-      userId,
-    )) as ChatSession & { messages: ChatMessage[]; note: Note | null };
+    const session = await this.getChatSession(sessionId, userId);
 
-    return this.databaseService.chatSession.update({
-      where: { id: session.id },
+    if (!session || typeof session !== 'object' || !('id' in session)) {
+      throw new NotFoundException('Chat session not found');
+    }
+
+    const result = await this.databaseService.chatSession.update({
+      where: { id: session.id as string },
       data: { title },
-    }) as Promise<unknown>;
+    });
+    return result;
   }
 }

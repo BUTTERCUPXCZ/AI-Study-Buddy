@@ -31,7 +31,7 @@ export class AiNotesWorker extends WorkerHost {
 
     try {
       // Update job status to processing and set stage
-      await this.jobsService.updateJobStatus(job.id!, JobStatus.processing, {
+      await this.jobsService.updateJobStatus(job.id!, 'processing' as JobStatus, {
         progress: 0,
       });
       await this.jobsService.setJobStage(job.id!, 'processing');
@@ -109,7 +109,7 @@ export class AiNotesWorker extends WorkerHost {
 
       // Update job status to completed and stage
       await this.jobsService.setJobStage(job.id!, 'completed');
-      await this.jobsService.updateJobStatus(job.id!, JobStatus.completed, {
+      await this.jobsService.updateJobStatus(job.id!, 'completed' as JobStatus, {
         progress: 100,
         finishedAt: new Date(),
       });
@@ -135,7 +135,7 @@ export class AiNotesWorker extends WorkerHost {
       );
 
       // Update job status to failed
-      await this.jobsService.updateJobStatus(job.id!, JobStatus.failed, {
+      await this.jobsService.updateJobStatus(job.id!, 'failed' as JobStatus, {
         failedReason: errorMessage,
         failedAt: new Date(),
         attempts: job.attemptsMade,

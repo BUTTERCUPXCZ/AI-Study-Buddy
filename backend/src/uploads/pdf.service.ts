@@ -125,7 +125,7 @@ export class PdfService {
    */
   async getUserFiles(userId: string): Promise<unknown> {
     try {
-      const files = (await this.databaseService.file.findMany({
+      const files = await this.databaseService.file.findMany({
         where: { userId },
         orderBy: { id: 'desc' },
         include: {
@@ -137,7 +137,7 @@ export class PdfService {
             },
           },
         },
-      })) as unknown;
+      });
 
       return files;
     } catch (error) {
@@ -154,7 +154,7 @@ export class PdfService {
    */
   async getFileById(id: string): Promise<unknown> {
     try {
-      const file = (await this.databaseService.file.findUnique({
+      const file = await this.databaseService.file.findUnique({
         where: { id },
         include: {
           user: {
@@ -165,7 +165,7 @@ export class PdfService {
             },
           },
         },
-      })) as unknown;
+      });
 
       if (!file) {
         throw new NotFoundException(`File with ID ${id} not found`);
@@ -207,9 +207,10 @@ export class PdfService {
       }
 
       // Delete from Supabase Storage
+      const filePaths: string[] = [file.url];
       const { error: deleteError } = await this.supabase.storage
         .from(this.bucketName)
-        .remove([file.url]);
+        .remove(filePaths);
 
       if (deleteError) {
         console.error('Failed to delete from storage:', deleteError);

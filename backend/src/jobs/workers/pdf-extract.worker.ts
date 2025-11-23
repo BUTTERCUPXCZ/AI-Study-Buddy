@@ -11,7 +11,7 @@ import {
   CreatePdfExtractJobDto,
   PdfExtractJobResult,
 } from '../dto/pdf-extract.dto';
-import { File, JobStatus } from '@prisma/client';
+import { File, JobStatus, Note } from '@prisma/client';
 
 @Processor('pdf-extract')
 export class PdfExtractWorker extends WorkerHost {
@@ -39,7 +39,7 @@ export class PdfExtractWorker extends WorkerHost {
 
     try {
       // Update job status to processing and set stage
-      await this.jobsService.updateJobStatus(job.id!, JobStatus.processing, {
+      await this.jobsService.updateJobStatus(job.id!, 'processing' as JobStatus, {
         progress: 0,
       });
       await this.jobsService.setJobStage(job.id!, 'processing');
@@ -95,7 +95,7 @@ export class PdfExtractWorker extends WorkerHost {
           }
 
           // Use the stored path (which should be the storage path)
-          const filePath = fileRecord.url;
+          const filePath: string = fileRecord.url;
 
           this.logger.log(
             `Attempting direct download from Supabase storage: ${filePath}`,
@@ -156,14 +156,14 @@ export class PdfExtractWorker extends WorkerHost {
       // });
 
       // Option 2: Create a Note from the extracted text
-      (await this.databaseService.note.create({
+      const extractedNote = await this.databaseService.note.create({
         data: {
           title: `Extracted from: ${fileName}`,
           content: cleanedText,
           source: fileId,
           userId: userId,
         },
-      })) as Note;
+      });
 
       // Step 5: Queue AI Notes Generation (95%)
       await job.updateProgress(95);
@@ -195,7 +195,7 @@ export class PdfExtractWorker extends WorkerHost {
 
       // Update job status to completed and stage
       await this.jobsService.setJobStage(job.id!, 'completed');
-      await this.jobsService.updateJobStatus(job.id!, JobStatus.completed, {
+      await this.jobsService.updateJobStatus(job.id!, 'completed' as JobStatus, {
         progress: 100,
         finishedAt: new Date(),
       });
@@ -218,7 +218,7 @@ export class PdfExtractWorker extends WorkerHost {
       );
 
       // Update job status to failed
-      await this.jobsService.updateJobStatus(job.id!, JobStatus.failed, {
+      await this.jobsService.updateJobStatus(job.id!, 'failed' as JobStatus, {
         failedReason: errorMessage,
         failedAt: new Date(),
         attempts: job.attemptsMade,
