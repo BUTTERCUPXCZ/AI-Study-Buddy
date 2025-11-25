@@ -13,7 +13,15 @@ import {
 } from '../dto/pdf-extract.dto';
 import { File, JobStatus, Note } from '@prisma/client';
 
-@Processor('pdf-extract')
+// CRITICAL: Configure worker to reduce Redis polling and avoid hitting Upstash request limits
+@Processor('pdf-extract', {
+  concurrency: 3, // Limit concurrent processing
+  stalledInterval: 60000, // Check for stalled jobs every 60s instead of 30s
+  maxStalledCount: 1, // Reduce stalled job checks
+  lockDuration: 60000, // 60 seconds lock
+  lockRenewTime: 30000, // Renew halfway through
+  drainDelay: 60, // Long-poll Redis for 60s when idle to cut request volume
+})
 export class PdfExtractWorker extends WorkerHost {
   private readonly logger = new Logger(PdfExtractWorker.name);
 

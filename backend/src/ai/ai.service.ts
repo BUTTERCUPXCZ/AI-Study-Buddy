@@ -151,71 +151,55 @@ export class AiService {
     summary: string;
   }> {
     try {
-      this.logger.log(`Generating notes directly from PDF: ${fileName}...`);
+      this.logger.log(`[AI] Processing PDF: ${fileName} (${(pdfBuffer.length / 1024).toFixed(2)}KB)`);
+      const aiStartTime = Date.now();
 
-      // Convert buffer to base64 for inline data
+      // Convert buffer to base64 for inline data (optimized)
       const base64Data = pdfBuffer.toString('base64');
 
       // Generate a title from the filename
       const title = this.generateTitleFromFileName(fileName);
 
-      const prompt = `
-You are an advanced study assistant. Analyze the PDF content and generate high-quality, exam-ready study notes.
+      // Optimized prompt for faster, more structured output
+      const prompt = `You are an expert study assistant. Analyze this PDF and create comprehensive study notes.
 
-Your output must follow this structure and tone:
-- Clear, structured, concise
-- Uses headings, bullets, icons, and clean formatting
-- Reads like a polished study guide created by an expert educator
-- Prioritizes clarity, comprehension, and exam relevance
+**IMPORTANT**: Output ONLY the formatted notes. No preamble, no explanations, no meta-commentary.
 
 # ${title}
 
 ## 📘 Overview
-Provide a short, clear description of what the document covers and why it matters.
+Brief summary of the document's purpose and scope.
 
 ## 🎯 Key Concepts
-List and explain the essential ideas, principles, or theories presented in the material.
+List and explain main ideas, theories, and principles.
 
 ## 📝 Detailed Notes
-Break down the content into logical topics and subtopics.
-For each topic, provide:
-- A clear explanation
-- Important bullet points
-- Examples or notes when useful
 
-### Topic 1
-- Key idea
-- Important detail
-- Additional points
+### [Topic 1]
+- Key point 1
+- Key point 2
+- Key point 3
 
-### Topic 2
-- Key idea
-- Important detail
-
-(Continue adding topics as necessary based on the PDF.)
+### [Topic 2]
+- Key point 1
+- Key point 2
 
 ## 💡 Must-Know Points
-Highlight the most important takeaways a student should remember for exams.
-
-- Critical concept 1  
-- Critical concept 2  
-- Critical concept 3  
+- Critical concept 1
+- Critical concept 2
+- Critical concept 3
 
 ## 🔑 Key Terms & Definitions
-List important vocabulary with simple, accurate definitions.
+- **Term 1**: Definition
+- **Term 2**: Definition
 
-- **Term 1** — Definition  
-- **Term 2** — Definition  
+## 📚 Summary
+Concise wrap-up of all content.
 
-## 📚 Final Summary
-Wrap up the entire content with a concise, easy-to-understand summary.
+Output structured notes following this format exactly.`;
 
----
-
-Now analyze the PDF and produce polished, comprehensive study notes following the structure above.
-`;
-
-      // Send PDF to Gemini with inline data
+      // Send PDF to Gemini for AI reading and analysis
+      this.logger.log('[AI] Sending to Gemini for intelligent analysis...');
       const result = await this.model.generateContent([
         {
           inlineData: {
@@ -228,22 +212,27 @@ Now analyze the PDF and produce polished, comprehensive study notes following th
 
       const response = result.response;
       const generatedContent = this.cleanGeneratedText(response.text());
-
+      
+      const aiProcessingTime = Date.now() - aiStartTime;
       this.logger.log(
-        `Generated ${generatedContent.length} characters of notes`,
+        `[AI] Generated ${generatedContent.length} chars in ${aiProcessingTime}ms`,
       );
 
-      // Save notes to database
+      // After AI reads and generates, save to database
+      this.logger.log('[DB] Saving AI-generated notes to database...');
+      const dbStartTime = Date.now();
+      
       const noteRecord = await this.notesService.createNote(
         userId,
         title,
         generatedContent,
-        fileId, // Link to the source file
+        fileId,
       );
 
-      this.logger.log(`Notes saved with ID: ${noteRecord.id}`);
+      const dbTime = Date.now() - dbStartTime;
+      this.logger.log(`[DB] Saved in ${dbTime}ms - Note ID: ${noteRecord.id}`);
 
-      // Extract summary (first 200 characters)
+      // Extract summary efficiently
       const summary = generatedContent.substring(0, 200) + '...';
 
       return {
@@ -253,7 +242,7 @@ Now analyze the PDF and produce polished, comprehensive study notes following th
         summary,
       };
     } catch (error: unknown) {
-      this.logger.error('Error generating notes from PDF:', error);
+      this.logger.error('[ERROR] Failed generating notes from PDF:', error);
       if (error instanceof Error) {
         throw error;
       }

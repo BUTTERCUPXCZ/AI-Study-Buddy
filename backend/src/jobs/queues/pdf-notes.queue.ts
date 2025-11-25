@@ -27,13 +27,13 @@ export class PdfNotesQueue {
   async addPdfNotesJob(data: CreatePdfNotesJobDto) {
     try {
       this.logger.log(
-        `Adding PDF notes job for file: ${data.fileName} (${data.fileId})`,
+        `[QUEUE] Adding PDF notes job: ${data.fileName} (${data.fileId})`,
       );
 
       // Generate a unique job ID using timestamp and random string
       const uniqueJobId = `pdf-notes-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
-      // Add job to BullMQ queue with custom job ID
+      // Add job to BullMQ queue with optimized settings
       const job = await this.pdfNotesQueue.add(
         'generate-notes-from-pdf',
         {
@@ -43,25 +43,27 @@ export class PdfNotesQueue {
           userId: data.userId,
         },
         {
-          jobId: uniqueJobId, // Use custom unique job ID
-          attempts: 3, // Retry up to 3 times
+          jobId: uniqueJobId,
+          attempts: 3,
           backoff: {
             type: 'exponential',
-            delay: 2000, // Start with 2 second delay
+            delay: 2000,
           },
           removeOnComplete: {
-            age: 3600, // Keep completed jobs for 1 hour
-            count: 100, // Keep max 100 completed jobs
+            age: 3600,
+            count: 100,
           },
           removeOnFail: {
-            age: 86400, // Keep failed jobs for 24 hours
+            age: 86400,
           },
+          // Optimize for faster processing
+          priority: 1, // High priority
         },
       );
 
-      this.logger.log(`Job added with ID: ${job.id}`);
+      this.logger.log(`[QUEUE] Job queued: ${job.id}`);
 
-      // Save job metadata to database
+      // Save job metadata to database (non-blocking)
       await this.jobsService.createJobRecord({
         jobId: job.id!,
         name: 'generate-notes-from-pdf',
@@ -78,7 +80,7 @@ export class PdfNotesQueue {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(`Failed to add PDF notes job: ${errorMessage}`);
+      this.logger.error(`[QUEUE ERROR] Failed to add job: ${errorMessage}`);
       throw error;
     }
   }

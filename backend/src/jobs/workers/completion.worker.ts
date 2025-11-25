@@ -5,7 +5,15 @@ import { JobsService } from '../jobs.service';
 import { JobsWebSocketGateway } from '../../websocket/websocket.gateway';
 import { JobStatus } from '@prisma/client';
 
-@Processor('completion')
+// CRITICAL: Configure worker to reduce Redis polling and avoid hitting Upstash request limits
+@Processor('completion', {
+  concurrency: 5, // Can handle more since these are lightweight
+  stalledInterval: 60000, // Check for stalled jobs every 60s instead of 30s
+  maxStalledCount: 1, // Reduce stalled job checks
+  lockDuration: 60000, // 60 seconds lock
+  lockRenewTime: 30000, // Renew halfway through
+  drainDelay: 60, // Long-poll Redis for 60s when idle to cut request volume
+})
 export class CompletionWorker extends WorkerHost {
   private readonly logger = new Logger(CompletionWorker.name);
 

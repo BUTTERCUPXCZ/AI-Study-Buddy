@@ -61,42 +61,48 @@ export class PdfParserUtil {
 
   /**
    * Extract text from PDF buffer
+   * OPTIMIZED: Uses new pdf-parse v2.4.5+ API with PDFParse class
    */
   static async extractTextFromBuffer(buffer: Buffer): Promise<{
     text: string;
     pageCount: number;
   }> {
     try {
-      // Use require for CommonJS module (pdf-parse)
-      // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment
-      const pdfParse = require('pdf-parse');
-
       this.logger.log('Parsing PDF buffer...');
 
-      interface PdfParseResult {
-        numpages: number;
-        numrender: number;
-        info: unknown;
-        metadata: unknown;
-        version: string;
-        text: string;
-      }
+      // Dynamic import - pdf-parse exports PDFParse as named export
+      const { PDFParse } = await import('pdf-parse');
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-      const data = (await pdfParse(buffer)) as PdfParseResult;
+      // Create parser instance with the PDF data
+      const parser = new PDFParse({
+        data: new Uint8Array(buffer),
+        verbosity: 0, // Silent mode for performance
+      });
+
+      // Extract text using getText() method
+      const result = await parser.getText({
+        // Optimize for speed
+        lineEnforce: true,
+        parseHyperlinks: false, // Skip hyperlinks for speed
+        parsePageInfo: false, // Skip metadata for speed
+        disableNormalization: false,
+      });
+
+      // Clean up
+      await parser.destroy();
 
       this.logger.log(
-        `Successfully parsed PDF: ${data.numpages} pages, ${data.text.length} characters`,
+        `Successfully parsed PDF: ${result.total} pages, ${result.text.length} characters`,
       );
 
       return {
-        text: data.text,
-        pageCount: data.numpages,
+        text: result.text,
+        pageCount: result.total,
       };
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(`Error parsing PDF: ${errorMessage}`);
+      this.logger.error(`Error parsing PDF: ${errorMessage}`, error);
       throw error;
     }
   }
@@ -146,7 +152,7 @@ export class PdfParserUtil {
   }
 
   /**
-   * Split text into chunks for processing
+   * Split text into chunks for processing (optimized for speed)
    */
   static chunkText(text: string, maxChunkSize: number = 4000): string[] {
     const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
@@ -169,5 +175,32 @@ export class PdfParserUtil {
     }
 
     return chunks;
+  }
+
+  /**
+   * Extract text with progress tracking (for large PDFs)
+   * Returns a promise that resolves with text and page count
+   */
+  static async extractTextWithProgress(
+    buffer: Buffer,
+    onProgress?: (progress: number) => void,
+  ): Promise<{
+    text: string;
+    pageCount: number;
+  }> {
+    try {
+      if (onProgress) onProgress(10);
+      
+      const result = await this.extractTextFromBuffer(buffer);
+      
+      if (onProgress) onProgress(100);
+      
+      return result;
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Error in progressive extraction: ${errorMessage}`);
+      throw error;
+    }
   }
 }

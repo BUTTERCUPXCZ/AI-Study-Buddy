@@ -8,13 +8,14 @@ import { PdfNotesQueue } from './queues/pdf-notes.queue';
 import { AiNotesQueue } from './queues/ai-notes.queue';
 import { AiQuizQueue } from './queues/ai-quiz.queue';
 import { PdfExtractWorker } from './workers/pdf-extract.worker';
-import { PdfNotesWorker } from './workers/pdf-notes.worker';
+import { PdfNotesOptimizedWorker } from './workers/pdf-notes-optimized.worker';
 import { AiNotesWorker } from './workers/ai-notes.worker';
 import { DatabaseModule } from '../database/database.module';
 import { AiModule } from '../ai/ai.module';
 import { WebsocketModule } from '../websocket/websocket.module';
 import { CompletionWorker } from './workers/completion.worker';
 import { CompletionQueue } from './queues/completion.queue';
+import { PdfNotesOptimizedQueue } from './queues/pdf-notes-optimized.queue';
 
 @Module({
   imports: [
@@ -39,17 +40,92 @@ import { CompletionQueue } from './queues/completion.queue';
             password: redisPassword,
             // For Upstash with TLS
             tls: redisPassword ? {} : undefined,
+            // BullMQ requires maxRetriesPerRequest to be null
+            maxRetriesPerRequest: null,
+            enableReadyCheck: false,
+            enableOfflineQueue: false,
+          },
+          // Default job options for better performance
+          defaultJobOptions: {
+            removeOnComplete: {
+              age: 3600, // 1 hour
+              count: 1000,
+            },
+            removeOnFail: {
+              age: 86400, // 24 hours
+              count: 5000,
+            },
           },
         };
       },
       inject: [ConfigService],
     }),
     BullModule.registerQueue(
-      { name: 'pdf-extract' },
-      { name: 'pdf-notes' },
-      { name: 'ai-notes' },
-      { name: 'ai-quiz' },
-      { name: 'completion' },
+      { 
+        name: 'pdf-extract',
+        // Worker settings to reduce Redis polling
+        defaultJobOptions: {
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 2000,
+          },
+        },
+      },
+      { 
+        name: 'pdf-notes',
+        defaultJobOptions: {
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 2000,
+          },
+        },
+      },
+      { 
+        name: 'pdf-notes-optimized',
+        defaultJobOptions: {
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 1000, // Faster retry for optimized queue
+          },
+          removeOnComplete: {
+            age: 3600,
+            count: 1000,
+          },
+        },
+      },
+      { 
+        name: 'ai-notes',
+        defaultJobOptions: {
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 3000,
+          },
+        },
+      },
+      { 
+        name: 'ai-quiz',
+        defaultJobOptions: {
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 3000,
+          },
+        },
+      },
+      { 
+        name: 'completion',
+        defaultJobOptions: {
+          attempts: 2,
+          backoff: {
+            type: 'exponential',
+            delay: 1000,
+          },
+        },
+      },
     ),
   ],
   controllers: [JobsController],
@@ -57,11 +133,12 @@ import { CompletionQueue } from './queues/completion.queue';
     JobsService,
     PdfExtractQueue,
     PdfNotesQueue,
+    PdfNotesOptimizedQueue,
     AiNotesQueue,
     AiQuizQueue,
     CompletionQueue,
     PdfExtractWorker,
-    PdfNotesWorker,
+    PdfNotesOptimizedWorker,
     AiNotesWorker,
     CompletionWorker,
   ],
@@ -69,6 +146,7 @@ import { CompletionQueue } from './queues/completion.queue';
     JobsService,
     PdfExtractQueue,
     PdfNotesQueue,
+    PdfNotesOptimizedQueue,
     AiNotesQueue,
     AiQuizQueue,
     CompletionQueue,

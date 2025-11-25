@@ -8,7 +8,15 @@ import { JobsWebSocketGateway } from '../../websocket/websocket.gateway';
 import { CreateAiNotesJobDto, AiNotesJobResult } from '../dto/ai-notes.dto';
 import { JobStatus } from '@prisma/client';
 
-@Processor('ai-notes')
+// CRITICAL: Configure worker to reduce Redis polling and avoid hitting Upstash request limits
+@Processor('ai-notes', {
+  concurrency: 2, // Limit concurrent processing
+  stalledInterval: 60000, // Check for stalled jobs every 60s instead of 30s
+  maxStalledCount: 1, // Reduce stalled job checks
+  lockDuration: 60000, // 60 seconds lock
+  lockRenewTime: 30000, // Renew halfway through
+  drainDelay: 60, // Long-poll Redis for 60s when idle to cut request volume
+})
 export class AiNotesWorker extends WorkerHost {
   private readonly logger = new Logger(AiNotesWorker.name);
 
