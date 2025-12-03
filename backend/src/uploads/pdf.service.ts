@@ -9,7 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { PdfNotesQueue } from '../jobs/queues/pdf-notes.queue';
 import { PdfNotesOptimizedQueue } from '../jobs/queues/pdf-notes-optimized.queue';
-import { File } from '@prisma/client';
+
 
 @Injectable()
 export class PdfService {

@@ -6,6 +6,7 @@ export interface UploadResponse {
   name: string;
   userId: string;
   jobId: string;
+  optimizedJobId?: string;
   message: string;
 }
 
@@ -17,11 +18,17 @@ export interface JobStatus {
   opts?: {
     stage?: string;
   };
-  data?: unknown;
+  data?: {
+    noteId?: string;
+    fileId?: string;
+    userId?: string;
+    [key: string]: unknown;
+  };
   result?: {
     noteId?: string;
     fileId?: string;
     userId?: string;
+    [key: string]: unknown;
   };
 }
 

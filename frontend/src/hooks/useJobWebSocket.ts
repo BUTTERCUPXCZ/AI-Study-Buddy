@@ -116,33 +116,47 @@
 
     // Connect to WebSocket when enabled
     useEffect(() => {
-        if (!enabled || !userId) {
-        webSocketService.disconnect();
-        setIsConnected(false);
+        // Don't disconnect if disabled - just don't subscribe
+        if (!userId) {
         return;
         }
 
-        // Connect and setup handlers
+        // Always keep WebSocket connected for better reliability
         webSocketService.connect();
         
         webSocketService.on({
         onConnect: () => {
+            console.log('[useJobWebSocket] Connected to WebSocket');
             setIsConnected(true);
             setConnectionError(null);
             
-            // Subscribe to user's job updates
-            webSocketService.subscribeToJobs({ userId });
+            // Re-subscribe to user's job updates on every connect/reconnect
+            if (enabled) {
+                console.log('[useJobWebSocket] Subscribing to user:', userId);
+                webSocketService.subscribeToJobs({ userId });
+            }
+            
+            // Also re-subscribe to specific job if we're tracking one
+            setCurrentJobId(jobId => {
+                if (jobId && enabled) {
+                    console.log('[useJobWebSocket] Re-subscribing to job:', jobId);
+                    webSocketService.subscribeToJobs({ jobId });
+                }
+                return jobId;
+            });
             
             // If we were polling, stop it since WebSocket is back
             stopPolling();
         },
         
-        onDisconnect: () => {
+        onDisconnect: (reason) => {
+            console.warn('[useJobWebSocket] Disconnected from WebSocket:', reason);
             setIsConnected(false);
             
             // Start polling if we have an active job - use functional state update to get latest
             setCurrentJobId(currentId => {
             if (currentId) {
+                console.log('[useJobWebSocket] Starting polling fallback for job:', currentId);
                 startPolling(currentId);
             }
             return currentId;
@@ -207,30 +221,47 @@
         });
 
         return () => {
-        if (userId) {
+        // Don't disconnect - just unsubscribe when component unmounts or userId changes
+        if (userId && enabled) {
+            console.log('[useJobWebSocket] Unsubscribing from user:', userId);
             webSocketService.unsubscribeFromJobs({ userId });
         }
-        webSocketService.disconnect();
+        // Keep connection alive but stop polling
         stopPolling();
         };
     }, [userId, enabled, queryClient, startPolling, stopPolling]);
 
     // Monitor job tracking
     const trackJob = useCallback((jobId: string) => {
+        console.log('[useJobWebSocket] Tracking job:', jobId);
         setCurrentJobId(jobId);
+        
+        // Subscribe to specific job room for direct updates
+        if (isConnected && enabled) {
+            console.log('[useJobWebSocket] Subscribing to job room:', jobId);
+            webSocketService.subscribeToJobs({ jobId });
+        }
         
         // If WebSocket is not connected, start polling immediately
         if (!isConnected) {
-        startPolling(jobId);
+            console.log('[useJobWebSocket] WebSocket not connected, starting polling');
+            startPolling(jobId);
         }
-    }, [isConnected, startPolling]);
+    }, [isConnected, enabled, startPolling]);
 
     // Stop tracking job
     const stopTracking = useCallback(() => {
-        setCurrentJobId(null);
+        console.log('[useJobWebSocket] Stopping job tracking');
+        setCurrentJobId(jobId => {
+            if (jobId && isConnected && enabled) {
+                console.log('[useJobWebSocket] Unsubscribing from job room:', jobId);
+                webSocketService.unsubscribeFromJobs({ jobId });
+            }
+            return null;
+        });
         setJobProgress(null);
         stopPolling();
-    }, [stopPolling]);
+    }, [stopPolling, isConnected, enabled]);
 
     return {
         isConnected,

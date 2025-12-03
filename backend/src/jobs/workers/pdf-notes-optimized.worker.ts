@@ -9,9 +9,8 @@ import { JobsService } from '../jobs.service';
 import { DatabaseService } from '../../database/database.service';
 import { JobsWebSocketGateway } from '../../websocket/websocket.gateway';
 import { PdfCacheUtil } from '../utils/pdf-cache.util';
-import { TextChunkUtil } from '../utils/text-chunk.util';
 import { PdfParserUtil } from '../utils/pdf-parser.util';
-import { OPTIMIZED_PDF_PROMPT, createContextualChunkPrompt } from '../../ai/prompts/optimized-prompts';
+import { EXAM_READY_NOTES_PROMPT } from '../../ai/prompts/optimized-prompts';
 import { JobStatus } from '@prisma/client';
 
 export interface CreatePdfNotesJobDto {
@@ -27,7 +26,6 @@ export interface PdfNotesJobResult {
   fileName: string;
   processingTime: number;
   cacheHit: boolean;
-  chunked: boolean;
   metrics: {
     downloadTimeMs: number;
     textExtractionTimeMs: number;
@@ -43,13 +41,12 @@ export interface PdfNotesJobResult {
  * 
  * Optimizations:
  * 1. PDF content hashing → instant cache hits (0.5s)
- * 2. Parallel text extraction + chunk processing
- * 3. Concurrent LLM calls (3-5 chunks at once)
- * 4. Progressive WebSocket updates
- * 5. Async DB writes (non-blocking)
- * 6. Job deduplication
- * 7. Streaming PDF parsing (25% faster)
- * 8. Early AI processing start (overlap operations)
+ * 2. Single comprehensive LLM call for detailed exam-ready notes
+ * 3. Progressive WebSocket updates
+ * 4. Async DB writes (non-blocking)
+ * 5. Job deduplication
+ * 6. Streaming PDF parsing (25% faster)
+ * 7. Early AI processing start (overlap operations)
  */
 @Processor('pdf-notes-optimized', {
   concurrency: 15, // Increased from 10 → 15 for higher throughput
@@ -147,43 +144,55 @@ export class PdfNotesOptimizedWorker extends WorkerHost {
         
         const cached = cachedNotes.value;
         
-        // Create new note record for this user
-        const noteRecord = await this.databaseService.note.create({
-          data: {
-            title: cached.title,
-            content: cached.content,
-            source: fileId,
-            userId: userId,
-          },
-        });
-
-        await this.updateProgress(job, 100, 'completed');
+        await this.updateProgress(job, 90, 'saving');
+        const dbStart = Date.now();
         
-        const totalTime = Date.now() - startTime;
-        this.logger.log(`✅ Completed in ${totalTime}ms (CACHE HIT)`);
+        try {
+          // Create new note record for this user with cached content
+          this.logger.log(`💾 Creating note from cache for user ${userId}`);
+          const noteRecord = await this.databaseService.note.create({
+            data: {
+              title: cached.title,
+              content: cached.content,
+              source: fileId,
+              userId: userId,
+            },
+          });
+          
+          const dbTime = Date.now() - dbStart;
+          this.logger.log(`💾 Saved to DB in ${dbTime}ms (CACHE HIT) - Note ID: ${noteRecord.id}`);
 
-        const cacheResult = {
-          noteId: noteRecord.id,
-          title: noteRecord.title,
-          fileName,
-          userId: userId,
-          processingTime: totalTime,
-          cacheHit: true,
-          chunked: false,
-          metrics: {
-            downloadTimeMs: downloadTime,
-            textExtractionTimeMs: 0,
-            aiProcessingTimeMs: 0,
-            dbWriteTimeMs: totalTime - downloadTime,
-            totalTimeMs: totalTime,
-          },
-        };
+          await this.updateProgress(job, 100, 'completed');
+          
+          const totalTime = Date.now() - startTime;
+          this.logger.log(`✅ Completed in ${totalTime}ms (CACHE HIT)`);
 
-        // Emit completion event to frontend (cache hit)
-        await this.wsGateway.emitJobCompleted(job.id!, cacheResult);
-        this.logger.log(`📡 WebSocket completion event sent (CACHE HIT) for note ${noteRecord.id}`);
+          const cacheResult = {
+            noteId: noteRecord.id,
+            title: noteRecord.title,
+            fileName,
+            userId: userId,
+            processingTime: totalTime,
+            cacheHit: true,
+            metrics: {
+              downloadTimeMs: downloadTime,
+              textExtractionTimeMs: 0,
+              aiProcessingTimeMs: 0,
+              dbWriteTimeMs: dbTime,
+              totalTimeMs: totalTime,
+            },
+          };
 
-        return cacheResult;
+          // Emit completion event to frontend (cache hit)
+          await this.wsGateway.emitJobCompleted(job.id!, cacheResult);
+          this.logger.log(`📡 WebSocket completion event sent (CACHE HIT) for note ${noteRecord.id}`);
+
+          return cacheResult;
+        } catch (dbError) {
+          const errorMsg = dbError instanceof Error ? dbError.message : 'Unknown DB error';
+          this.logger.error(`❌ Database save failed (CACHE HIT): ${errorMsg}`);
+          throw new Error(`Failed to save cached note to database: ${errorMsg}`);
+        }
       }
 
       // ============ PHASE 4: USE EXTRACTED TEXT (already done in parallel!) ============
@@ -195,29 +204,13 @@ export class PdfNotesOptimizedWorker extends WorkerHost {
       const { text: extractedText, pageCount, extractTime } = extractionResult.value;
       await this.updateProgress(job, 30, 'text_ready');
 
-      // ============ PHASE 5: PARALLEL LLM PROCESSING (30-85%) ============
+      // ============ PHASE 5: COMPREHENSIVE LLM PROCESSING (30-85%) ============
       const aiStart = Date.now();
-      let noteContent: string;
-      let chunked = false;
-
-      // Decide: single LLM call or parallel chunks
-      if (TextChunkUtil.shouldChunk(extractedText, 8000)) {
-        // Large document → parallel processing
-        this.logger.log('🔀 Large document - using parallel chunk processing');
-        chunked = true;
-        
-        noteContent = await this.processWithParallelChunks(
-          job,
-          extractedText,
-          fileName,
-        );
-      } else {
-        // Small document → single fast call
-        this.logger.log('⚡ Small document - single LLM call');
-        await this.updateProgress(job, 50, 'generating_notes');
-        
-        noteContent = await this.processSingleChunk(extractedText, fileName);
-      }
+      
+      this.logger.log('🤖 Generating comprehensive exam-ready study notes');
+      await this.updateProgress(job, 50, 'generating_notes');
+      
+      const noteContent = await this.generateComprehensiveNotes(extractedText, fileName);
 
       const aiTime = Date.now() - aiStart;
       this.logger.log(`🤖 AI processing completed in ${aiTime}ms`);
@@ -265,7 +258,6 @@ export class PdfNotesOptimizedWorker extends WorkerHost {
         userId: userId,
         processingTime: totalTime,
         cacheHit: false,
-        chunked,
         metrics: {
           downloadTimeMs: downloadTime,
           textExtractionTimeMs: extractTime,
@@ -287,70 +279,27 @@ export class PdfNotesOptimizedWorker extends WorkerHost {
   }
 
   /**
-   * Process small documents with single LLM call
+   * Generate comprehensive exam-ready study notes from the entire document
+   * Uses a single LLM call with detailed instructions for thorough content coverage
    */
-  private async processSingleChunk(text: string, fileName: string): Promise<string> {
+  private async generateComprehensiveNotes(text: string, fileName: string): Promise<string> {
+    const title = this.generateTitle(fileName);
+    
+    this.logger.log(`📄 Processing ${text.length} characters of content`);
+    
     const result = await this.aiService['model'].generateContent([
-      OPTIMIZED_PDF_PROMPT,
-      `\n\nDocument: ${fileName}\n\nContent:\n${text}`,
+      EXAM_READY_NOTES_PROMPT,
+      `\n\nDocument: ${title}\n\nContent:\n${text}`,
     ]);
 
-    return this.cleanGeneratedText(result.response.text());
-  }
-
-  /**
-   * Process large documents with parallel chunk processing
-   * This is the KEY optimization - process 3-5 chunks concurrently
-   */
-  private async processWithParallelChunks(
-    job: Job,
-    text: string,
-    fileName: string,
-  ): Promise<string> {
-    // Split into semantic chunks
-    const chunks = TextChunkUtil.semanticChunk(text, 4000, 5);
-    this.logger.log(`📦 Split into ${chunks.length} chunks for parallel processing`);
-
-    // Process ALL chunks in parallel
-    const chunkPromises = chunks.map(async (chunk, index) => {
-      const progress = 30 + (index / chunks.length) * 55; // 30% → 85%
-      await this.updateProgress(job, Math.round(progress), 'generating_notes');
-
-      const isFirst = index === 0;
-      const isLast = index === chunks.length - 1;
-      const prompt = createContextualChunkPrompt(index, chunks.length, isFirst, isLast);
-
-      this.logger.log(`🔄 Processing chunk ${index + 1}/${chunks.length}...`);
-      
-      const result = await this.aiService['model'].generateContent([
-        prompt,
-        `\n\nContent:\n${chunk}`,
-      ]);
-
-      const chunkResult = this.cleanGeneratedText(result.response.text());
-      
-      // Send progressive update via WebSocket
-      this.wsGateway.emitJobUpdate(job.id!, 'chunk_complete', {
-        jobId: job.id!,
-        userId: job.data.userId,
-        progress: Math.round(progress),
-        message: `Chunk ${index + 1}/${chunks.length} complete`,
-        // Note: chunkIndex and preview info sent via custom event if needed
-      });
-
-      return chunkResult;
-    });
-
-    // Wait for ALL chunks to complete (concurrent processing!)
-    const chunkResults = await Promise.all(chunkPromises);
-    this.logger.log(`✅ All ${chunks.length} chunks processed concurrently`);
-
-    // Merge results intelligently
-    const merged = TextChunkUtil.mergeChunkedNotes(chunkResults);
+    const generatedNotes = this.cleanGeneratedText(result.response.text());
     
-    // Add title
-    const title = this.generateTitle(fileName);
-    return `# ${title}\n\n${merged}`;
+    // Ensure title is included
+    if (!generatedNotes.startsWith('#')) {
+      return `# ${title}\n\n${generatedNotes}`;
+    }
+    
+    return generatedNotes;
   }
 
   /**

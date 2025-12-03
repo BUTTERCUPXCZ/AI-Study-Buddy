@@ -160,15 +160,19 @@ export class JobsWebSocketGateway
 
     // Emit to job-specific room
     this.server.to(`job:${jobId}`).emit('job:completed', payload);
+    this.logger.log(`Emitted job:completed to job:${jobId}`);
 
     // Emit to user room if userId is provided
-
     if (result && typeof result === 'object' && 'userId' in result) {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      this.server.to(`user:${result.userId}`).emit('job:completed', payload);
+      const userId = result.userId as string;
+      this.server.to(`user:${userId}`).emit('job:completed', payload);
+      this.logger.log(`Emitted job:completed to user:${userId}`);
+    } else {
+      this.logger.warn(`No userId found in result for job ${jobId}, only job room notified`);
     }
 
-    // Emit to all jobs room
+    // Emit to all jobs room as fallback
     this.server.to('all-jobs').emit('job:completed', payload);
 
     this.logger.log(`Job completed notification sent for job ${jobId}`);

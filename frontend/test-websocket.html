@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Test</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #333; margin-top: 0; }
+        .status {
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            font-weight: bold;
+        }
+        .connected { background: #d4edda; color: #155724; }
+        .disconnected { background: #f8d7da; color: #721c24; }
+        button {
+            padding: 12px 24px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-primary:hover { background: #0056b3; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-success:hover { background: #218838; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-danger:hover { background: #c82333; }
+        input {
+            padding: 10px;
+            margin: 5px 0;
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        #log {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            margin-top: 20px;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-left: 3px solid #007bff;
+            background: white;
+        }
+        .log-success { border-left-color: #28a745; }
+        .log-error { border-left-color: #dc3545; }
+        .log-warning { border-left-color: #ffc107; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔌 WebSocket Connection Test</h1>
+        
+        <div id="status" class="status disconnected">
+            ❌ Disconnected
+        </div>
+
+        <div style="margin: 20px 0;">
+            <button onclick="connect()" class="btn-primary">Connect</button>
+            <button onclick="disconnect()" class="btn-danger">Disconnect</button>
+        </div>
+
+        <hr>
+
+        <h3>Subscribe to Rooms</h3>
+        <input type="text" id="userId" placeholder="User ID (e.g., 09a239dd-f6b5-47dd-9f11-3a923c63829c)">
+        <button onclick="subscribeUser()" class="btn-success">Subscribe to User</button>
+        
+        <input type="text" id="jobId" placeholder="Job ID (e.g., pdf-notes-opt-1234567890-abc123)" style="margin-top: 10px;">
+        <button onclick="subscribeJob()" class="btn-success">Subscribe to Job</button>
+
+        <hr>
+
+        <h3>📋 Event Log</h3>
+        <button onclick="clearLog()" class="btn-danger" style="float: right;">Clear Log</button>
+        <div id="log"></div>
+    </div>
+
+    <script>
+        let socket = null;
+        const API_URL = 'http://localhost:3000'; // Change this to your backend URL
+
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            const timestamp = new Date().toLocaleTimeString();
+            entry.textContent = `[${timestamp}] ${message}`;
+            logDiv.insertBefore(entry, logDiv.firstChild);
+        }
+
+        function updateStatus(connected) {
+            const statusDiv = document.getElementById('status');
+            if (connected) {
+                statusDiv.className = 'status connected';
+                statusDiv.textContent = '✅ Connected';
+            } else {
+                statusDiv.className = 'status disconnected';
+                statusDiv.textContent = '❌ Disconnected';
+            }
+        }
+
+        function connect() {
+            if (socket?.connected) {
+                log('Already connected', 'warning');
+                return;
+            }
+
+            log('Connecting to ' + API_URL + '/jobs...', 'info');
+            
+            socket = io(API_URL + '/jobs', {
+                transports: ['websocket'],
+                reconnection: true,
+                reconnectionDelay: 1000,
+                reconnectionAttempts: 5
+            });
+
+            socket.on('connect', () => {
+                log('✅ Connected! Socket ID: ' + socket.id, 'success');
+                updateStatus(true);
+            });
+
+            socket.on('disconnect', (reason) => {
+                log('❌ Disconnected: ' + reason, 'error');
+                updateStatus(false);
+            });
+
+            socket.on('connect_error', (error) => {
+                log('❌ Connection error: ' + error.message, 'error');
+                updateStatus(false);
+            });
+
+            socket.on('job:progress', (data) => {
+                log(`📊 Progress: ${data.jobId} - ${data.progress}% (${data.message || ''})`, 'info');
+            });
+
+            socket.on('job:completed', (data) => {
+                log(`✅ Job Completed: ${data.jobId}`, 'success');
+                log(`   Result: ${JSON.stringify(data.result, null, 2)}`, 'success');
+            });
+
+            socket.on('job:error', (data) => {
+                log(`❌ Job Error: ${data.jobId} - ${data.error}`, 'error');
+            });
+
+            socket.on('job:update', (data) => {
+                log(`🔔 Job Update: ${JSON.stringify(data)}`, 'info');
+            });
+        }
+
+        function disconnect() {
+            if (!socket) {
+                log('Not connected', 'warning');
+                return;
+            }
+            log('Disconnecting...', 'info');
+            socket.disconnect();
+            socket = null;
+            updateStatus(false);
+        }
+
+        function subscribeUser() {
+            const userId = document.getElementById('userId').value;
+            if (!userId) {
+                alert('Please enter a User ID');
+                return;
+            }
+            if (!socket?.connected) {
+                alert('Please connect first');
+                return;
+            }
+            log(`📡 Subscribing to user:${userId}`, 'info');
+            socket.emit('subscribe:jobs', { userId });
+        }
+
+        function subscribeJob() {
+            const jobId = document.getElementById('jobId').value;
+            if (!jobId) {
+                alert('Please enter a Job ID');
+                return;
+            }
+            if (!socket?.connected) {
+                alert('Please connect first');
+                return;
+            }
+            log(`📡 Subscribing to job:${jobId}`, 'info');
+            socket.emit('subscribe:jobs', { jobId });
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+
+        // Auto-connect on page load
+        window.onload = () => {
+            log('WebSocket test page loaded', 'info');
+            log('Click "Connect" to start', 'info');
+        };
+    </script>
+</body>
+</html>

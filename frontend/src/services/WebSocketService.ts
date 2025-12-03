@@ -60,6 +60,7 @@ class WebSocketService {
   private eventHandlers: WebSocketEventHandlers = {};
   private isConnecting: boolean = false; // Prevent duplicate connections
   private subscriptions: Set<string> = new Set(); // Track active subscriptions
+  private pendingSubscriptions: Set<string> = new Set(); // Track subscriptions to restore on reconnect
 
   /**
    * Initialize and connect to the WebSocket server
@@ -104,6 +105,18 @@ class WebSocketService {
       console.log('WebSocket connected:', this.socket?.id);
       this.isConnectedState = true;
       this.isConnecting = false;
+      
+      // Auto-resubscribe to all pending subscriptions on reconnect
+      if (this.pendingSubscriptions.size > 0) {
+        console.log('Restoring', this.pendingSubscriptions.size, 'subscriptions after reconnect');
+        this.pendingSubscriptions.forEach(subKey => {
+          const params = JSON.parse(subKey);
+          this.socket?.emit('subscribe:jobs', params);
+          this.subscriptions.add(subKey);
+          console.log('Restored subscription:', params);
+        });
+      }
+      
       this.eventHandlers.onConnect?.();
     });
 
@@ -154,7 +167,10 @@ class WebSocketService {
    */
   subscribeToJobs(params: { userId?: string; jobId?: string }): void {
     if (!this.socket?.connected) {
-      console.warn('Cannot subscribe: WebSocket not connected');
+      console.warn('Cannot subscribe: WebSocket not connected, saving for reconnect');
+      // Save subscription to restore on reconnect
+      const subKey = JSON.stringify(params);
+      this.pendingSubscriptions.add(subKey);
       return;
     }
 
@@ -167,6 +183,7 @@ class WebSocketService {
 
     this.socket.emit('subscribe:jobs', params);
     this.subscriptions.add(subKey);
+    this.pendingSubscriptions.add(subKey); // Also add to pending for reconnect scenarios
     console.log('Subscribed to jobs:', params);
   }
 
@@ -174,15 +191,14 @@ class WebSocketService {
    * Unsubscribe from job updates
    */
   unsubscribeFromJobs(params: { userId?: string; jobId?: string }): void {
-    if (!this.socket?.connected) {
-      return;
-    }
-
     const subKey = JSON.stringify(params);
     this.subscriptions.delete(subKey);
+    this.pendingSubscriptions.delete(subKey);
 
-    this.socket.emit('unsubscribe:jobs', params);
-    console.log('Unsubscribed from jobs:', params);
+    if (this.socket?.connected) {
+      this.socket.emit('unsubscribe:jobs', params);
+      console.log('Unsubscribed from jobs:', params);
+    }
   }
 
   /**
@@ -198,6 +214,7 @@ class WebSocketService {
       this.isConnecting = false;
       this.eventHandlers = {};
       this.subscriptions.clear();
+      this.pendingSubscriptions.clear();
     }
   }
 

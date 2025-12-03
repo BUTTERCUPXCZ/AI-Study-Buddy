@@ -287,9 +287,8 @@ function RouteComponent() {
     stage: string;
     status: 'processing' | 'completed' | 'failed';
   } | null>(null)
-  // Control WebSocket connection - only enable when processing
-  // This prevents unnecessary connection delays when just browsing notes
-  const [enableWebSocket, setEnableWebSocket] = useState(false)
+  // Keep WebSocket connection alive at all times for instant updates
+  // This prevents connection delays and missed events
 
   // Wrap onJobCompleted in useCallback
   const onJobCompleted = useCallback((noteId?: string) => {
@@ -312,11 +311,10 @@ function RouteComponent() {
       setTimeout(() => {
         navigate({ to: '/notes/$noteId', params: { noteId } });
         
-        // Clear processing job and disable WebSocket after redirect
+        // Clear processing job after redirect
         setProcessingJob(null);
         setSelectedFiles([]);
         setValidationError('');
-        setEnableWebSocket(false);
       }, 500); // Short delay to show success message
     } else {
       // Fallback: just clear the processing state if no noteId
@@ -324,7 +322,6 @@ function RouteComponent() {
         setProcessingJob(null);
         setSelectedFiles([]);
         setValidationError('');
-        setEnableWebSocket(false);
       }, 2000);
     }
   }, [queryClient, navigate, user?.id]); 
@@ -342,11 +339,10 @@ function RouteComponent() {
       setProcessingJob(null);
       setSelectedFiles([]);
       setValidationError('');
-      setEnableWebSocket(false); // Disconnect WebSocket after failure
     }, 3000);
   }, []);
 
-  // WebSocket connection for job tracking - LAZY CONNECTION
+  // WebSocket connection for job tracking - ALWAYS ENABLED
   const { 
     jobProgress, 
     trackJob, 
@@ -355,19 +351,19 @@ function RouteComponent() {
     usingPolling 
   } = useJobWebSocket({
     userId: user?.id,
-    enabled: enableWebSocket, // Only connect when actively processing
+    enabled: true, // Always keep WebSocket enabled for instant updates
     onJobCompleted: onJobCompleted,
     onJobFailed: onJobFailed,
   });
 
   // Log WebSocket connection state changes
   useEffect(() => {
-    if (enableWebSocket && isConnected) {
+    if (isConnected) {
       console.log('✅ WebSocket connected for real-time job tracking');
-    } else if (enableWebSocket && !isConnected && usingPolling) {
+    } else if (!isConnected && usingPolling) {
       console.log('🔄 Using polling fallback for job tracking');
     }
-  }, [enableWebSocket, isConnected, usingPolling]);
+  }, [isConnected, usingPolling]);
 
   // Update processing job with real-time progress
   useEffect(() => {
@@ -482,9 +478,6 @@ function RouteComponent() {
         status: 'processing'
       });
 
-      // Enable WebSocket connection now that we're processing
-      setEnableWebSocket(true);
-
       // Upload and process the PDF
       const result = await uploadAsync({
         file,
@@ -493,9 +486,15 @@ function RouteComponent() {
       })
 
       // Track the job with WebSocket/polling
-      if (result?.uploadResult?.jobId) {
-        setProcessingJob(prev => prev ? { ...prev, jobId: result.uploadResult.jobId } : null);
-        trackJob(result.uploadResult.jobId);
+      // Prefer optimized job ID if available
+      const jobIdToTrack = result?.uploadResult?.optimizedJobId || result?.uploadResult?.jobId;
+      
+      if (jobIdToTrack) {
+        console.log('[NotesIndex] Tracking job:', jobIdToTrack);
+        setProcessingJob(prev => prev ? { ...prev, jobId: jobIdToTrack } : null);
+        trackJob(jobIdToTrack);
+      } else {
+        console.error('[NotesIndex] No jobId returned from upload');
       }
 
       // Success is handled by the WebSocket/polling callbacks
@@ -513,7 +512,6 @@ function RouteComponent() {
         stopTracking();
         setSelectedFiles([]);
         setValidationError('');
-        setEnableWebSocket(false); // Disconnect WebSocket after error
       }, 3000);
     }
   }

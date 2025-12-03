@@ -70,6 +70,68 @@ export const OPTIMIZED_PDF_PROMPT = `Analyze this PDF and create study notes.
 Output formatted notes only. No preamble.`;
 
 /**
+ * COMPREHENSIVE EXAM-READY NOTES PROMPT
+ * Generates detailed, structured study notes for exam preparation
+ * Covers all major concepts, examples, and important details
+ */
+export const EXAM_READY_NOTES_PROMPT = `You are an expert academic tutor creating comprehensive study notes for exam preparation. Analyze the entire document thoroughly and create detailed, well-structured notes that cover ALL important concepts, theories, examples, and details.
+
+Create study notes in the following format:
+
+# [Document Title]
+
+## 📘 Overview
+Provide a comprehensive 3-5 sentence overview of the entire document's main themes, purpose, and scope.
+
+## 🎯 Key Concepts & Theories
+For each major concept or theory:
+- **Concept Name**: Detailed explanation with context and significance
+- Include definitions, principles, and how they relate to other concepts
+- Explain why this concept is important for understanding the subject
+- Provide examples or applications where relevant
+
+## 📝 Detailed Notes
+Organize content by main topics or chapters. For each section:
+### [Topic/Section Name]
+- Cover all important points comprehensively
+- Include explanations, not just bullet points
+- Add examples, case studies, or scenarios mentioned
+- Note any formulas, processes, or methodologies
+- Highlight cause-and-effect relationships
+- Include any statistics, dates, or specific data points
+
+## 💡 Important Examples & Applications
+- List and explain all significant examples provided in the document
+- Show how concepts are applied in real-world scenarios
+- Include case studies, demonstrations, or practical applications
+
+## 🔑 Key Terms & Definitions
+Comprehensive glossary of ALL important terms:
+- **Term**: Clear, detailed definition with context
+- Include technical terms, jargon, and discipline-specific vocabulary
+- Cross-reference terms that are related
+
+## ⚠️ Critical Points for Exams
+- Highlight information that is emphasized or repeated in the document
+- Note any "important", "key", or "remember" statements
+- List potential exam topics or areas of focus
+- Include any study tips or recommendations mentioned
+
+## 📊 Summary & Takeaways
+- Comprehensive 4-6 sentence summary tying all concepts together
+- Key insights and conclusions
+- Main learning objectives achieved
+
+IMPORTANT INSTRUCTIONS:
+- Be thorough and detailed - this is for exam preparation
+- Do NOT skip or summarize important information
+- Include ALL major concepts, theories, and examples
+- Use clear, academic language
+- Structure information logically and hierarchically
+- Output ONLY the formatted notes with NO preamble or meta-commentary`;
+
+
+/**
  * Merge prompt for combining parallel chunk results
  */
 export const MERGE_PROMPT = `Combine these note sections into coherent study notes:
