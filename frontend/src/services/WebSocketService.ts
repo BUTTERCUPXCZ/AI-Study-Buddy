@@ -145,7 +145,8 @@ class WebSocketService {
     });
 
     this.socket.on('job:completed', (data: JobCompletedData) => {
-      console.log('Job completed:', data);
+      console.log('[WebSocketService] job:completed event received:', data);
+      console.log('[WebSocketService] Calling onJobCompleted handler');
       this.eventHandlers.onJobCompleted?.(data);
     });
 
@@ -167,7 +168,7 @@ class WebSocketService {
    */
   subscribeToJobs(params: { userId?: string; jobId?: string }): void {
     if (!this.socket?.connected) {
-      console.warn('Cannot subscribe: WebSocket not connected, saving for reconnect');
+      console.warn('[WebSocketService] Cannot subscribe: WebSocket not connected, saving for reconnect');
       // Save subscription to restore on reconnect
       const subKey = JSON.stringify(params);
       this.pendingSubscriptions.add(subKey);
@@ -177,14 +178,17 @@ class WebSocketService {
     // Create subscription key to prevent duplicates
     const subKey = JSON.stringify(params);
     if (this.subscriptions.has(subKey)) {
-      console.log('Already subscribed to:', params);
+      console.log('[WebSocketService] Already subscribed to:', params);
       return;
     }
 
-    this.socket.emit('subscribe:jobs', params);
+    console.log('[WebSocketService] Emitting subscribe:jobs with params:', params);
+    this.socket.emit('subscribe:jobs', params, (response: any) => {
+      console.log('[WebSocketService] Subscription response:', response);
+    });
     this.subscriptions.add(subKey);
     this.pendingSubscriptions.add(subKey); // Also add to pending for reconnect scenarios
-    console.log('Subscribed to jobs:', params);
+    console.log('[WebSocketService] Subscribed to jobs:', params);
   }
 
   /**

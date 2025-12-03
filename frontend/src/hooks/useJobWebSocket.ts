@@ -174,10 +174,12 @@
         },
         
         onJobCompleted: (data) => {
+            console.log('[useJobWebSocket] Job completed event received:', data);
             console.log('[useJobWebSocket] Job completed, invalidating notes for userId:', userId);
             
             // Extract noteId from the result
             const noteId = data.result?.noteId;
+            console.log('[useJobWebSocket] Extracted noteId:', noteId);
             
             // Set completed status briefly for UI feedback
             setJobProgress({
@@ -204,6 +206,7 @@
             console.log('[useJobWebSocket] Notes query invalidated and refetch triggered');
             
             // Trigger the callback with noteId immediately
+            console.log('[useJobWebSocket] Calling onJobCompleted callback with noteId:', noteId);
             onJobCompletedRef.current?.(noteId);
             
             // Clear state quickly to allow modal to close
