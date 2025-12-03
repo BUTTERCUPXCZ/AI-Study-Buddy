@@ -2,9 +2,8 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
-import { FileText, Download, Upload as UploadIcon, X, AlertCircle, Loader2, Wifi, WifiOff, CheckCircle2, MoreVertical, Trash2 } from 'lucide-react'
+import { FileText, Download, Upload as UploadIcon, X, AlertCircle, Loader2, MoreVertical, Trash2 } from 'lucide-react'
 import {
   Sheet,
   SheetContent,
@@ -13,6 +12,10 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet'
+import {
+  Dialog,
+  DialogContent,
+} from '@/components/ui/dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,7 +33,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { useState, useCallback, useEffect, memo } from 'react'
+import { useState, useCallback, useEffect, memo, useMemo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import AppLayout from '@/components/app-layout'
 import { useAuth } from '@/context/AuthContextDefinition'
@@ -39,6 +42,7 @@ import { useUploadPdf } from '@/hooks/useUpload'
 import { useJobWebSocket } from '@/hooks/useJobWebSocket'
 import { downloadNotePdf } from '@/lib/pdfUtils'
 import NotesService from '@/services/NotesService'
+import { ProgressBar } from '@/components/ProgressBar'
 
 // Helper functions
 const formatDate = (dateString: string) => {
@@ -51,122 +55,7 @@ const getExcerpt = (content: string, maxLength: number = 100) => {
   return content.substring(0, maxLength) + '...'
 }
 
-const getStageMessage = (stage: string) => {
-  if (!stage) return 'Processing your document...';
-  
-  switch (stage.toLowerCase()) {
-    case 'processing':
-    case 'uploading':
-      return 'Processing your PDF...';
-    case 'uploading_to_gemini':
-      return 'Uploading PDF to Gemini AI...';
-    case 'generating_notes':
-    case 'generating notes':
-    case 'gemini is analyzing your pdf and generating study notes...':
-      return 'Gemini is analyzing your PDF...';
-    case 'saving_notes':
-    case 'saving notes':
-      return 'Saving your generated notes...';
-    case 'completed':
-    case 'complete':
-      return 'Completed! ✓';
-    default:
-      return stage;
-  }
-};
-
-// Memoized Components
-const ProcessingJobCard = memo(({ 
-  processingJob, 
-  usingPolling, 
-  isConnected 
-}: { 
-  processingJob: { status: string; fileName: string; stage?: string; progress: number }, 
-  usingPolling: boolean, 
-  isConnected: boolean 
-}) => (
-  <Card className={`h-full border-2 shadow-md ${
-    processingJob.status === 'completed' ? 'border-green-500/50 bg-green-50/50 dark:bg-green-950/10' :
-    processingJob.status === 'failed' ? 'border-red-500/50 bg-red-50/50 dark:bg-red-950/10' :
-    'border-primary/50 bg-primary/5 animate-pulse'
-  } transition-all duration-300`}>
-    <CardHeader className="pb-3">
-      <div className="flex items-start justify-between gap-2">
-        <div className="space-y-1.5 flex-1 min-w-0">
-          <CardTitle className="text-lg font-semibold line-clamp-2 flex items-center gap-2">
-            {processingJob.status === 'completed' ? (
-              <>
-                <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
-                {processingJob.fileName}
-              </>
-            ) : processingJob.status === 'failed' ? (
-              <>
-                <AlertCircle className="h-5 w-5 text-red-600 shrink-0" />
-                {processingJob.fileName}
-              </>
-            ) : (
-              <>
-                <Loader2 className="h-5 w-5 animate-spin text-primary shrink-0" />
-                {processingJob.fileName}
-              </>
-            )}
-          </CardTitle>
-          <div className="flex items-center gap-2 mt-1">
-            <Badge variant={
-              processingJob.status === 'completed' ? 'default' :
-              processingJob.status === 'failed' ? 'destructive' :
-              'secondary'
-            } className="text-xs font-medium">
-              {processingJob.status === 'completed' ? 'Completed' :
-               processingJob.status === 'failed' ? 'Failed' :
-               'Processing'}
-            </Badge>
-            {!usingPolling && isConnected && (
-              <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-medium">
-                <Wifi className="h-3 w-3" />
-                Live
-              </span>
-            )}
-            {usingPolling && (
-              <span className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 font-medium">
-                <WifiOff className="h-3 w-3" />
-                Polling
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-    </CardHeader>
-    <CardContent className="pt-2 space-y-4">
-      {processingJob.status === 'processing' && (
-        <>
-          <div className="space-y-2">
-            <div className="flex justify-between text-xs font-medium text-muted-foreground">
-              <span>{getStageMessage(processingJob.stage || '')}</span>
-              <span>{Math.round(processingJob.progress)}%</span>
-            </div>
-            <Progress value={processingJob.progress} className="h-2" />
-          </div>
-          <p className="text-xs text-muted-foreground italic bg-background/50 p-2 rounded border">
-            💡 Gemini AI is reading your PDF directly for the best understanding!
-          </p>
-        </>
-      )}
-      {processingJob.status === 'completed' && (
-        <p className="text-sm text-green-700 dark:text-green-400 font-medium flex items-center gap-2">
-          <CheckCircle2 className="h-4 w-4" />
-          Study notes generated successfully! Refreshing list...
-        </p>
-      )}
-      {processingJob.status === 'failed' && (
-        <p className="text-sm text-red-700 dark:text-red-400 font-medium flex items-center gap-2">
-          <AlertCircle className="h-4 w-4" />
-          Failed to process PDF. Please try again.
-        </p>
-      )}
-    </CardContent>
-  </Card>
-));
+// Memoized Components - ProcessingJobCard removed, using new ProgressBar component
 
 const NoteCard = memo(({ 
   note, 
@@ -275,6 +164,7 @@ function RouteComponent() {
   } = useUploadPdf()
   
   const [open, setOpen] = useState(false)
+  const [progressModalOpen, setProgressModalOpen] = useState(false)
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [isDragging, setIsDragging] = useState(false)
   const [validationError, setValidationError] = useState<string>('')
@@ -297,25 +187,24 @@ function RouteComponent() {
     // Invalidate queries to refetch fresh data
     queryClient.invalidateQueries({ queryKey: ['notes', user?.id] });
     
-    // Ensure modal is closed
-    setOpen(false);
-    
     // If we have a noteId, redirect to the note page immediately
     if (noteId) {
       console.log('[Notes Page] Redirecting to note:', noteId);
       
-      // Small delay to show success state, then redirect
+      // Small delay to show success state, then redirect and close modal
       setTimeout(() => {
+        setProgressModalOpen(false);
         navigate({ to: '/notes/$noteId', params: { noteId } });
         
         // Clear processing job after redirect
         setProcessingJob(null);
         setSelectedFiles([]);
         setValidationError('');
-      }, 500); // Short delay to show success message
+      }, 1500); // Longer delay to show success message
     } else {
-      // Fallback: just clear the processing state if no noteId
+      // Fallback: just clear the processing state and close modal
       setTimeout(() => {
+        setProgressModalOpen(false);
         setProcessingJob(null);
         setSelectedFiles([]);
         setValidationError('');
@@ -329,10 +218,8 @@ function RouteComponent() {
     
     setProcessingJob(prev => prev ? { ...prev, status: 'failed' } : null);
     
-    // Ensu re modal is closed
-    setOpen(false);
-    
     setTimeout(() => {
+      setProgressModalOpen(false);
       setProcessingJob(null);
       setSelectedFiles([]);
       setValidationError('');
@@ -365,20 +252,58 @@ function RouteComponent() {
   // Update processing job with real-time progress
   useEffect(() => {
     if (jobProgress) {
+      console.log('📊 [NotesIndex] Received job progress update:', {
+        jobId: jobProgress.jobId,
+        progress: jobProgress.progress,
+        status: jobProgress.status,
+        message: jobProgress.message,
+        timestamp: jobProgress.timestamp
+      });
+      
       setProcessingJob(prev => {
-        // Only update if we have an active processing job
-        if (!prev) return null;
+        // If no active processing job, create one from the progress update
+        if (!prev) {
+          console.log('🆕 [NotesIndex] Creating new processing job from progress update');
+          return {
+            jobId: jobProgress.jobId,
+            fileName: 'Processing...',
+            progress: Math.min(Math.max(jobProgress.progress || 0, 0), 100),
+            stage: jobProgress.message || 'Processing...',
+            status: jobProgress.status === 'completed' || jobProgress.status === 'success' ? 'completed' : 
+                   jobProgress.status === 'failed' || jobProgress.status === 'error' ? 'failed' : 
+                   'processing'
+          };
+        }
+        
+        // Ensure we're updating the correct job (allow empty prev.jobId for initial updates)
+        if (prev.jobId && jobProgress.jobId && prev.jobId !== jobProgress.jobId) {
+          console.warn('⚠️  [NotesIndex] Job ID mismatch, ignoring update:', {
+            current: prev.jobId,
+            received: jobProgress.jobId
+          });
+          return prev;
+        }
+        
+        // Log the update
+        console.log('✅ [NotesIndex] Updating progress:', {
+          from: { progress: prev.progress, stage: prev.stage },
+          to: { progress: jobProgress.progress, stage: jobProgress.message }
+        });
+        
+        const newStatus = jobProgress.status === 'completed' || jobProgress.status === 'success' ? 'completed' : 
+                         jobProgress.status === 'failed' || jobProgress.status === 'error' ? 'failed' : 
+                         'processing';
         
         return {
           ...prev,
-          progress: jobProgress.progress,
-          stage: jobProgress.message || prev.stage,
-          status: jobProgress.status === 'completed' ? 'completed' : 
-                  jobProgress.status === 'failed' ? 'failed' : 'processing'
+          jobId: jobProgress.jobId || prev.jobId, // Update jobId if it was empty
+          progress: Math.min(Math.max(jobProgress.progress || 0, 0), 100),
+          stage: jobProgress.message || prev.stage || 'Processing...',
+          status: newStatus
         };
       });
     }
-  }, [jobProgress]); // Remove processingJob from dependencies to avoid infinite loop
+  }, [jobProgress]);
 
   // Show an initial skeleton when the page first mounts or when notes are empty.
   // This ensures users see the loading skeleton first (briefly) even if the
@@ -449,6 +374,19 @@ function RouteComponent() {
     }
   }
 
+  // File size validation: disable generate when any file > 10MB
+  const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB in bytes
+  const hasFileTooLarge = useMemo(() => selectedFiles.some(f => f.size > MAX_FILE_SIZE), [selectedFiles])
+
+  useEffect(() => {
+    // Only set the size error if present; otherwise don't overwrite other validation messages
+    if (hasFileTooLarge) {
+      setValidationError('One or more files exceed the 10MB limit')
+    } else if (validationError === 'One or more files exceed the 10MB limit') {
+      setValidationError('')
+    }
+  }, [hasFileTooLarge])
+
   const handleGenerateNotes = async () => {
     if (!user?.id) {
       alert('You must be logged in to upload files')
@@ -464,34 +402,47 @@ function RouteComponent() {
     const file = selectedFiles[0]
 
     try {
-      setOpen(false) // Close the upload drawer
-      
-      // Set processing job state
+      // Initialize processing job state FIRST
       setProcessingJob({
         jobId: '',
         fileName: file.name,
         progress: 0,
-        stage: 'Uploading PDF...',
+        stage: 'Initializing upload...',
         status: 'processing'
       });
-
-      // Upload and process the PDF
+      
+      // Close the upload drawer and open progress modal
+      setOpen(false)
+      setProgressModalOpen(true)
+      
+      // Upload and process the PDF first to get jobId
       const result = await uploadAsync({
         file,
         userId: user.id,
         fileName: file.name.replace('.pdf', '')
       })
 
-      // Track the job with WebSocket/polling
+      // Track the job with WebSocket/polling IMMEDIATELY
       // Prefer optimized job ID if available
       const jobIdToTrack = result?.uploadResult?.optimizedJobId || result?.uploadResult?.jobId;
       
       if (jobIdToTrack) {
         console.log('[NotesIndex] Tracking job:', jobIdToTrack);
-        setProcessingJob(prev => prev ? { ...prev, jobId: jobIdToTrack } : null);
+        
+        // Update processing job state with the actual jobId
+        setProcessingJob({
+          jobId: jobIdToTrack,
+          fileName: file.name,
+          progress: 5,
+          stage: 'Upload complete, starting processing...',
+          status: 'processing'
+        });
+        
+        // Subscribe to job-specific room immediately to catch any progress
         trackJob(jobIdToTrack);
       } else {
         console.error('[NotesIndex] No jobId returned from upload');
+        throw new Error('Failed to start processing job');
       }
 
       // Success is handled by the WebSocket/polling callbacks
@@ -501,10 +452,17 @@ function RouteComponent() {
       
       // Show error state
       const errorMessage = (error as { message?: string }).message || 'Unknown error';
-      setProcessingJob(prev => prev ? { ...prev, status: 'failed', stage: errorMessage } : null);
+      setProcessingJob({
+        jobId: '',
+        fileName: selectedFiles[0]?.name || 'Unknown',
+        progress: 0,
+        stage: errorMessage,
+        status: 'failed'
+      });
       
       // Reset states after showing error
       setTimeout(() => {
+        setProgressModalOpen(false);
         setProcessingJob(null);
         stopTracking();
         setSelectedFiles([]);
@@ -680,7 +638,7 @@ function RouteComponent() {
                   className="w-full h-12 text-base font-medium shadow-md hover:shadow-lg transition-all" 
                   size="lg"
                   onClick={handleGenerateNotes}
-                  disabled={selectedFiles.length === 0}
+                  disabled={selectedFiles.length === 0 || hasFileTooLarge}
                 >
                   Generate Study Notes
                 </Button>
@@ -690,7 +648,6 @@ function RouteComponent() {
         </div>
       </div>
 
-     
       {/* Notes Grid */}
       {shouldShowSkeletonOnly ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -722,17 +679,8 @@ function RouteComponent() {
             </Card>
           ))}
         </div>
-  ) : notes.length > 0 || processingJob ? (
+  ) : notes.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Processing Job Card */}
-          {processingJob && (
-            <ProcessingJobCard 
-              processingJob={processingJob}
-              usingPolling={usingPolling}
-              isConnected={isConnected}
-            />
-          )}
-          
           {/* Existing Notes */}
           {notes.map((note) => (
             <NoteCard 
@@ -761,6 +709,62 @@ function RouteComponent() {
         </div>
       ) : null }
     </div>
+
+    {/* Progress Modal */}
+    <Dialog 
+      open={progressModalOpen} 
+      onOpenChange={(open) => {
+        // Only allow closing if job is completed or failed
+        if (!open && processingJob?.status === 'processing') {
+          console.log('⚠️ Prevented modal close during processing');
+          return; // Prevent closing during processing
+        }
+        setProgressModalOpen(open);
+        // If closing and job is done, clean up
+        if (!open) {
+          setTimeout(() => {
+            setProcessingJob(null);
+            setSelectedFiles([]);
+            setValidationError('');
+          }, 300);
+        }
+      }}
+    >
+      <DialogContent 
+        className="sm:max-w-2xl border-2 p-0"
+        onPointerDownOutside={(e) => {
+          // Prevent closing when clicking outside during processing
+          if (processingJob?.status === 'processing') {
+            e.preventDefault();
+            console.log('⚠️ Prevented modal close from outside click during processing');
+          }
+        }}
+        onEscapeKeyDown={(e) => {
+          // Prevent closing with Escape key during processing
+          if (processingJob?.status === 'processing') {
+            e.preventDefault();
+            console.log('⚠️ Prevented modal close from Escape key during processing');
+          }
+        }}
+      >
+        <div className={processingJob?.status === 'processing' ? '[&~button]:hidden' : ''}>
+          {processingJob ? (
+            <ProgressBar 
+              progress={processingJob.progress}
+              stage={processingJob.stage}
+              fileName={processingJob.fileName}
+              status={processingJob.status}
+              isConnected={isConnected}
+              usingPolling={usingPolling}
+            />
+          ) : (
+            <div className="p-8 text-center">
+              <p className="text-muted-foreground">Loading...</p>
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
 
     {/* Delete Confirmation Dialog */}
     <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

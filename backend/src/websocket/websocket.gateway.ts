@@ -57,7 +57,7 @@ export class JobsWebSocketGateway
    * Subscribe a client to job updates
    */
   @SubscribeMessage('subscribe:jobs')
-  handleSubscribeToJobs(
+  async handleSubscribeToJobs(
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { userId?: string; jobId?: string },
   ) {
@@ -77,6 +77,15 @@ export class JobsWebSocketGateway
           `Failed to store subscription: ${(err as Error).message}`,
         ),
       );
+
+    // If subscribing to a specific job, send cached progress immediately
+    if (data.jobId) {
+      const cachedProgress = await this.getJobProgress(data.jobId);
+      if (cachedProgress) {
+        this.logger.log(`Sending cached progress for job ${data.jobId} to client ${client.id}`);
+        client.emit('job:progress', cachedProgress);
+      }
+    }
 
     return { success: true, room, message: 'Subscribed to job updates' };
   }
@@ -134,6 +143,9 @@ export class JobsWebSocketGateway
       message: payload.message,
       timestamp: new Date().toISOString(),
     };
+
+    // Cache the progress in Redis for late subscribers
+    void this.cacheJobProgress(jobId, updateData);
 
     // Emit to both user room and job-specific room
     this.server.to(userRoom).emit('job:progress', updateData);
@@ -211,7 +223,7 @@ export class JobsWebSocketGateway
   /**
    * Emit job progress update
    */
-  emitJobProgress(jobId: string, progress: number, message?: string) {
+  emitJobProgress(jobId: string, progress: number, message?: string, userId?: string) {
     const payload = {
       jobId,
       status: 'in_progress',
@@ -220,9 +232,19 @@ export class JobsWebSocketGateway
       timestamp: new Date().toISOString(),
     };
 
-    this.server.to(`job:${jobId}`).emit('job:progress', payload);
+    // Cache the progress in Redis for late subscribers (TTL: 10 minutes)
+    void this.cacheJobProgress(jobId, payload);
 
-    this.logger.log(`Job progress update for job ${jobId}: ${progress}%`);
+    // Emit to job-specific room
+    this.server.to(`job:${jobId}`).emit('job:progress', payload);
+    
+    // Also emit to user room if userId is provided
+    if (userId) {
+      this.server.to(`user:${userId}`).emit('job:progress', payload);
+      this.logger.log(`Job progress update for job ${jobId}: ${progress}% (rooms: job:${jobId}, user:${userId})`);
+    } else {
+      this.logger.log(`Job progress update for job ${jobId}: ${progress}% (room: job:${jobId})`);
+    }
   }
 
   // Redis helper methods
@@ -284,6 +306,40 @@ export class JobsWebSocketGateway
         error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(`Failed to get job history: ${errorMessage}`);
       return [];
+    }
+  }
+
+  /**
+   * Cache the latest job progress in Redis
+   */
+  private async cacheJobProgress(jobId: string, payload: any) {
+    try {
+      const key = `job-progress:${jobId}`;
+      await this.redisService.set(key, JSON.stringify(payload), 600); // 10 min TTL
+      this.logger.debug(`Cached progress for job ${jobId}`);
+    } catch (error) {
+      this.logger.error(
+        `Failed to cache job progress: ${(error as Error).message}`,
+      );
+    }
+  }
+
+  /**
+   * Get cached job progress from Redis
+   */
+  private async getJobProgress(jobId: string): Promise<any | null> {
+    try {
+      const key = `job-progress:${jobId}`;
+      const cached = await this.redisService.get(key);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+      return null;
+    } catch (error) {
+      this.logger.error(
+        `Failed to get cached job progress: ${(error as Error).message}`,
+      );
+      return null;
     }
   }
 

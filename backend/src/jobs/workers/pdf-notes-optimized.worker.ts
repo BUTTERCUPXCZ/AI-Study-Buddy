@@ -317,7 +317,7 @@ export class PdfNotesOptimizedWorker extends WorkerHost {
       this.jobsService.updateJobStatus(job.id!, 'processing' as JobStatus, { progress }),
     ]);
 
-    this.wsGateway.emitJobProgress(job.id!, progress, stage);
+    this.wsGateway.emitJobProgress(job.id!, progress, stage, job.data.userId);
   }
 
   /**
