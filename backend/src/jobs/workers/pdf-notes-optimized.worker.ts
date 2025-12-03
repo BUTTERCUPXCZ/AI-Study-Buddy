@@ -8,6 +8,7 @@ import { AiService } from '../../ai/ai.service';
 import { JobsService } from '../jobs.service';
 import { DatabaseService } from '../../database/database.service';
 import { JobsWebSocketGateway } from '../../websocket/websocket.gateway';
+import { NotesService } from '../../notes/notes.service';
 import { PdfCacheUtil } from '../utils/pdf-cache.util';
 import { PdfParserUtil } from '../utils/pdf-parser.util';
 import { EXAM_READY_NOTES_PROMPT } from '../../ai/prompts/optimized-prompts';
@@ -71,6 +72,7 @@ export class PdfNotesOptimizedWorker extends WorkerHost {
     private readonly jobsService: JobsService,
     private readonly aiService: AiService,
     private readonly wsGateway: JobsWebSocketGateway,
+    private readonly notesService: NotesService,
   ) {
     super();
 
@@ -220,14 +222,13 @@ export class PdfNotesOptimizedWorker extends WorkerHost {
       const dbStart = Date.now();
 
       const title = this.generateTitle(fileName);
-      const noteRecord = await this.databaseService.note.create({
-        data: {
-          title,
-          content: noteContent,
-          source: fileId,
-          userId: userId,
-        },
-      });
+      // Use NotesService to ensure cache invalidation event is emitted
+      const noteRecord = await this.notesService.createNote(
+        userId,
+        title,
+        noteContent,
+        fileId,
+      );
 
       const dbTime = Date.now() - dbStart;
       this.logger.log(`💾 Saved to DB in ${dbTime}ms - Note ID: ${noteRecord.id}`);

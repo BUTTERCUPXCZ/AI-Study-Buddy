@@ -13,6 +13,7 @@ import { AiNotesWorker } from './workers/ai-notes.worker';
 import { DatabaseModule } from '../database/database.module';
 import { AiModule } from '../ai/ai.module';
 import { WebsocketModule } from '../websocket/websocket.module';
+import { NotesModule } from '../notes/notes.module';
 import { CompletionWorker } from './workers/completion.worker';
 import { CompletionQueue } from './queues/completion.queue';
 import { PdfNotesOptimizedQueue } from './queues/pdf-notes-optimized.queue';
@@ -23,6 +24,7 @@ import { PdfNotesOptimizedQueue } from './queues/pdf-notes-optimized.queue';
     DatabaseModule,
     AiModule,
     WebsocketModule,
+    NotesModule,
     BullModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => {

@@ -287,10 +287,7 @@ function RouteComponent() {
     stage: string;
     status: 'processing' | 'completed' | 'failed';
   } | null>(null)
-  // Keep WebSocket connection alive at all times for instant updates
-  // This prevents connection delays and missed events
 
-  // Wrap onJobCompleted in useCallback
   const onJobCompleted = useCallback((noteId?: string) => {
     console.log('[Notes Page] Job completed with noteId:', noteId);
     
@@ -326,7 +323,7 @@ function RouteComponent() {
     }
   }, [queryClient, navigate, user?.id]); 
 
-  // Wrap onJobFailed in useCallback
+  
   const onJobFailed = useCallback(() => {
     console.log('[Notes Page] Job failed');
     
@@ -342,7 +339,7 @@ function RouteComponent() {
     }, 3000);
   }, []);
 
-  // WebSocket connection for job tracking - ALWAYS ENABLED
+  
   const { 
     jobProgress, 
     trackJob, 
@@ -356,7 +353,7 @@ function RouteComponent() {
     onJobFailed: onJobFailed,
   });
 
-  // Log WebSocket connection state changes
+ 
   useEffect(() => {
     if (isConnected) {
       console.log('✅ WebSocket connected for real-time job tracking');
