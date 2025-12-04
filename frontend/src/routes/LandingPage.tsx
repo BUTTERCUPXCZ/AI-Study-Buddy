@@ -33,7 +33,7 @@ function RouteComponent() {
   })
 
   return (
-    <div className="min-h-screen bg-background text-foreground overflow-x-hidden selection:bg-primary/20 relative font-sans">
+    <div className="min-h-screen bg-background text-foreground overflow-x-hidden selection:bg-primary/20 relative">
       {/* Notebook Paper Pattern Background */}
       <div className="absolute inset-0 -z-10 h-full w-full bg-slate-50 bg-[linear-gradient(#e5e7eb_1px,transparent_1px)] [background-size:100%_2rem]" />
       <div className="absolute inset-0 -z-10 h-full w-full border-l-2 border-red-200 ml-8 md:ml-16 opacity-50" />
@@ -277,7 +277,7 @@ function HowItWorksSection() {
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="text-center mb-20">
-          <h2 className="text-4xl md:text-5xl font-bold mb-4 font-serif">How It Works</h2>
+          <h2 className="text-4xl md:text-5xl font-bold mb-4">How It Works</h2>
           <p className="text-xl text-slate-300">Three simple steps to better grades</p>
         </div>
 
@@ -299,7 +299,7 @@ function HowItWorksSection() {
                   {step.icon}
                 </div>
               </div>
-              <h3 className="text-2xl font-semibold mb-4 font-serif">{step.title}</h3>
+              <h3 className="text-2xl font-semibold mb-4">{step.title}</h3>
               <p className="text-slate-300 max-w-xs text-lg leading-relaxed">{step.desc}</p>
             </motion.div>
           ))}
@@ -353,7 +353,7 @@ function TestimonialsSection() {
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-32 h-8 bg-white/40 backdrop-blur-sm rotate-1 shadow-sm border border-white/20"></div>
                 
                 <Quote className="h-10 w-10 text-slate-900/20 mb-6" />
-                <p className="text-xl mb-8 italic text-slate-800 font-serif leading-relaxed">"{t.quote}"</p>
+                <p className="text-xl mb-8 italic text-slate-800 leading-relaxed">"{t.quote}"</p>
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-slate-900/10 flex items-center justify-center font-bold text-slate-700">
                     {t.author[0]}
