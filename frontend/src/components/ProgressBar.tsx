@@ -145,7 +145,7 @@ export function ProgressBar({
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto space-y-8 py-6 animate-in fade-in slide-in-from-bottom-8 duration-700">
+    <div className="w-full max-w-2xl mx-auto space-y-8 p-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
       {/* Main Icon & Status */}
       <div className="flex flex-col items-center text-center space-y-4">
         {getStatusIcon()}
