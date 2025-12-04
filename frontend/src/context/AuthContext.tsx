@@ -42,7 +42,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         try {
           const { data } = await supabase.auth.getSession()
           if (!mounted) return
-          setUser(data.session?.user ?? null)
+          
+          // If we have a Supabase session, get the backend user data using the Supabase token
+          if (data.session?.access_token) {
+            try {
+              const res = await api.get('/auth/me', { 
+                headers: { Authorization: `Bearer ${data.session.access_token}` } 
+              })
+              if (!mounted) return
+              setUser(res.data)
+              // Store the token for future requests
+              localStorage.setItem('access_token', data.session.access_token)
+            } catch {
+              if (!mounted) return
+              setUser(null)
+            }
+          } else {
+            setUser(null)
+          }
         } catch {
           if (!mounted) return
           setUser(null)
@@ -64,7 +81,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Listen to Supabase auth state changes and keep local user in sync
   // NOTE: Only manage Supabase OAuth sessions here, don't interfere with backend email/password tokens
   useEffect(() => {
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
       queryClient.setQueryData(['auth', 'session'], session?.user ?? null)
       
       // Only clear tokens if we're explicitly signing out via Supabase
@@ -73,11 +90,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(null)
         localStorage.removeItem('access_token')
         localStorage.removeItem('token')
-      } else if (session?.user) {
-        // If we have a Supabase session, use it and store the token
-        setUser(session.user)
-        if (session.access_token) {
+      } else if (session?.access_token) {
+        // If we have a Supabase session, fetch the backend user data
+        try {
+          const res = await api.get('/auth/me', { 
+            headers: { Authorization: `Bearer ${session.access_token}` } 
+          })
+          setUser(res.data)
           localStorage.setItem('access_token', session.access_token)
+        } catch (error) {
+          console.error('Failed to fetch user data:', error)
+          setUser(null)
         }
       }
     })

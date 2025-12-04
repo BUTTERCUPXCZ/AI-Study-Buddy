@@ -116,12 +116,14 @@
 
     // Connect to WebSocket when enabled
     useEffect(() => {
-        // Don't disconnect if disabled - just don't subscribe
-        if (!userId) {
+        // Only connect if enabled and userId is present
+        if (!userId || !enabled) {
         return;
         }
 
-        // Always keep WebSocket connected for better reliability
+        let isSubscribed = false;
+
+        // Connect WebSocket only when enabled (during processing)
         webSocketService.connect();
         
         webSocketService.on({
@@ -131,9 +133,10 @@
             setConnectionError(null);
             
             // Re-subscribe to user's job updates on every connect/reconnect
-            if (enabled) {
+            if (enabled && !isSubscribed) {
                 console.log('[useJobWebSocket] Subscribing to user:', userId);
                 webSocketService.subscribeToJobs({ userId });
+                isSubscribed = true;
             }
             
             // Also re-subscribe to specific job if we're tracking one
@@ -224,15 +227,33 @@
         });
 
         return () => {
-        // Don't disconnect - just unsubscribe when component unmounts or userId changes
-        if (userId && enabled) {
+        // Disconnect and unsubscribe when disabled or component unmounts
+        if (userId && enabled && isSubscribed) {
             console.log('[useJobWebSocket] Unsubscribing from user:', userId);
             webSocketService.unsubscribeFromJobs({ userId });
+            isSubscribed = false;
         }
-        // Keep connection alive but stop polling
+        
+        // Disconnect WebSocket when disabled
+        if (enabled) {
+            console.log('[useJobWebSocket] Disconnecting WebSocket');
+            webSocketService.disconnect();
+        }
+        
+        // Stop polling
         stopPolling();
         };
     }, [userId, enabled, queryClient, startPolling, stopPolling]);
+
+    // Disconnect when enabled changes to false
+    useEffect(() => {
+        if (!enabled && isConnected) {
+            console.log('[useJobWebSocket] Disabled - disconnecting WebSocket');
+            webSocketService.disconnect();
+            setIsConnected(false);
+            stopPolling();
+        }
+    }, [enabled, isConnected, stopPolling]);
 
     // Monitor job tracking
     const trackJob = useCallback((jobId: string) => {

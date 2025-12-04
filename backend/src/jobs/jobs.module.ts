@@ -17,6 +17,7 @@ import { NotesModule } from '../notes/notes.module';
 import { CompletionWorker } from './workers/completion.worker';
 import { CompletionQueue } from './queues/completion.queue';
 import { PdfNotesOptimizedQueue } from './queues/pdf-notes-optimized.queue';
+import { JobEventEmitterService } from './job-event-emitter.service';
 
 @Module({
   imports: [
@@ -133,6 +134,7 @@ import { PdfNotesOptimizedQueue } from './queues/pdf-notes-optimized.queue';
   controllers: [JobsController],
   providers: [
     JobsService,
+    JobEventEmitterService,
     PdfExtractQueue,
     PdfNotesQueue,
     PdfNotesOptimizedQueue,
@@ -146,6 +148,7 @@ import { PdfNotesOptimizedQueue } from './queues/pdf-notes-optimized.queue';
   ],
   exports: [
     JobsService,
+    JobEventEmitterService,
     PdfExtractQueue,
     PdfNotesQueue,
     PdfNotesOptimizedQueue,

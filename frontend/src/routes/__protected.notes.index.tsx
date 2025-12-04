@@ -15,6 +15,8 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog'
 import {
   DropdownMenu,
@@ -177,8 +179,11 @@ function RouteComponent() {
     stage: string;
     status: 'processing' | 'completed' | 'failed';
   } | null>(null)
+  
+  // WebSocket should only be enabled during active processing
+  const [wsEnabled, setWsEnabled] = useState(false)
 
-  const onJobCompleted = useCallback((noteId?: string) => {
+  const onJobCompleted = useCallback((noteId?: string, stopTrackingFn?: () => void) => {
     console.log('[Notes Page] Job completed with noteId:', noteId);
     
     // Show success state briefly
@@ -196,10 +201,17 @@ function RouteComponent() {
         setProgressModalOpen(false);
         navigate({ to: '/notes/$noteId', params: { noteId } });
         
-        // Clear processing job after redirect
+        // Clean up everything after redirect
         setProcessingJob(null);
         setSelectedFiles([]);
         setValidationError('');
+        
+        // Disable WebSocket and unsubscribe after redirect completes
+        setWsEnabled(false);
+        if (stopTrackingFn) {
+          console.log('[Notes Page] Stopping WebSocket tracking after redirect');
+          stopTrackingFn();
+        }
       }, 1500); // Longer delay to show success message
     } else {
       // Fallback: just clear the processing state and close modal
@@ -208,12 +220,19 @@ function RouteComponent() {
         setProcessingJob(null);
         setSelectedFiles([]);
         setValidationError('');
+        
+        // Disable WebSocket
+        setWsEnabled(false);
+        if (stopTrackingFn) {
+          console.log('[Notes Page] Stopping WebSocket tracking after completion');
+          stopTrackingFn();
+        }
       }, 2000);
     }
   }, [queryClient, navigate, user?.id]); 
 
   
-  const onJobFailed = useCallback(() => {
+  const onJobFailed = useCallback((stopTrackingFn?: () => void) => {
     console.log('[Notes Page] Job failed');
     
     setProcessingJob(prev => prev ? { ...prev, status: 'failed' } : null);
@@ -223,6 +242,13 @@ function RouteComponent() {
       setProcessingJob(null);
       setSelectedFiles([]);
       setValidationError('');
+      
+      // Disable WebSocket after failure
+      setWsEnabled(false);
+      if (stopTrackingFn) {
+        console.log('[Notes Page] Stopping WebSocket tracking after failure');
+        stopTrackingFn();
+      }
     }, 3000);
   }, []);
 
@@ -235,9 +261,9 @@ function RouteComponent() {
     usingPolling 
   } = useJobWebSocket({
     userId: user?.id,
-    enabled: true, // Always keep WebSocket enabled for instant updates
-    onJobCompleted: onJobCompleted,
-    onJobFailed: onJobFailed,
+    enabled: wsEnabled, // Only enable WebSocket during active processing
+    onJobCompleted: (noteId?: string) => onJobCompleted(noteId, stopTracking),
+    onJobFailed: () => onJobFailed(stopTracking),
   });
 
  
@@ -396,12 +422,16 @@ function RouteComponent() {
     if (selectedFiles.length === 0) {
       setValidationError('Please select at least one PDF file')
       return
-    }
+    } 
 
     // For now, we'll process only the first file
     const file = selectedFiles[0]
 
     try {
+      // Enable WebSocket for this processing session
+      console.log('[Notes Page] Enabling WebSocket for processing');
+      setWsEnabled(true);
+      
       // Initialize processing job state FIRST
       setProcessingJob({
         jobId: '',
@@ -467,6 +497,10 @@ function RouteComponent() {
         stopTracking();
         setSelectedFiles([]);
         setValidationError('');
+        
+        // Disable WebSocket and clean up on error
+        setWsEnabled(false);
+        console.log('[Notes Page] WebSocket disabled after upload error');
       }, 3000);
     }
   }
@@ -722,6 +756,11 @@ function RouteComponent() {
         setProgressModalOpen(open);
         // If closing and job is done, clean up
         if (!open) {
+          // Disable WebSocket when manually closing modal
+          setWsEnabled(false);
+          stopTracking();
+          console.log('[Notes Page] WebSocket disabled - modal closed manually');
+          
           setTimeout(() => {
             setProcessingJob(null);
             setSelectedFiles([]);
@@ -747,6 +786,14 @@ function RouteComponent() {
           }
         }}
       >
+        <DialogTitle className="sr-only">
+          {processingJob?.status === 'completed' ? 'Processing Complete' : 
+           processingJob?.status === 'failed' ? 'Processing Failed' : 
+           'Processing Document'}
+        </DialogTitle>
+        <DialogDescription className="sr-only">
+          {processingJob?.stage || 'Processing your document. Please wait...'}
+        </DialogDescription>
         <div className={processingJob?.status === 'processing' ? '[&~button]:hidden' : ''}>
           {processingJob ? (
             <ProgressBar 

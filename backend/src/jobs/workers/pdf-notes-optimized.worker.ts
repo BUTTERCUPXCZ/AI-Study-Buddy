@@ -311,11 +311,22 @@ export class PdfNotesOptimizedWorker extends WorkerHost {
     progress: number,
     stage: string,
   ): Promise<void> {
+    // Use upsert to ensure the job record exists in the database
     await Promise.all([
       job.updateProgress(progress),
-      this.jobsService.setJobStage(job.id!, stage),
-      this.jobsService.updateJobStatus(job.id!, 'processing' as JobStatus, { progress }),
+      this.jobsService.upsertJobStatus(job.id!, 'processing' as JobStatus, {
+        progress,
+        name: 'generate-notes-optimized',
+        queueName: 'pdf-notes-optimized',
+        data: job.data,
+        userId: job.data.userId,
+      }),
     ]);
+
+    // Set stage separately (it modifies opts JSON field)
+    await this.jobsService.setJobStage(job.id!, stage).catch(err => {
+      this.logger.warn(`Failed to set stage for job ${job.id}: ${err.message}`);
+    });
 
     this.wsGateway.emitJobProgress(job.id!, progress, stage, job.data.userId);
   }
@@ -327,13 +338,20 @@ export class PdfNotesOptimizedWorker extends WorkerHost {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     this.logger.error(`❌ Job ${job.id} failed: ${errorMessage}`);
 
-    await Promise.all([
-      this.jobsService.updateJobStatus(job.id!, 'failed' as JobStatus, {
-        failedReason: errorMessage,
-        failedAt: new Date(),
-      }),
-      this.jobsService.setJobStage(job.id!, 'failed'),
-    ]);
+    // Use upsert to ensure the job record exists even on failure
+    await this.jobsService.upsertJobStatus(job.id!, 'failed' as JobStatus, {
+      failedReason: errorMessage,
+      failedAt: new Date(),
+      name: 'generate-notes-optimized',
+      queueName: 'pdf-notes-optimized',
+      data: job.data,
+      userId: job.data.userId,
+    });
+
+    // Set stage separately
+    await this.jobsService.setJobStage(job.id!, 'failed').catch(err => {
+      this.logger.warn(`Failed to set stage for failed job ${job.id}: ${err.message}`);
+    });
 
     this.wsGateway.emitJobUpdate(job.id!, 'failed', {
       jobId: job.id!,

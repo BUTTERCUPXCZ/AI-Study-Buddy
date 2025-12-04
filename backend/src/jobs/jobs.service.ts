@@ -142,4 +142,48 @@ export class JobsService {
     });
     return result;
   }
+
+  /**
+   * Upsert job status - creates record if it doesn't exist, updates if it does
+   * This is a fallback for cases where the job record wasn't created before the worker started
+   */
+  async upsertJobStatus(
+    jobId: string,
+    status: JobStatus,
+    extraData?: {
+      progress?: number;
+      failedReason?: string;
+      finishedAt?: Date;
+      failedAt?: Date;
+      attempts?: number;
+      name?: string;
+      queueName?: string;
+      data?: Record<string, any>;
+      userId?: string;
+    },
+  ): Promise<Job> {
+    const result = await this.databaseService.job.upsert({
+      where: { jobId },
+      update: {
+        status,
+        progress: extraData?.progress,
+        failedReason: extraData?.failedReason,
+        finishedAt: extraData?.finishedAt,
+        failedAt: extraData?.failedAt,
+        attempts: extraData?.attempts,
+        updatedAt: new Date(),
+      },
+      create: {
+        jobId,
+        name: extraData?.name || 'unknown',
+        queueName: extraData?.queueName || 'pdf-notes-optimized',
+        data: extraData?.data || {},
+        opts: {},
+        status,
+        progress: extraData?.progress,
+        userId: extraData?.userId,
+      },
+    });
+    return result;
+  }
 }

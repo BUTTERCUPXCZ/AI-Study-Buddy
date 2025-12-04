@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Progress } from '@/components/ui/progress';
-import { Loader2, CheckCircle2, XCircle, FileText, Sparkles, Database, Wifi, WifiOff, Zap } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, FileText, Sparkles, Database, WifiOff, Zap } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 interface ProgressBarProps {

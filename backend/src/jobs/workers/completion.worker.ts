@@ -25,16 +25,21 @@ export class CompletionWorker extends WorkerHost {
   }
 
   async process(job: Job<{ jobId: string; userId: string; result: unknown }>) {
-    const { jobId, result } = job.data;
+    const { jobId, userId, result } = job.data;
 
     try {
       this.logger.log(`Finalizing job lifecycle for ${jobId}`);
 
-      // Set final stage and mark job completed in DB
-      await this.jobsService.setJobStage(jobId, 'completed');
-      await this.jobsService.updateJobStatus(jobId, 'completed' as JobStatus, {
+      // Use upsert to ensure record exists before updating
+      await this.jobsService.upsertJobStatus(jobId, 'completed' as JobStatus, {
         progress: 100,
         finishedAt: new Date(),
+        userId: userId,
+      });
+
+      // Set final stage
+      await this.jobsService.setJobStage(jobId, 'completed').catch(err => {
+        this.logger.warn(`Failed to set stage for job ${jobId}: ${err.message}`);
       });
 
       // Emit websocket completion
@@ -50,10 +55,11 @@ export class CompletionWorker extends WorkerHost {
       this.logger.error(
         `Completion worker failed for ${jobId}: ${errorMessage}`,
       );
-      await this.jobsService.updateJobStatus(jobId, 'failed' as JobStatus, {
+      await this.jobsService.upsertJobStatus(jobId, 'failed' as JobStatus, {
         failedReason: errorMessage,
         failedAt: new Date(),
         attempts: job.attemptsMade,
+        userId: userId,
       });
       await this.wsGateway.emitJobError(jobId, error);
       throw error;
