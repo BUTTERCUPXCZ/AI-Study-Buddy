@@ -4,6 +4,7 @@ import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { ThemeProvider } from '@/components/theme-provider'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider } from '@/context/AuthContext'
+import { ToastProvider } from '@/components/ToastProvider'
 
 // Import the generated route tree
 import { routeTree } from './routeTree.gen'
@@ -31,7 +32,9 @@ if (!rootElement.innerHTML) {
       <QueryClientProvider client={queryClient}>  
         <ThemeProvider defaultTheme="light" storageKey="ui-theme">
           <AuthProvider>
-          <RouterProvider router={router} />
+            <ToastProvider>
+              <RouterProvider router={router} />
+            </ToastProvider>
           </AuthProvider>
         </ThemeProvider>
       </QueryClientProvider>

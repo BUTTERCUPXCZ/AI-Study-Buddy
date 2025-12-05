@@ -39,6 +39,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { webSocketService } from '@/services/WebSocketService.optimized';
 import UploadService from '@/services/UploadService';
+import { useToast } from '@/hooks/useToast';
 import type {
   JobProgressPayload,
   JobCompletedPayload,
@@ -104,6 +105,7 @@ export function useJobWebSocket(
   const onJobFailedRef = useRef(onJobFailed);
 
   const queryClient = useQueryClient();
+  const toast = useToast();
 
   // Update callback refs when they change
   useEffect(() => {
@@ -306,6 +308,19 @@ export function useJobWebSocket(
 
         setJobProgress(null);
         setCurrentJobId(null);
+        // If Gemini free-tier rate limit triggered, show a user-facing toast
+        const rawError = (data.error?.message || '').toString();
+        const isGeminiLimit = /gemini/i.test(rawError) && /limit|rate limit|too many requests|429|free tier/i.test(rawError);
+        if (isGeminiLimit) {
+          // Paraphrased user message: "Gemini free tier limit reached — please try again later."
+          try {
+            toast.error('Gemini free tier limit reached — please try again later.');
+          } catch (e) {
+            // Fallback to console and the callback
+            console.warn('[Hook] Toast failed, falling back to callback');
+          }
+        }
+
         onJobFailedRef.current?.(data.error?.message);
       },
     });

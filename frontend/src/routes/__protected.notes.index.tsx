@@ -416,6 +416,7 @@ function RouteComponent() {
   const handleGenerateNotes = async () => {
     if (!user?.id) {
       alert('You must be logged in to upload files')
+      
       return
     }
 
