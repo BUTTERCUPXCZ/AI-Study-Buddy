@@ -12,6 +12,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import { downloadNotePdf } from '@/lib/pdfUtils'
 import NotesService from '@/services/NotesService'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 export const Route = createFileRoute('/__protected/notes/$noteId')({
   component: RouteComponent,
@@ -106,23 +108,6 @@ function RouteComponent() {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   }
 
-  // Process content to handle markdown-like formatting
-  const formatContent = (content: string) => {
-    return content
-      // Headers
-      .replace(/^### (.*$)/gim, '<h3 class="text-xl font-bold mt-6 mb-3">$1</h3>')
-      .replace(/^## (.*$)/gim, '<h2 class="text-2xl font-bold mt-8 mb-4">$1</h2>')
-      .replace(/^# (.*$)/gim, '<h1 class="text-3xl font-bold mt-8 mb-4">$1</h1>')
-      // Bold
-      .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1</strong>')
-      // Bullet points
-      .replace(/^\* (.*$)/gim, '<li class="ml-4">$1</li>')
-      .replace(/^- (.*$)/gim, '<li class="ml-4">$1</li>')
-      // Line breaks
-      .replace(/\n\n/g, '</p><p class="mb-4">')
-      .replace(/\n/g, '<br/>')
-  }
-
   return (
     <AppLayout>
     <div className="max-w-4xl mx-auto py-4">
@@ -168,18 +153,44 @@ function RouteComponent() {
 
       {/* Content - ChatGPT Style */}
       <div className="bg-background rounded-lg mb-6">
-        <div className="prose prose-slate dark:prose-invert max-w-none">
-          <div 
-            className="text-base leading-relaxed space-y-4"
-            dangerouslySetInnerHTML={{ 
-              __html: `<p class="mb-4">${formatContent(note.content)}</p>` 
+        <div className="prose prose-slate dark:prose-invert max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-h1:text-3xl prose-h1:mt-8 prose-h1:mb-4 prose-h2:text-2xl prose-h2:mt-8 prose-h2:mb-4 prose-h3:text-xl prose-h3:mt-6 prose-h3:mb-3 prose-p:text-base prose-p:leading-7 prose-p:mb-4 prose-li:my-1 prose-ul:my-4 prose-ol:my-4 prose-strong:font-semibold prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-code:before:content-[''] prose-code:after:content-[''] prose-pre:bg-muted prose-pre:border prose-pre:rounded-lg prose-pre:p-4 prose-pre:overflow-x-auto">
+          <ReactMarkdown 
+            remarkPlugins={[remarkGfm]}
+            components={{
+              h1: ({node, ...props}) => <h1 className="text-3xl font-bold mt-8 mb-4 first:mt-0" {...props} />,
+              h2: ({node, ...props}) => <h2 className="text-2xl font-bold mt-8 mb-4 first:mt-0" {...props} />,
+              h3: ({node, ...props}) => <h3 className="text-xl font-bold mt-6 mb-3 first:mt-0" {...props} />,
+              h4: ({node, ...props}) => <h4 className="text-lg font-semibold mt-5 mb-2 first:mt-0" {...props} />,
+              p: ({node, ...props}) => <p className="text-base leading-7 mb-4" {...props} />,
+              ul: ({node, ...props}) => <ul className="list-disc list-outside ml-6 my-4 space-y-2" {...props} />,
+              ol: ({node, ...props}) => <ol className="list-decimal list-outside ml-6 my-4 space-y-2" {...props} />,
+              li: ({node, ...props}) => <li className="text-base leading-7" {...props} />,
+              strong: ({node, ...props}) => <strong className="font-semibold" {...props} />,
+              em: ({node, ...props}) => <em className="italic" {...props} />,
+              code: ({node, className, ...props}) => {
+                const isInline = !className?.includes('language-')
+                return isInline 
+                  ? <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono" {...props} />
+                  : <code className={className} {...props} />
+              },
+              pre: ({node, ...props}) => <pre className="bg-muted border rounded-lg p-4 overflow-x-auto my-4" {...props} />,
+              blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-muted-foreground/20 pl-4 italic my-4" {...props} />,
+              a: ({node, ...props}) => <a className="text-primary underline hover:text-primary/80 transition-colors" {...props} />,
+              hr: ({node, ...props}) => <hr className="my-8 border-border" {...props} />,
+              table: ({node, ...props}) => (
+                <div className="overflow-x-auto my-4">
+                  <table className="min-w-full divide-y divide-border" {...props} />
+                </div>
+              ),
+              thead: ({node, ...props}) => <thead className="bg-muted" {...props} />,
+              tbody: ({node, ...props}) => <tbody className="divide-y divide-border" {...props} />,
+              tr: ({node, ...props}) => <tr {...props} />,
+              th: ({node, ...props}) => <th className="px-4 py-2 text-left text-sm font-semibold" {...props} />,
+              td: ({node, ...props}) => <td className="px-4 py-2 text-sm" {...props} />,
             }}
-            style={{
-              fontSize: '16px',
-              lineHeight: '1.75',
-              color: 'inherit'
-            }}
-          />
+          >
+            {note.content}
+          </ReactMarkdown>
         </div>
       </div>
 
