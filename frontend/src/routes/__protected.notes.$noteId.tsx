@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, Download, Star, Calendar, Brain, Loader2, CheckCircle } from 'lucide-react'
+import { ArrowLeft, Download, Star, Calendar, Brain, CheckCircle } from 'lucide-react'
 import AppLayout from '@/components/app-layout'
 import { useAuth } from '@/context/AuthContextDefinition'
 import { useNote } from '@/hooks/useNotes'
@@ -11,6 +11,7 @@ import { useState, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { downloadNotePdf } from '@/lib/pdfUtils'
 import NotesService from '@/services/NotesService'
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 
 export const Route = createFileRoute('/__protected/notes/$noteId')({
   component: RouteComponent,
@@ -77,7 +78,7 @@ function RouteComponent() {
     return (
       <AppLayout>
         <div className="flex items-center justify-center h-[60vh]">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          <LoadingSpinner className="h-12 w-12" />
         </div>
       </AppLayout>
     )
@@ -192,7 +193,7 @@ function RouteComponent() {
         >
           {isGeneratingQuiz ? (
             <>
-              <Loader2 className="h-5 w-5 animate-spin" />
+              <LoadingSpinner className="h-5 w-5 text-current" />
               Generating Quiz...
             </>
           ) : (

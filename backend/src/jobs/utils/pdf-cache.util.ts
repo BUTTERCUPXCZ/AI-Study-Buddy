@@ -36,6 +36,11 @@ export class PdfCacheUtil {
     content: string;
     summary: string;
   } | null> {
+    if (!redis || redis.status !== 'ready') {
+      this.logger.warn('Redis not ready, skipping cache lookup');
+      return null;
+    }
+
     try {
       const key = `${this.CACHE_PREFIX}${pdfHash}`;
       const cached = await redis.get(key);
@@ -67,6 +72,11 @@ export class PdfCacheUtil {
       summary: string;
     },
   ): Promise<void> {
+    if (!redis || redis.status !== 'ready') {
+      this.logger.warn('Redis not ready, skipping cache write');
+      return;
+    }
+
     try {
       const key = `${this.CACHE_PREFIX}${pdfHash}`;
       await redis.setex(key, this.CACHE_TTL, JSON.stringify(notes));
@@ -86,6 +96,11 @@ export class PdfCacheUtil {
     redis: Redis,
     fileId: string,
   ): Promise<string | null> {
+    if (!redis || redis.status !== 'ready') {
+      this.logger.warn('Redis not ready, skipping job lookup');
+      return null;
+    }
+
     try {
       const key = `${this.JOB_PREFIX}${fileId}`;
       const existingJobId = await redis.get(key);
@@ -112,6 +127,11 @@ export class PdfCacheUtil {
     fileId: string,
     jobId: string,
   ): Promise<void> {
+    if (!redis || redis.status !== 'ready') {
+      this.logger.warn('Redis not ready, skipping job registration');
+      return;
+    }
+
     try {
       const key = `${this.JOB_PREFIX}${fileId}`;
       await redis.setex(key, this.JOB_TTL, jobId);
@@ -125,6 +145,11 @@ export class PdfCacheUtil {
    * Clear job registration after completion
    */
   static async clearJob(redis: Redis, fileId: string): Promise<void> {
+    if (!redis || redis.status !== 'ready') {
+      this.logger.warn(`Redis not ready, skipping job clear for ${fileId}`);
+      return;
+    }
+
     try {
       const key = `${this.JOB_PREFIX}${fileId}`;
       await redis.del(key);
@@ -139,6 +164,11 @@ export class PdfCacheUtil {
    * Useful when notes need to be regenerated
    */
   static async invalidateCache(redis: Redis, pdfHash: string): Promise<void> {
+    if (!redis || redis.status !== 'ready') {
+      this.logger.warn('Redis not ready, skipping cache invalidation');
+      return;
+    }
+
     try {
       const key = `${this.CACHE_PREFIX}${pdfHash}`;
       await redis.del(key);

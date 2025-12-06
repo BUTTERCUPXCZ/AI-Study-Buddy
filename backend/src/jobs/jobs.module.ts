@@ -9,6 +9,7 @@ import { AiNotesQueue } from './queues/ai-notes.queue';
 import { AiQuizQueue } from './queues/ai-quiz.queue';
 import { PdfExtractWorker } from './workers/pdf-extract.worker';
 import { PdfNotesOptimizedWorker } from './workers/pdf-notes-optimized.worker';
+import { UltraOptimizedPdfWorker } from './workers/ultra-optimized-pdf.worker';
 import { AiNotesWorker } from './workers/ai-notes.worker';
 import { DatabaseModule } from '../database/database.module';
 import { AiModule } from '../ai/ai.module';
@@ -17,6 +18,7 @@ import { NotesModule } from '../notes/notes.module';
 import { CompletionWorker } from './workers/completion.worker';
 import { CompletionQueue } from './queues/completion.queue';
 import { PdfNotesOptimizedQueue } from './queues/pdf-notes-optimized.queue';
+import { PdfUltraOptimizedQueue } from './queues/pdf-ultra-optimized.queue';
 import { JobEventEmitterService } from './job-event-emitter.service';
 
 @Module({
@@ -32,9 +34,10 @@ import { JobEventEmitterService } from './job-event-emitter.service';
         // BullMQ requires a standard Redis connection (not Upstash REST API)
         // You'll need to add REDIS_HOST, REDIS_PORT, REDIS_PASSWORD to your .env
         // For Upstash, use their Redis TCP endpoint
-        const redisHost = configService.get<string>('REDIS_HOST');
-        const redisPort = configService.get<number>('REDIS_PORT');
+        const redisHost = configService.get<string>('REDIS_HOST') || 'localhost';
+        const redisPort = configService.get<number>('REDIS_PORT') || 6379;
         const redisPassword = configService.get<string>('REDIS_PASSWORD');
+        const redisTls = configService.get<string>('REDIS_TLS');
 
         return {
           connection: {
@@ -42,11 +45,16 @@ import { JobEventEmitterService } from './job-event-emitter.service';
             port: redisPort,
             password: redisPassword,
             // For Upstash with TLS
-            tls: redisPassword ? {} : undefined,
+            tls: redisTls === 'true' ? {} : undefined,
             // BullMQ requires maxRetriesPerRequest to be null
             maxRetriesPerRequest: null,
             enableReadyCheck: false,
             enableOfflineQueue: false,
+            lazyConnect: true, // Don't connect immediately
+            retryStrategy: (times: number) => {
+              if (times > 3) return null; // Stop retrying after 3 attempts
+              return Math.min(times * 100, 3000);
+            },
           },
           // Default job options for better performance
           defaultJobOptions: {
@@ -100,6 +108,20 @@ import { JobEventEmitterService } from './job-event-emitter.service';
         },
       },
       { 
+        name: 'pdf-ultra-optimized',
+        defaultJobOptions: {
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 1000,
+          },
+          removeOnComplete: {
+            age: 3600,
+            count: 1000,
+          },
+        },
+      },
+      { 
         name: 'ai-notes',
         defaultJobOptions: {
           attempts: 3,
@@ -138,11 +160,13 @@ import { JobEventEmitterService } from './job-event-emitter.service';
     PdfExtractQueue,
     PdfNotesQueue,
     PdfNotesOptimizedQueue,
+    PdfUltraOptimizedQueue,
     AiNotesQueue,
     AiQuizQueue,
     CompletionQueue,
     PdfExtractWorker,
     PdfNotesOptimizedWorker,
+    UltraOptimizedPdfWorker,
     AiNotesWorker,
     CompletionWorker,
   ],
@@ -152,6 +176,7 @@ import { JobEventEmitterService } from './job-event-emitter.service';
     PdfExtractQueue,
     PdfNotesQueue,
     PdfNotesOptimizedQueue,
+    PdfUltraOptimizedQueue,
     AiNotesQueue,
     AiQuizQueue,
     CompletionQueue,

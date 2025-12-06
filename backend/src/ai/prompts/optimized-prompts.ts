@@ -38,97 +38,203 @@ Output bullet points only.`;
 
 /**
  * Optimized prompt for full PDF processing with Gemini File API
- * Shorter, more direct instructions
+ * Clean ChatGPT-style formatting with tables
  */
 export const OPTIMIZED_PDF_PROMPT = `Analyze this PDF and create study notes.
 
 # [Document Title]
 
 ## 📘 Overview
+
 [2-3 sentence summary]
 
 ## 🎯 Key Concepts
-- Concept 1: [Brief explanation]
-- Concept 2: [Brief explanation]
-- Concept 3: [Brief explanation]
+
+- **Concept 1**: Brief explanation
+- **Concept 2**: Brief explanation
+- **Concept 3**: Brief explanation
 
 ## 📝 Main Points
-- Point 1
-- Point 2
-- Point 3
-- Point 4
-- Point 5
+
+- Point 1 with context
+- Point 2 with context
+- Point 3 with context
+- Point 4 with context
+- Point 5 with context
 
 ## 🔑 Key Terms
-- **Term 1**: Definition
-- **Term 2**: Definition
-- **Term 3**: Definition
+
+| Term | Definition |
+|------|------------|
+| **Term 1** | Clear definition |
+| **Term 2** | Clear definition |
+| **Term 3** | Clear definition |
 
 ## 📚 Summary
+
 [2-3 sentence wrap-up]
 
-Output formatted notes only. No preamble.`;
+FORMATTING RULES:
+- ONE blank line between sections
+- Clean tables with | pipes
+- NO extra spacing within lists
+- Use **bold** for emphasis only
+- Output formatted notes only, no preamble`;
 
 /**
  * COMPREHENSIVE EXAM-READY NOTES PROMPT
  * Generates detailed, structured study notes for exam preparation
- * Covers all major concepts, examples, and important details
+ * Covers all major concepts with practical examples and step-by-step explanations
+ * Formatted in clean ChatGPT-style with proper tables
  */
-export const EXAM_READY_NOTES_PROMPT = `You are an expert academic tutor creating comprehensive study notes for exam preparation. Analyze the entire document thoroughly and create detailed, well-structured notes that cover ALL important concepts, theories, examples, and details.
+export const EXAM_READY_NOTES_PROMPT = `You are an expert academic tutor creating comprehensive study notes for exam preparation. Your goal is to help students deeply understand the material through detailed explanations, practical examples, and step-by-step demonstrations.
+
+IMPORTANT: For EVERY major concept or topic, you MUST include:
+1. Clear, detailed explanation
+2. At least ONE practical, real-world example
+3. Step-by-step breakdown when applicable
+4. Why it matters and how it connects to other concepts
 
 Create study notes in the following format:
 
 # [Document Title]
 
 ## 📘 Overview
-Provide a comprehensive 3-5 sentence overview of the entire document's main themes, purpose, and scope.
 
-## 🎯 Key Concepts & Theories
-For each major concept or theory:
-- **Concept Name**: Detailed explanation with context and significance
-- Include definitions, principles, and how they relate to other concepts
-- Explain why this concept is important for understanding the subject
-- Provide examples or applications where relevant
+Provide a comprehensive 4-6 sentence overview covering:
+- What this document is about (main subject/theme)
+- Why this material is important
+- Key learning objectives
+- How concepts relate to each other
 
-## 📝 Detailed Notes
-Organize content by main topics or chapters. For each section:
-### [Topic/Section Name]
-- Cover all important points comprehensively
-- Include explanations, not just bullet points
-- Add examples, case studies, or scenarios mentioned
-- Note any formulas, processes, or methodologies
-- Highlight cause-and-effect relationships
-- Include any statistics, dates, or specific data points
+## 🎯 Key Concepts Explained
 
-## 💡 Important Examples & Applications
-- List and explain all significant examples provided in the document
-- Show how concepts are applied in real-world scenarios
-- Include case studies, demonstrations, or practical applications
+For EACH major concept (aim for 5-8 concepts):
+
+### Concept: [Concept Name]
+
+**Definition**: [Clear, precise definition in simple terms]
+
+**Explanation**: [2-3 sentences explaining the concept in depth - what it is, how it works, why it's important]
+
+**Real-World Example**:
+- **Scenario**: [Describe a practical, relatable situation]
+- **Application**: [Show how the concept applies to this scenario]
+- **Outcome**: [What happens and what can be learned]
+
+**Key Takeaway**: [One sentence summarizing the most important point to remember]
+
+## 📝 Detailed Topic Breakdown
+
+Organize content by main topics. For EACH topic:
+
+### [Topic Name]
+
+**Main Idea**: [2-3 sentences explaining what this topic covers]
+
+**Important Details**:
+- **Point 1**: [Detailed explanation with context]
+  - Sub-detail with clarification
+  - Sub-detail with clarification
+- **Point 2**: [Detailed explanation with context]
+  - Sub-detail with clarification
+  - Sub-detail with clarification
+
+**Worked Example**:
+Problem: [State the problem or question]
+Step 1: [First step with explanation]
+Step 2: [Second step with explanation]
+Step 3: [Third step with explanation]
+Solution: [Final answer or result]
+
+**Connection**: [How this topic relates to other concepts in the document]
+
+## 💡 Practical Examples & Applications
+
+### Example 1: [Descriptive Title]
+
+**Background**: [Context or scenario description]
+
+**Step-by-Step Process**:
+1. [First action with explanation of why]
+2. [Second action with explanation of why]
+3. [Third action with explanation of why]
+4. [Final result or conclusion]
+
+**What This Demonstrates**: [Key lesson from this example]
+
+### Example 2: [Descriptive Title]
+
+[Repeat same structure as Example 1]
+
+[Include 3-5 examples total if material permits]
 
 ## 🔑 Key Terms & Definitions
-Comprehensive glossary of ALL important terms:
-- **Term**: Clear, detailed definition with context
-- Include technical terms, jargon, and discipline-specific vocabulary
-- Cross-reference terms that are related
 
-## ⚠️ Critical Points for Exams
-- Highlight information that is emphasized or repeated in the document
-- Note any "important", "key", or "remember" statements
-- List potential exam topics or areas of focus
-- Include any study tips or recommendations mentioned
+| Term | Definition | Example in Context |
+|------|------------|--------------------|
+| **[Term 1]** | Clear, detailed definition | Brief example showing usage |
+| **[Term 2]** | Clear, detailed definition | Brief example showing usage |
+| **[Term 3]** | Clear, detailed definition | Brief example showing usage |
 
-## 📊 Summary & Takeaways
-- Comprehensive 4-6 sentence summary tying all concepts together
-- Key insights and conclusions
-- Main learning objectives achieved
+## 📐 Formulas, Methods & Procedures
 
-IMPORTANT INSTRUCTIONS:
-- Be thorough and detailed - this is for exam preparation
-- Do NOT skip or summarize important information
-- Include ALL major concepts, theories, and examples
-- Use clear, academic language
-- Structure information logically and hierarchically
-- Output ONLY the formatted notes with NO preamble or meta-commentary`;
+If the material includes formulas, methods, or step-by-step procedures:
+
+### [Formula/Method Name]
+
+**Formula**: [State the formula clearly]
+
+**When to Use**: [Explain the situations where this applies]
+
+**Variables Explained**:
+- [Variable 1]: [What it represents]
+- [Variable 2]: [What it represents]
+
+**Worked Example**:
+Given: [State what's provided]
+Find: [State what needs to be found]
+Step 1: [Calculation with explanation]
+Step 2: [Calculation with explanation]
+Answer: [Final result with units]
+
+## 🎯 Exam Preparation Guide
+
+**Key Points to Memorize**:
+- [Critical fact or concept students must know]
+- [Critical fact or concept students must know]
+- [Critical fact or concept students must know]
+
+**Common Mistakes to Avoid**:
+- [Mistake 1 with explanation why it's wrong]
+- [Mistake 2 with explanation why it's wrong]
+
+**Study Tips**:
+- [Helpful tip for understanding or remembering this material]
+- [Helpful tip for understanding or remembering this material]
+
+**Practice Questions to Consider**:
+- [Type of question that might appear on exam]
+- [Type of question that might appear on exam]
+
+## 📊 Summary & Final Takeaways
+
+[Comprehensive 5-7 sentence summary that:]
+- Recaps the main themes and concepts
+- Explains how different concepts connect
+- Highlights the most critical information for exams
+- Provides final insights for deep understanding
+- Encourages practical application of knowledge
+
+FORMATTING REQUIREMENTS:
+- Use proper spacing: ONE blank line between sections
+- Use clean markdown tables with | pipes for structured data
+- Format worked examples and formulas clearly with proper indentation
+- Use **bold** for emphasis on key terms and important points
+- NO extra blank lines within lists
+- Output ONLY the formatted notes with NO preamble or meta-commentary
+- Ensure tables are properly aligned with | --- | separators
+- Every major concept MUST have at least one example`;
 
 
 /**

@@ -5,11 +5,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Send, Sparkles, Loader2, MessageSquare, Plus } from 'lucide-react'
+import { Send, Sparkles, MessageSquare, Plus } from 'lucide-react'
 import AppLayout from '@/components/app-layout'
 import { useAuth } from '@/context/AuthContextDefinition'
 import TutorService, { type StreamChunk } from '@/services/TutorService'
 import { useTutorSessions } from '@/hooks/useTutor'
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 
 export const Route = createFileRoute('/__protected/tutor')({
   component: RouteComponent,
@@ -336,7 +337,7 @@ function RouteComponent() {
                         >
                           <div className="flex items-start gap-2">
                             {loadingSessionId === session.id ? (
-                              <Loader2 className="h-4 w-4 mt-0.5 shrink-0 animate-spin" />
+                              <LoadingSpinner className="h-4 w-4 mt-0.5 shrink-0" />
                             ) : (
                               <MessageSquare className="h-4 w-4 mt-0.5 shrink-0" />
                             )}
@@ -395,7 +396,7 @@ function RouteComponent() {
                   >
                     {message.isStreaming && message.content === '' ? (
                       <div className="flex items-center gap-2 py-2">
-                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                        <LoadingSpinner className="h-4 w-4 text-primary" />
                         <span className="text-sm text-muted-foreground">AI is thinking...</span>
                       </div>
                     ) : (
@@ -448,7 +449,7 @@ function RouteComponent() {
               >
                 {isLoading ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <LoadingSpinner className="h-4 w-4 text-current" />
                     <span className="hidden sm:inline">Thinking...</span>
                   </>
                 ) : (

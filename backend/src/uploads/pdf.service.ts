@@ -8,7 +8,7 @@ import { DatabaseService } from '../database/database.service';
 import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { PdfNotesQueue } from '../jobs/queues/pdf-notes.queue';
-import { PdfNotesOptimizedQueue } from '../jobs/queues/pdf-notes-optimized.queue';
+import { PdfUltraOptimizedQueue } from '../jobs/queues/pdf-ultra-optimized.queue';
 
 
 @Injectable()
@@ -20,7 +20,7 @@ export class PdfService {
     private readonly databaseService: DatabaseService,
     private readonly configService: ConfigService,
     private readonly pdfNotesQueue: PdfNotesQueue,
-    private readonly pdfNotesOptimizedQueue: PdfNotesOptimizedQueue,
+    private readonly pdfUltraOptimizedQueue: PdfUltraOptimizedQueue,
   ) {
     this.supabase = createClient(
       this.configService.get<string>('SUPABASE_URL')!,
@@ -102,9 +102,9 @@ export class PdfService {
         userId: createPdfDto.userId,
       });
 
-      // ALSO queue optimized job for faster processing
-      // You can make this conditional based on a feature flag
-      const optimizedResult = await this.pdfNotesOptimizedQueue.addPdfNotesJob({
+      // ALSO queue ULTRA-OPTIMIZED job for MAXIMUM performance
+      // Features: connection pooling, multi-level cache, circuit breakers
+      const ultraOptimizedResult = await this.pdfUltraOptimizedQueue.addPdfJob({
         fileId: fileRecord.id,
         filePath: uploadData.path,
         fileName: createPdfDto.fileName,
@@ -118,8 +118,8 @@ export class PdfService {
         userId: fileRecord.userId,
         message: 'File uploaded successfully and notes generation job queued',
         jobId: queueResult.jobId,
-        optimizedJobId: optimizedResult.jobId,
-        deduplicated: optimizedResult.deduplicated,
+        ultraOptimizedJobId: ultraOptimizedResult.jobId,
+        deduplicated: ultraOptimizedResult.deduplicated,
       };
     } catch (error) {
       if (error instanceof BadRequestException) {

@@ -31,6 +31,51 @@
 $ npm install
 ```
 
+## Redis Setup (Required)
+
+This application uses BullMQ for background job processing, which requires Redis to be running.
+
+### Quick Start - Local Redis (Windows)
+
+```bash
+# Using Chocolatey
+choco install redis-64 -y
+redis-server
+
+# Or download MSI installer from:
+# https://github.com/microsoftarchive/redis/releases
+```
+
+### Environment Variables
+
+Create a `.env` file in the backend directory with:
+
+```env
+# Database
+DATABASE_URL=your_postgresql_url
+
+# Redis for BullMQ (required)
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=  # Optional for local development
+
+# Upstash Redis REST API (optional, for caching)
+UPSTASH_REDIS_REST_URL=your_upstash_url
+UPSTASH_REDIS_REST_TOKEN=your_upstash_token
+
+# Supabase
+SUPABASE_URL=your_supabase_url
+SUPABASE_SERVICE_ROLE_KEY=your_service_key
+
+# Google AI
+GOOGLE_AI_API_KEY=your_gemini_api_key
+
+# Other configs...
+```
+
+**See [../REDIS_SETUP_GUIDE.md](../REDIS_SETUP_GUIDE.md) for detailed setup instructions.**
+
+
 ## Compile and run the project
 
 ```bash

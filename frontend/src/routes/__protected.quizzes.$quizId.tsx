@@ -10,6 +10,7 @@ import { useAuth } from '@/context/AuthContextDefinition'
 import { useQuiz, useUpdateQuizScore } from '@/hooks/useQuiz'
 import { useState } from 'react'
 import type { QuizQuestion } from '@/services/QuizService'
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 
 export const Route = createFileRoute('/__protected/quizzes/$quizId')({
   component: RouteComponent,
@@ -31,7 +32,7 @@ function RouteComponent() {
     return (
       <AppLayout>
         <div className="flex items-center justify-center h-[60vh]">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          <LoadingSpinner className="h-12 w-12" />
         </div>
       </AppLayout>
     )

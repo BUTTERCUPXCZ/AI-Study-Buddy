@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Loader2, CheckCircle2, XCircle, FileText, Sparkles, Database, WifiOff, Zap } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
 interface ProgressBarProps {
   progress: number;
@@ -69,7 +70,7 @@ const getStageInfo = (stage: string) => {
   }
   
   return {
-    icon: Loader2,
+    icon: LoadingSpinner,
     label: 'Processing',
     description: stage || 'Working on your document...',
     color: 'text-blue-500',

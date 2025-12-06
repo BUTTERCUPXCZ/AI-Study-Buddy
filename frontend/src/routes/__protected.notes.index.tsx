@@ -1,41 +1,9 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { FileText, Download, Upload as UploadIcon, X, AlertCircle, Loader2, MoreVertical, Trash2 } from 'lucide-react'
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet'
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
-import { useState, useCallback, useEffect, memo, useMemo } from 'react'
+import { FileText, Upload as UploadIcon } from 'lucide-react'
+import { useState, useCallback, useEffect, useMemo, Suspense, lazy } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import AppLayout from '@/components/app-layout'
 import { useAuth } from '@/context/AuthContextDefinition'
@@ -44,111 +12,12 @@ import { useUploadPdf } from '@/hooks/useUpload'
 import { useJobWebSocket } from '@/hooks/useJobWebSocket'
 import { downloadNotePdf } from '@/lib/pdfUtils'
 import NotesService from '@/services/NotesService'
-import { ProgressBar } from '@/components/ProgressBar'
+import NoteCard from '@/components/notes/NoteCard'
 
-// Helper functions
-const formatDate = (dateString: string) => {
-  const date = new Date(dateString)
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-}
-
-const getExcerpt = (content: string, maxLength: number = 100) => {
-  if (content.length <= maxLength) return content
-  return content.substring(0, maxLength) + '...'
-}
-
-// Memoized Components - ProcessingJobCard removed, using new ProgressBar component
-
-const NoteCard = memo(({ 
-  note, 
-  navigate, 
-  onDownload, 
-  onDelete,
-  onPrefetch
-}: { 
-  note: { id: string; title: string; content: string; source?: string; createdAt: string }, 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  navigate: (opts: any) => void, 
-  onDownload: (id: string, title: string, content: string, e: React.MouseEvent) => void,
-  onDelete: (id: string, title: string, e: React.MouseEvent) => void,
-  onPrefetch: (noteId: string) => void
-}) => (
-  <Card 
-    className="h-full flex flex-col hover:shadow-lg hover:border-primary/30 transition-all duration-300 bg-card cursor-pointer overflow-hidden group border-border/60"
-    onMouseEnter={() => onPrefetch(note.id)}
-    onClick={() => {
-      console.log('Navigating to note:', note.id)
-      navigate({ 
-        to: '/notes/$noteId', 
-        params: { noteId: note.id } 
-      })
-    }}
-  >
-    <CardHeader className="pb-3">
-      <div className="flex items-start justify-between gap-3">
-        <div className="space-y-2 flex-1 min-w-0">
-          <CardTitle className="text-lg font-bold line-clamp-2 group-hover:text-primary transition-colors leading-tight">
-            {note.title}
-          </CardTitle>  
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant="secondary" className="text-xs font-medium bg-secondary/50 text-secondary-foreground">
-              {note.source ? 'PDF' : 'Manual'}
-            </Badge>
-            <span className="text-xs text-muted-foreground flex items-center gap-1">
-              <span className="w-1 h-1 rounded-full bg-muted-foreground/50"></span>
-              {formatDate(note.createdAt)}
-            </span>
-          </div>
-        </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0 hover:bg-primary/10 -mr-2"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-              }}
-            >
-              <MoreVertical className="h-4 w-4 text-muted-foreground" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem
-              onClick={(e) => onDownload(note.id, note.title, note.content, e)}
-              className="cursor-pointer"
-            >
-              <Download className="mr-2 h-4 w-4" />
-              <span>Download as PDF</span>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={(e) => onDelete(note.id, note.title, e)}
-              className="text-destructive focus:text-destructive cursor-pointer"
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              <span>Delete Note</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </CardHeader>
-    <CardContent className="pt-0 flex-1 flex flex-col">
-      <p className="text-sm text-muted-foreground line-clamp-4 mb-6 leading-relaxed flex-1">
-        {getExcerpt(note.content, 150)}
-      </p>
-      <div className="flex items-center justify-between pt-4 border-t mt-auto">
-        <span className="text-xs font-medium text-primary group-hover:underline underline-offset-4">
-          View details
-        </span>
-        <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-          <FileText className="h-3 w-3 text-primary" />
-        </div>
-      </div>
-    </CardContent>
-  </Card>
-));
+// Lazy load heavy interactive components
+const UploadSheet = lazy(() => import('@/components/notes/UploadSheet'))
+const DeleteNoteDialog = lazy(() => import('@/components/notes/DeleteNoteDialog'))
+const ProcessingDialog = lazy(() => import('@/components/notes/ProcessingDialog'))
 
 export const Route = createFileRoute('/__protected/notes/')({
   component: RouteComponent,
@@ -332,24 +201,17 @@ function RouteComponent() {
   }, [jobProgress]);
 
   // Show an initial skeleton when the page first mounts or when notes are empty.
-  // This ensures users see the loading skeleton first (briefly) even if the
-  // notes array is empty immediately from the hook.
   const [showInitialSkeleton, setShowInitialSkeleton] = useState(true);
 
   useEffect(() => {
-   
     if (notes.length > 0) {
       setShowInitialSkeleton(false);
       return;
     }
-
-  
     if (isLoadingNotes) {
       setShowInitialSkeleton(true);
       return;
     }
-
-    
     const t = setTimeout(() => setShowInitialSkeleton(false), 300);
     return () => clearTimeout(t);
   }, [isLoadingNotes, notes.length]);
@@ -357,7 +219,7 @@ function RouteComponent() {
   const shouldShowSkeletonOnly = notes.length === 0 && (isLoadingNotes || showInitialSkeleton);
   const isEmptyStateVisible = notes.length === 0 && !isLoadingNotes && !showInitialSkeleton && !processingJob;
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const files = Array.from(e.target.files).filter(file => file.type === 'application/pdf')
       if (files.length !== e.target.files.length) {
@@ -367,19 +229,19 @@ function RouteComponent() {
       }
       setSelectedFiles(prev => [...prev, ...files])
     }
-  }
+  }, [])
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     setIsDragging(true)
-  }
+  }, [])
 
-  const handleDragLeave = (e: React.DragEvent) => {
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     setIsDragging(false)
-  }
+  }, [])
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     setIsDragging(false)
     if (e.dataTransfer.files) {
@@ -391,14 +253,14 @@ function RouteComponent() {
       }
       setSelectedFiles(prev => [...prev, ...files])
     }
-  }
+  }, [])
 
-  const removeFile = (index: number) => {
+  const removeFile = useCallback((index: number) => {
     setSelectedFiles(prev => prev.filter((_, i) => i !== index))
     if (selectedFiles.length <= 1) {
       setValidationError('')
     }
-  }
+  }, [selectedFiles.length])
 
   // File size validation: disable generate when any file > 10MB
   const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB in bytes
@@ -411,12 +273,11 @@ function RouteComponent() {
     } else if (validationError === 'One or more files exceed the 10MB limit') {
       setValidationError('')
     }
-  }, [hasFileTooLarge])
+  }, [hasFileTooLarge, validationError])
 
   const handleGenerateNotes = async () => {
     if (!user?.id) {
       alert('You must be logged in to upload files')
-      
       return
     }
 
@@ -505,12 +366,6 @@ function RouteComponent() {
       }, 3000);
     }
   }
-  
-  // Helper functions extracted for performance
-  // Helper functions are now outside the component
-  // const formatDate = ...
-  // const getExcerpt = ...
-  // const getStageMessage = ...
 
   const handleDownloadNote = useCallback(async (noteId: string, title: string, content: string, e: React.MouseEvent) => {
     e.preventDefault();
@@ -562,9 +417,30 @@ function RouteComponent() {
     }
   }, [user?.id, queryClient])
 
+  const handleProcessingDialogChange = useCallback((open: boolean) => {
+    // Only allow closing if job is completed or failed
+    if (!open && processingJob?.status === 'processing') {
+      console.log('⚠️ Prevented modal close during processing');
+      return; // Prevent closing during processing
+    }
+    setProgressModalOpen(open);
+    // If closing and job is done, clean up
+    if (!open) {
+      // Disable WebSocket when manually closing modal
+      setWsEnabled(false);
+      stopTracking();
+      console.log('[Notes Page] WebSocket disabled - modal closed manually');
+      
+      setTimeout(() => {
+        setProcessingJob(null);
+        setSelectedFiles([]);
+        setValidationError('');
+      }, 300);
+    }
+  }, [processingJob?.status, stopTracking]);
+
   return (
     <AppLayout>
-      
       <div className="max-w-7xl mx-auto py-8 space-y-8">
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -573,113 +449,32 @@ function RouteComponent() {
           <p className="text-muted-foreground mt-1 text-lg">AI-generated study notes from your lecture materials</p>
         </div>
         <div className="flex gap-3">
-          <Sheet open={open} onOpenChange={setOpen}>
-            <SheetTrigger asChild>
-              <Button size="lg" className="gap-2 shadow-sm hover:shadow-md transition-all">
-                <UploadIcon className="h-5 w-5" />
-                Upload PDF
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto">
-              <SheetHeader>
-                <SheetTitle className="text-2xl">Upload Lecture PDF's</SheetTitle>
-                <SheetDescription className="text-base">
-                  Upload your lecture PDF files to generate AI-powered study notes
-                </SheetDescription>
-              </SheetHeader>
-              
-              <div className="mt-8 space-y-6">
-                {/* Upload Area */}
-                <div
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDrop={handleDrop}
-                  className={`border-2 border-dashed rounded-xl p-12 text-center transition-all duration-200 ${
-                    isDragging 
-                      ? 'border-primary bg-primary/5 scale-[1.02]' 
-                      : 'border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/30'
-                  }`}
-                >
-                  <div className="flex flex-col items-center gap-4">
-                    <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center mb-2">
-                      <UploadIcon className="h-10 w-10 text-primary" />
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-semibold mb-2">Drop your PDF files here</h3>
-                      <p className="text-sm text-muted-foreground">or click to browse from your computer</p>
-                    </div>
-                    <label htmlFor="file-upload">
-                      <Button type="button" variant="outline" className="mt-4" onClick={() => document.getElementById('file-upload')?.click()}>
-                        Choose Files
-                      </Button>
-                    </label>
-                    <input
-                      id="file-upload"
-                      type="file"
-                      accept=".pdf"
-                      multiple
-                      onChange={handleFileChange}
-                      className="hidden"
-                    />
-                    <p className="text-xs text-muted-foreground mt-4">Supports: PDF files up to 10MB each</p>
-                  </div>
-                </div>
-
-                {/* Selected Files List */}
-                {selectedFiles.length > 0 && (
-                  <div className="space-y-3 animate-in fade-in slide-in-from-bottom-4 duration-300">
-                    <h4 className="font-semibold text-sm text-foreground">Selected Files ({selectedFiles.length})</h4>
-                    <div className="space-y-2">
-                      {selectedFiles.map((file, index) => (
-                        <div 
-                          key={index} 
-                          className="flex items-center justify-between p-3 bg-card border rounded-lg shadow-sm"
-                        >
-                          <div className="flex items-center gap-3 flex-1 min-w-0">
-                            <div className="h-8 w-8 rounded bg-primary/10 flex items-center justify-center shrink-0">
-                              <FileText className="h-4 w-4 text-primary" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">{file.name}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {(file.size / 1024 / 1024).toFixed(2)} MB
-                              </p>
-                            </div>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeFile(index)}
-                            className="shrink-0 text-muted-foreground hover:text-destructive"
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Error Message */}
-                {(validationError || uploadError) && (
-                  <div className="flex items-center gap-3 p-4 bg-destructive/10 text-destructive rounded-lg animate-in fade-in slide-in-from-bottom-2">
-                    <AlertCircle className="h-5 w-5 shrink-0" />
-                    <p className="text-sm font-medium">{validationError || uploadError}</p>
-                  </div>
-                )}
-
-                {/* Generate Button */}
-                <Button 
-                  className="w-full h-12 text-base font-medium shadow-md hover:shadow-lg transition-all" 
-                  size="lg"
-                  onClick={handleGenerateNotes}
-                  disabled={selectedFiles.length === 0 || hasFileTooLarge}
-                >
-                  Generate Study Notes
-                </Button>
-              </div>
-            </SheetContent>
-          </Sheet>
+          <Button 
+            size="lg" 
+            className="gap-2 shadow-sm hover:shadow-md transition-all" 
+            onClick={() => setOpen(true)}
+          >
+            <UploadIcon className="h-5 w-5" />
+            Upload PDF
+          </Button>
+          
+          <Suspense fallback={null}>
+            <UploadSheet 
+              open={open}
+              onOpenChange={setOpen}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              isDragging={isDragging}
+              onFileChange={handleFileChange}
+              selectedFiles={selectedFiles}
+              onRemoveFile={removeFile}
+              validationError={validationError}
+              uploadError={uploadError || null}
+              onGenerate={handleGenerateNotes}
+              hasFileTooLarge={hasFileTooLarge}
+            />
+          </Suspense>
         </div>
       </div>
 
@@ -714,7 +509,7 @@ function RouteComponent() {
             </Card>
           ))}
         </div>
-  ) : notes.length > 0 ? (
+      ) : notes.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Existing Notes */}
           {notes.map((note) => (
@@ -746,114 +541,33 @@ function RouteComponent() {
     </div>
 
     {/* Progress Modal */}
-    <Dialog 
-      open={progressModalOpen} 
-      onOpenChange={(open) => {
-        // Only allow closing if job is completed or failed
-        if (!open && processingJob?.status === 'processing') {
-          console.log('⚠️ Prevented modal close during processing');
-          return; // Prevent closing during processing
-        }
-        setProgressModalOpen(open);
-        // If closing and job is done, clean up
-        if (!open) {
-          // Disable WebSocket when manually closing modal
-          setWsEnabled(false);
-          stopTracking();
-          console.log('[Notes Page] WebSocket disabled - modal closed manually');
-          
-          setTimeout(() => {
-            setProcessingJob(null);
-            setSelectedFiles([]);
-            setValidationError('');
-          }, 300);
-        }
-      }}
-    >
-      <DialogContent 
-        className="sm:max-w-2xl border-2 p-0"
-        onPointerDownOutside={(e) => {
-          // Prevent closing when clicking outside during processing
-          if (processingJob?.status === 'processing') {
-            e.preventDefault();
-            console.log('⚠️ Prevented modal close from outside click during processing');
-          }
-        }}
-        onEscapeKeyDown={(e) => {
-          // Prevent closing with Escape key during processing
-          if (processingJob?.status === 'processing') {
-            e.preventDefault();
-            console.log('⚠️ Prevented modal close from Escape key during processing');
-          }
-        }}
-      >
-        <DialogTitle className="sr-only">
-          {processingJob?.status === 'completed' ? 'Processing Complete' : 
-           processingJob?.status === 'failed' ? 'Processing Failed' : 
-           'Processing Document'}
-        </DialogTitle>
-        <DialogDescription className="sr-only">
-          {processingJob?.stage || 'Processing your document. Please wait...'}
-        </DialogDescription>
-        <div className={processingJob?.status === 'processing' ? '[&~button]:hidden' : ''}>
-          {processingJob ? (
-            <ProgressBar 
-              progress={processingJob.progress}
-              stage={processingJob.stage}
-              fileName={processingJob.fileName}
-              status={processingJob.status}
-              isConnected={isConnected}
-              usingPolling={usingPolling}
-            />
-          ) : (
-            <div className="p-8 text-center">
-              <p className="text-muted-foreground">Loading...</p>
-            </div>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
+    <Suspense fallback={null}>
+      <ProcessingDialog 
+        open={progressModalOpen}
+        onOpenChange={handleProcessingDialogChange}
+        processingJob={processingJob}
+        isConnected={isConnected}
+        usingPolling={usingPolling}
+      />
+    </Suspense>
 
     {/* Delete Confirmation Dialog */}
-    <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Are you sure you wa nt to delete this note?</AlertDialogTitle>
-          <AlertDialogDescription>
-            This will permanently delete "<strong>{noteToDelete?.title}</strong>". This action cannot be undone.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel 
-            onClick={() => {
-              setNoteToDelete(null);
-              setDeleteDialogOpen(false);
-            }}
-            disabled={isDeleting}
-          >
-            Cancel
-          </AlertDialogCancel>
-          <AlertDialogAction
-            onClick={(e) => {
-              e.preventDefault();
-              if (noteToDelete) handleDeleteNote(noteToDelete.id);
-            }}
-            disabled={isDeleting}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-          >
-            {isDeleting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Deleting...
-              </>
-            ) : (
-              'Delete'
-            )}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <Suspense fallback={null}>
+      <DeleteNoteDialog 
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        noteTitle={noteToDelete?.title}
+        isDeleting={isDeleting}
+        onConfirm={(e) => {
+          e.preventDefault();
+          if (noteToDelete) handleDeleteNote(noteToDelete.id);
+        }}
+        onCancel={() => {
+          setNoteToDelete(null);
+          setDeleteDialogOpen(false);
+        }}
+      />
+    </Suspense>
     </AppLayout>
   )
 }
-

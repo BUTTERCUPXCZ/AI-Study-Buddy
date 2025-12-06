@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { authService } from '@/services/AuthService'
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 
 export const Route = createFileRoute('/supabaseCallback')({
   component: RouteComponent,
@@ -87,7 +88,7 @@ function RouteComponent() {
             </h2>
             <p className="text-sm text-muted-foreground">Please wait — you'll be redirected shortly.</p>
             <div className="flex justify-center"> 
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <LoadingSpinner className="h-8 w-8" />
             </div>
           </>
         )}

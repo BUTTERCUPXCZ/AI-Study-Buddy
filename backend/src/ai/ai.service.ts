@@ -7,6 +7,7 @@ import { QuizzesService } from '../quizzes/quizzes.service';
 import { NOTES_GENERATION_PROMPT } from './prompts/notes.prompt';
 import { QUIZ_GENERATION_PROMPT } from './prompts/quiz.prompt';
 import { TUTOR_PROMPT } from './prompts/summary.prompt';
+import { cleanAiMarkdown, formatNotesMarkdown } from './utils/markdown.util';
 import {
   GenerateNotesResponse,
   GenerateQuizResponse,
@@ -49,7 +50,7 @@ export class AiService {
       const prompt = NOTES_GENERATION_PROMPT(pdfText);
       const result = await this.model.generateContent(prompt);
       const response = result.response;
-      const notes = this.cleanGeneratedText(response.text());
+      const notes = this.cleanGeneratedText(response.text(), 'notes');
 
       // Save notes to database using NotesService
       const noteRecord = await this.notesService.createNote(
@@ -96,12 +97,12 @@ export class AiService {
     try {
       this.logger.log(`Generating structured notes for ${fileName}...`);
 
-      // Create enhanced prompt for structured note generation
-      const prompt = this.createStructuredNotesPrompt(extractedText, fileName);
+      // Use the standardized notes generation prompt
+      const prompt = NOTES_GENERATION_PROMPT(extractedText);
 
       const result = await this.model.generateContent(prompt);
       const response = result.response;
-      const generatedContent = this.cleanGeneratedText(response.text());
+      const generatedContent = this.cleanGeneratedText(response.text(), 'notes');
 
       // Generate a title from the filename or content
       const title = this.generateTitleFromFileName(fileName);
@@ -160,43 +161,116 @@ export class AiService {
       // Generate a title from the filename
       const title = this.generateTitleFromFileName(fileName);
 
-      // Optimized prompt for faster, more structured output
-      const prompt = `You are an expert study assistant. Analyze this PDF and create comprehensive study notes.
+      // Optimized prompt for faster, more structured output with ChatGPT-style formatting
+      const prompt = `Generate comprehensive, detailed exam study notes based on the following lecture material. These notes should be thorough enough for exam preparation with practical examples for each major topic.
 
-**IMPORTANT**: Output ONLY the formatted notes. No preamble, no explanations, no meta-commentary.
+Requirements:
+- Provide in-depth explanations of all important concepts
+- Include practical, real-world examples for each major topic
+- Organize notes with clear headings, bullet points, and detailed explanations
+- Highlight definitions, key terms, formulas, and worked examples
+- Use tables for structured information (terms, comparisons, formulas)
+- Include step-by-step examples where applicable
+- Make the content exam-ready with sufficient detail
+- ONE blank line between sections
+- NO extra spacing within lists
 
-# ${title}
+Format:
 
 ## 📘 Overview
-Brief summary of the document's purpose and scope.
+
+[Comprehensive summary of the document covering main themes and learning objectives]
 
 ## 🎯 Key Concepts
-List and explain main ideas, theories, and principles.
+
+### Concept 1: [Concept Name]
+
+**Explanation**: [Detailed explanation of the concept]
+
+**Example**: [Practical, real-world example demonstrating the concept]
+
+### Concept 2: [Concept Name]
+
+**Explanation**: [Detailed explanation of the concept]
+
+**Example**: [Practical, real-world example demonstrating the concept]
+
+[Continue for all major concepts]
 
 ## 📝 Detailed Notes
 
-### [Topic 1]
-- Key point 1
-- Key point 2
-- Key point 3
+### Topic 1: [Topic Name]
 
-### [Topic 2]
-- Key point 1
-- Key point 2
+- **Main Point**: [Detailed explanation with context]
+- **Key Details**:
+  - Detail 1
+  - Detail 2
+  - Detail 3
+- **Example**: [Concrete example illustrating this topic]
 
-## 💡 Must-Know Points
-- Critical concept 1
-- Critical concept 2
-- Critical concept 3
+### Topic 2: [Topic Name]
+
+- **Main Point**: [Detailed explanation with context]
+- **Key Details**:
+  - Detail 1
+  - Detail 2
+  - Detail 3
+- **Example**: [Concrete example illustrating this topic]
+
+[Continue for all major topics]
 
 ## 🔑 Key Terms & Definitions
-- **Term 1**: Definition
-- **Term 2**: Definition
+
+| Term | Definition | Example Usage |
+|------|------------|---------------|
+| **Term 1** | Clear, detailed definition | Brief example in context |
+| **Term 2** | Clear, detailed definition | Brief example in context |
+
+## 💡 Practical Examples
+
+### Example 1: [Example Title]
+
+**Scenario**: [Description of the problem or situation]
+
+**Solution**:
+1. Step 1 with explanation
+2. Step 2 with explanation
+3. Step 3 with explanation
+
+**Result**: [Outcome and key takeaway]
+
+### Example 2: [Example Title]
+
+**Scenario**: [Description of the problem or situation]
+
+**Solution**:
+1. Step 1 with explanation
+2. Step 2 with explanation
+3. Step 3 with explanation
+
+**Result**: [Outcome and key takeaway]
+
+## 📊 Important Formulas & Methods
+
+| Formula/Method | Description | When to Use | Example |
+|----------------|-------------|-------------|---------|
+| Formula 1 | What it calculates | Use case | Sample calculation |
+| Formula 2 | What it calculates | Use case | Sample calculation |
+
+## 🎓 Exam Tips
+
+- **Key Point 1**: [Important exam-relevant insight]
+- **Key Point 2**: [Important exam-relevant insight]
+- **Common Mistakes**: [Things to watch out for]
+- **Quick Review**: [Essential items to remember]
 
 ## 📚 Summary
-Concise wrap-up of all content.
 
-Output structured notes following this format exactly.`;
+[Comprehensive wrap-up covering all major themes, key takeaways, and connections between concepts]
+
+Lecture Material:
+
+Create detailed exam study notes now following the format exactly. Ensure every major topic has at least one practical example.`;
 
       // Send PDF to Gemini for AI reading and analysis
       this.logger.log('[AI] Sending to Gemini for intelligent analysis...');
@@ -211,7 +285,7 @@ Output structured notes following this format exactly.`;
       ]);
 
       const response = result.response;
-      const generatedContent = this.cleanGeneratedText(response.text());
+      const generatedContent = this.cleanGeneratedText(response.text(), 'notes');
       
       const aiProcessingTime = Date.now() - aiStartTime;
       this.logger.log(
@@ -253,71 +327,17 @@ Output structured notes following this format exactly.`;
   /**
    * Clean generated text by removing markdown code blocks and extra whitespace
    */
-  private cleanGeneratedText(text: string): string {
-    // Remove markdown code blocks if present (e.g. ```markdown ... ``` or just ``` ... ```)
-    let cleaned = text
-      .replace(/^```(?:markdown)?\s*/i, '')
-      .replace(/^```\s*/, '');
-    cleaned = cleaned.replace(/```\s*$/, '');
+  private cleanGeneratedText(
+    text: string,
+    mode: 'default' | 'notes' = 'default',
+  ): string {
+    const cleaned = cleanAiMarkdown(text);
 
-    // Remove any other potential leading/trailing whitespace
-    return cleaned.trim();
-  }
+    if (mode === 'notes') {
+      return formatNotesMarkdown(cleaned);
+    }
 
-  /**
-   * Create an enhanced prompt for structured note generation
-   */
-  private createStructuredNotesPrompt(text: string, fileName: string): string {
-    return `You are an expert study assistant. Create comprehensive, well-structured study notes from the following document text.
-
-Document: ${fileName}
-
-Text Content:
-${text.substring(0, 15000)} ${text.length > 15000 ? '...(truncated for length)' : ''}
-
-Please create detailed study notes with the following structure:
-
-# [Main Title]
-
-## 📋 Overview
-[Provide a brief overview of the document's main purpose and scope]
-
-## 🎯 Key Concepts
-[List and explain the main concepts, theories, or ideas]
-
-## 📝 Detailed Notes
-
-### [Topic 1]
-[Detailed explanation with important points]
-- Key point 1
-- Key point 2
-- Key point 3
-
-### [Topic 2]
-[Detailed explanation with important points]
-- Key point 1
-- Key point 2
-
-[Continue with additional topics as needed]
-
-## 💡 Important Points to Remember
-- [Critical concept 1]
-- [Critical concept 2]
-- [Critical concept 3]
-
-## 📚 Summary
-[Provide a concise summary of the entire document]
-
-## 🔑 Key Terms and Definitions
-- **Term 1**: Definition
-- **Term 2**: Definition
-
-Make the notes:
-- Clear and easy to understand
-- Well-organized with proper headings
-- Suitable for studying and exam preparation
-- Include important details but remain concise
-- Use bullet points and formatting for better readability`;
+    return cleaned;
   }
 
   /**

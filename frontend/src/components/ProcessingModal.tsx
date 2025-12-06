@@ -1,4 +1,5 @@
 import { Loader2, Wifi, WifiOff } from 'lucide-react';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useEffect } from 'react';
 import {
   Dialog,
@@ -75,7 +76,7 @@ export function ProcessingModal({
       <DialogContent className="sm:max-w-md"  onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Loader2 className="h-5 w-5 animate-spin" />
+            <LoadingSpinner className="h-5 w-5" />
             Creating Your Study Notes
             {usingPolling && (
               <span className="ml-auto flex items-center gap-1 text-xs font-normal text-amber-500">

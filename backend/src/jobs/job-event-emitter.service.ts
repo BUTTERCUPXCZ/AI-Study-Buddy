@@ -13,7 +13,8 @@ import { JobStatus as PrismaJobStatus } from '@prisma/client';
 /**
  * JobEventEmitterService
  * 
- * Centralized service for emitting job events across the application.
+ * Centralized service for emitting job events across the applica
+ * tion.
  * Ensures consistent event format, handles multiple destinations (WebSocket, DB, cache),
  * and provides error handling for event emission failures.
  * 

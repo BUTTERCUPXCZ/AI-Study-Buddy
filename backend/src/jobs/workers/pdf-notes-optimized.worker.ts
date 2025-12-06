@@ -13,6 +13,7 @@ import { PdfCacheUtil } from '../utils/pdf-cache.util';
 import { PdfParserUtil } from '../utils/pdf-parser.util';
 import { EXAM_READY_NOTES_PROMPT } from '../../ai/prompts/optimized-prompts';
 import { JobStatus } from '@prisma/client';
+import { cleanAiMarkdown, formatNotesMarkdown } from '../../ai/utils/markdown.util';
 
 export interface CreatePdfNotesJobDto {
   fileId: string;
@@ -293,7 +294,9 @@ export class PdfNotesOptimizedWorker extends WorkerHost {
       `\n\nDocument: ${title}\n\nContent:\n${text}`,
     ]);
 
-    const generatedNotes = this.cleanGeneratedText(result.response.text());
+    const generatedNotes = formatNotesMarkdown(
+      cleanAiMarkdown(result.response.text()),
+    );
     
     // Ensure title is included
     if (!generatedNotes.startsWith('#')) {
@@ -359,16 +362,6 @@ export class PdfNotesOptimizedWorker extends WorkerHost {
       progress: 0,
       message: `Failed: ${errorMessage}`,
     });
-  }
-
-  /**
-   * Clean generated text
-   */
-  private cleanGeneratedText(text: string): string {
-    return text
-      .replace(/^```(?:markdown)?\s*/i, '')
-      .replace(/```\s*$/, '')
-      .trim();
   }
 
   /**
