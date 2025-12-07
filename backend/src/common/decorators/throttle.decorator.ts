@@ -13,7 +13,7 @@ export interface ThrottleOptions {
  * @param limit - Maximum number of requests
  * @param ttl - Time to live in seconds
  */
-export const Throttle = (limit: number, ttl: number) => 
+export const Throttle = (limit: number, ttl: number) =>
   SetMetadata(THROTTLE_KEY, { limit, ttl });
 
 /**

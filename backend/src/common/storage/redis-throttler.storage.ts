@@ -10,9 +10,12 @@ export class RedisThrottlerStorage implements ThrottlerStorage {
   async increment(
     key: string,
     ttl: number,
-    limit: number,
-    blockDuration: number,
-    throttlerName: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _limit: number,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _blockDuration: number,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _throttlerName: string,
   ): Promise<ThrottlerStorageRecord> {
     const redisKey = `rate-limit:${key}`;
 
