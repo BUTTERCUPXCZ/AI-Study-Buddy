@@ -38,7 +38,7 @@ This guide walks you through deploying your AI Study Buddy backend to Render.
 - **Branch**: `main`
 - **Root Directory**: `backend`
 - **Runtime**: `Node`
-- **Build Command**: `npm install && npm run build`
+- **Build Command**: `npm install --include=dev && npm run build`
 - **Start Command**: `npm run start:prod`
 
 #### Advanced Settings:
@@ -98,7 +98,7 @@ npx prisma migrate deploy
 #### Option B: Add Migration to Build Command
 Update your build command to:
 ```bash
-npm install && npx prisma migrate deploy && npm run build
+npm install --include=dev && npx prisma migrate deploy && npm run build
 ```
 
 ### 5. Verify Deployment
@@ -162,6 +162,10 @@ Once set up, deployments are automatic:
 ### "Cannot find module" Error
 - If you see `Error: Cannot find module .../dist/main`, it means the build output structure is incorrect.
 - Ensure `prisma.config.ts` is excluded in `tsconfig.build.json`.
+
+### "nest: not found" Error
+- If you see `sh: 1: nest: not found`, it means devDependencies aren't being installed.
+- Update your build command to: `npm install --include=dev && npm run build`
 
 ### Database Connection Issues
 - Verify `DATABASE_URL` and `DIRECT_URL` are correct
