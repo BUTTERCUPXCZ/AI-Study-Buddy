@@ -164,7 +164,7 @@ export class UltraOptimizedPdfWorker extends WorkerHost {
 
     // Log optimal concurrency recommendations
     const optimalConcurrency =
-      WorkerPerformanceUtil.calculateOptimalConcurrency();
+      await WorkerPerformanceUtil.calculateOptimalConcurrency();
     this.logger.log(
       `Optimal concurrency: ${optimalConcurrency.recommended} ` +
         `(CPU: ${optimalConcurrency.cpuBased}, Memory: ${optimalConcurrency.memoryBased})`,

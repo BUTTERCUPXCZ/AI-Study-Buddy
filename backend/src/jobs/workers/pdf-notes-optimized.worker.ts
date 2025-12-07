@@ -342,13 +342,7 @@ export class PdfNotesOptimizedWorker extends WorkerHost {
       job.updateProgress(progress),
       this.jobsService.upsertJobStatus(
         job.id!,
-        'processing' as
-          | 'active'
-          | 'completed'
-          | 'failed'
-          | 'waiting'
-          | 'delayed'
-          | 'paused',
+        'processing' as JobStatus,
         {
           progress,
           name: 'generate-notes-optimized',

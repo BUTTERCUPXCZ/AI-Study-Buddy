@@ -2,6 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { NotesService } from './notes.service';
 import { DatabaseService } from '../database/database.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { RedisService } from '../redis/redis.service';
 
 describe('NotesService', () => {
   let service: NotesService;
@@ -14,6 +16,16 @@ describe('NotesService', () => {
       update: jest.fn(),
       delete: jest.fn(),
     },
+  };
+
+  const mockEventEmitter = {
+    emit: jest.fn(),
+  };
+
+  const mockRedisService = {
+    get: jest.fn(),
+    set: jest.fn(),
+    del: jest.fn(),
   };
 
   const mockNote = {
@@ -33,6 +45,14 @@ describe('NotesService', () => {
         {
           provide: DatabaseService,
           useValue: mockDatabaseService,
+        },
+        {
+          provide: EventEmitter2,
+          useValue: mockEventEmitter,
+        },
+        {
+          provide: RedisService,
+          useValue: mockRedisService,
         },
       ],
     }).compile();

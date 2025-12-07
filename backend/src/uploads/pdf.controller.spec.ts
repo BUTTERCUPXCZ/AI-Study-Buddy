@@ -3,6 +3,8 @@ import { PdfController } from './pdf.controller';
 import { PdfService } from './pdf.service';
 import { DatabaseService } from '../database/database.service';
 import { ConfigService } from '@nestjs/config';
+import { PdfNotesQueue } from '../jobs/queues/pdf-notes.queue';
+import { PdfUltraOptimizedQueue } from '../jobs/queues/pdf-ultra-optimized.queue';
 
 describe('PdfController', () => {
   let controller: PdfController;
@@ -25,12 +27,22 @@ describe('PdfController', () => {
       },
     } as unknown as ConfigService;
 
+    const mockPdfNotesQueue = {
+      add: jest.fn(),
+    };
+
+    const mockPdfUltraOptimizedQueue = {
+      add: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [PdfController],
       providers: [
         PdfService,
         { provide: DatabaseService, useValue: mockDatabaseService },
         { provide: ConfigService, useValue: mockConfigService },
+        { provide: PdfNotesQueue, useValue: mockPdfNotesQueue },
+        { provide: PdfUltraOptimizedQueue, useValue: mockPdfUltraOptimizedQueue },
       ],
     }).compile();
 
