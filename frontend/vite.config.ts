@@ -13,9 +13,13 @@ export default defineConfig({
       autoCodeSplitting: true,
     }),
     react(), tailwindcss(),],
-      resolve: {
+  resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: false,
   },
 })
