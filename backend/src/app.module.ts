@@ -22,7 +22,9 @@ import { RedisThrottlerStorage } from './common/storage/redis-throttler.storage'
       isGlobal: true,
       load: configurations,
     }),
+    RedisModule,
     ThrottlerModule.forRootAsync({
+      imports: [RedisModule],
       useFactory: (storage: RedisThrottlerStorage) => ({
         throttlers: [
           {
@@ -45,7 +47,6 @@ import { RedisThrottlerStorage } from './common/storage/redis-throttler.storage'
       }),
       inject: [RedisThrottlerStorage],
     }),
-    RedisModule,
     AuthModule,
     DatabaseModule,
     JobsModule,
@@ -57,7 +58,6 @@ import { RedisThrottlerStorage } from './common/storage/redis-throttler.storage'
   ],
   controllers: [HealthController],
   providers: [
-    RedisThrottlerStorage,
     {
       provide: APP_GUARD,
       useClass: RedisThrottlerGuard,

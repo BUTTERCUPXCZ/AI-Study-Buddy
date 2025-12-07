@@ -4,7 +4,7 @@ import type { Response } from 'express';
 import { DatabaseService } from '../database/database.service';
 import { NotesService } from '../notes/notes.service';
 import { QuizzesService } from '../quizzes/quizzes.service';
-import { NOTES_GENERATION_PROMPT } from './prompts/notes.prompt';
+import { COMPREHENSIVE_NOTES_PROMPT } from './prompts/comprehensive-notes.prompt';
 import { QUIZ_GENERATION_PROMPT } from './prompts/quiz.prompt';
 import { TUTOR_PROMPT } from './prompts/summary.prompt';
 import { cleanAiMarkdown, formatNotesMarkdown } from './utils/markdown.util';
@@ -47,7 +47,7 @@ export class AiService {
   ): Promise<GenerateNotesResponse & { noteId?: string }> {
     try {
       this.logger.log('Generating study notes...');
-      const prompt = NOTES_GENERATION_PROMPT(pdfText);
+      const prompt = COMPREHENSIVE_NOTES_PROMPT(pdfText);
       const result = await this.model.generateContent(prompt);
       const response = result.response;
       const notes = this.cleanGeneratedText(response.text(), 'notes');
@@ -98,7 +98,7 @@ export class AiService {
       this.logger.log(`Generating structured notes for ${fileName}...`);
 
       // Use the standardized notes generation prompt
-      const prompt = NOTES_GENERATION_PROMPT(extractedText);
+      const prompt = COMPREHENSIVE_NOTES_PROMPT(extractedText);
 
       const result = await this.model.generateContent(prompt);
       const response = result.response;

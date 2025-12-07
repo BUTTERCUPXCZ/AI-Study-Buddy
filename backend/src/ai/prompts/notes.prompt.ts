@@ -1,3 +1,7 @@
+/**
+ * @deprecated Use COMPREHENSIVE_NOTES_PROMPT from comprehensive-notes.prompt.ts instead
+ * This prompt has been replaced with a more structured format for better exam preparation
+ */
 export const NOTES_GENERATION_PROMPT = (pdfText: string): string => {
   return `
 You are an expert academic note-maker. Produce comprehensive, exam-ready notes using the EXACT structure below.
