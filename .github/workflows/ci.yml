@@ -37,7 +37,21 @@ jobs:
     runs-on: ubuntu-latest
     
     env:
-       DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://placeholder:placeholder@localhost:5432/placeholder' }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL || 'postgresql://placeholder:placeholder@localhost:5432/placeholder' }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://placeholder.supabase.co' }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || 'placeholder' }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || 'placeholder' }}
+      SUPABASE_BUCKET_NAME: ${{ secrets.SUPABASE_BUCKET_NAME || 'pdfs' }}
+      UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL || 'https://placeholder.upstash.io' }}
+      UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN || 'placeholder' }}
+      REDIS_URL: ${{ secrets.REDIS_URL || 'redis://localhost:6379' }}
+      REDIS_HOST: ${{ secrets.REDIS_HOST || 'localhost' }}
+      REDIS_PORT: ${{ secrets.REDIS_PORT || '6379' }}
+      REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD || 'placeholder' }}
+      REDIS_TLS: ${{ secrets.REDIS_TLS || 'false' }}
+      FRONTEND_URL: ${{ secrets.FRONTEND_URL || 'http://localhost:5173' }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY || 'placeholder' }}
 
     steps:
       - name: Checkout repo
