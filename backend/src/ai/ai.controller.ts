@@ -15,6 +15,7 @@ import { AiService } from './ai.service';
 import { GenerateNotesDto } from './dto/generate-notes.dto';
 import { GenerateQuizDto } from './dto/generate-quiz.dto';
 import { TutorChatDto, UpdateChatSessionTitleDto } from './dto/tutor-chat.dto';
+import { Throttle } from '../common/decorators/throttle.decorator';
 
 @Controller('ai')
 export class AiController {
@@ -24,6 +25,7 @@ export class AiController {
 
   @Post('generate/notes')
   @HttpCode(HttpStatus.CREATED)
+  @Throttle(5, 60) // 5 requests per minute for note generation
   async generateNotes(@Body() dto: GenerateNotesDto) {
     return this.aiService.generateNotes(
       dto.pdfText,
@@ -35,6 +37,7 @@ export class AiController {
 
   @Post('generate/quiz')
   @HttpCode(HttpStatus.CREATED)
+  @Throttle(5, 60) // 5 requests per minute for quiz generation
   async generateQuiz(@Body() dto: GenerateQuizDto) {
     return this.aiService.generateQuiz(
       dto.studyNotes,
@@ -48,6 +51,7 @@ export class AiController {
 
   @Post('tutor/chat')
   @HttpCode(HttpStatus.CREATED)
+  @Throttle(20, 60) // 20 requests per minute for chat
   async tutorChat(@Body() dto: TutorChatDto) {
     return this.aiService.tutorChat(
       dto.userQuestion,
@@ -58,6 +62,7 @@ export class AiController {
   }
 
   @Post('tutor/chat/stream')
+  @Throttle(20, 60) // 20 requests per minute for streaming chat
   async tutorChatStream(@Body() dto: TutorChatDto, @Res() res: Response) {
     // Set headers for SSE
     res.setHeader('Content-Type', 'text/event-stream');

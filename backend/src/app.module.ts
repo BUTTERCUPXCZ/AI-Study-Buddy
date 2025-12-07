@@ -11,12 +11,39 @@ import { WebsocketModule } from './websocket/websocket.module';
 import { JobsModule } from './jobs/jobs.module';
 import configurations from './config';
 import { HealthController } from './health.controller';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
+import { RedisThrottlerGuard } from './common/guards/redis-throttler.guard';
+import { RedisThrottlerStorage } from './common/storage/redis-throttler.storage';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       load: configurations,
+    }),
+    ThrottlerModule.forRootAsync({
+      useFactory: (storage: RedisThrottlerStorage) => ({
+        throttlers: [
+          {
+            name: 'short',
+            ttl: 1000, // 1 second
+            limit: 10, // 10 requests per second
+          },
+          {
+            name: 'medium',
+            ttl: 10000, // 10 seconds
+            limit: 50, // 50 requests per 10 seconds
+          },
+          {
+            name: 'long',
+            ttl: 60000, // 1 minute
+            limit: 100, // 100 requests per minute
+          },
+        ],
+        storage,
+      }),
+      inject: [RedisThrottlerStorage],
     }),
     RedisModule,
     AuthModule,
@@ -29,6 +56,12 @@ import { HealthController } from './health.controller';
     WebsocketModule,
   ],
   controllers: [HealthController],
-  providers: [],
+  providers: [
+    RedisThrottlerStorage,
+    {
+      provide: APP_GUARD,
+      useClass: RedisThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}

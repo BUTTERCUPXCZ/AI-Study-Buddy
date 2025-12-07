@@ -10,17 +10,20 @@ import {
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/Register-dto';
 import { Provider } from '@supabase/supabase-js';
+import { Throttle } from '../common/decorators/throttle.decorator';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
+  @Throttle(3, 60) // 3 registrations per minute per IP
   register(@Body() createAuthDto: RegisterDto) {
     return this.authService.Register(createAuthDto);
   }
 
   @Post('login')
+  @Throttle(5, 60) // 5 login attempts per minute per IP
   login(@Body() createAuthDto: RegisterDto) {
     return this.authService.Login(createAuthDto);
   }
@@ -37,6 +40,7 @@ export class AuthController {
    * GET /auth/oauth?provider=github
    */
   @Get('oauth')
+  @Throttle(5, 60) // 5 OAuth initiations per minute
   async initiateOAuth(@Query('provider') provider: string) {
     const validProviders = [
       'google',

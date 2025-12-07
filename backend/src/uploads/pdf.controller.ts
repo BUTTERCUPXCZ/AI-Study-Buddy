@@ -13,6 +13,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { PdfService } from './pdf.service';
 import { CreatePdfDto } from './dto/create-pdf.dto';
+import { Throttle } from '../common/decorators/throttle.decorator';
 
 @Controller('upload')
 export class PdfController {
@@ -26,6 +27,7 @@ export class PdfController {
    */
   @Post()
   @UseInterceptors(FileInterceptor('file'))
+  @Throttle(10, 60) // 10 uploads per minute
   async uploadPdf(
     @UploadedFile() file: Express.Multer.File,
     @Body() createPdfDto: CreatePdfDto,
