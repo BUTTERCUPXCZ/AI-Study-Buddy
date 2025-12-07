@@ -441,7 +441,7 @@ function RouteComponent() {
 
   return (
     <AppLayout>
-      <div className="max-w-7xl mx-auto py-8 space-y-8">
+      <div className="max-w-7xl mx-auto py-8 space-y-8 mt-10">
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>

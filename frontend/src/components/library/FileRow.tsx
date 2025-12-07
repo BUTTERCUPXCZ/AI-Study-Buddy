@@ -11,7 +11,7 @@ interface FileRowProps {
 
 export const FileRow = memo(({ file, onDelete }: FileRowProps) => (
   <div 
-    className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-muted/30 transition-colors group"
+    className="grid grid-cols-12 gap-4 px-4 md:px-6 py-4 items-center hover:bg-muted/30 transition-colors group"
   >
     <div className="col-span-8 md:col-span-6 flex items-center gap-4 min-w-0">
       <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300">

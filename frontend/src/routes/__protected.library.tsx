@@ -153,7 +153,7 @@ function RouteComponent() {
 
   return (
     <AppLayout>
-    <div className="max-w-6xl mx-auto py-8 space-y-8">
+    <div className="max-w-6xl mx-auto py-8 space-y-8 mt-10">
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -246,7 +246,7 @@ function RouteComponent() {
         <div className="space-y-6">
           <div className="bg-card rounded-xl border shadow-sm overflow-hidden">
             {/* List Header */}
-            <div className="grid grid-cols-12 gap-4 px-6 py-4 border-b bg-muted/30 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            <div className="grid grid-cols-12 gap-4 px-4 md:px-6 py-4 border-b bg-muted/30 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               <div className="col-span-8 md:col-span-6">Name</div>
               <div className="col-span-2 hidden md:block">Date Added</div>
               <div className="col-span-2 hidden md:block">Type</div>

@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Link, useLocation } from '@tanstack/react-router'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Separator } from '@/components/ui/separator'
-import { FileText, Brain, GraduationCap, Library, LogOut } from 'lucide-react'
+import { FileText, Brain, GraduationCap, Library, LogOut, Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { authService } from '@/services/AuthService'
 import {
@@ -14,13 +14,14 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
+import { Sheet, SheetContent } from '@/components/ui/sheet'
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const location = useLocation()
   const [logoutOpen, setLogoutOpen] = useState(false)
+  const [isMobileOpen, setIsMobileOpen] = useState(false)
   
   const navItems = [
-
     { to: '/notes', label: 'Study Notes', icon: FileText },
     { to: '/quizzes', label: 'Quizzes', icon: Brain },
     { to: '/tutor', label: 'AI Tutor', icon: GraduationCap },
@@ -30,11 +31,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const currentRoute = navItems.find(item => location.pathname.startsWith(item.to))
   const pageTitle = currentRoute?.label || 'Dashboard'
 
-  return (
-    <div className="min-h-screen flex bg-background text-foreground">
-      {/* Sidebar (fixed) */}
-      <aside className="fixed left-0 top-0 bottom-0 w-64 border-r border-sidebar-border bg-sidebar p-4 text-sidebar-foreground flex flex-col">
-        <div className="flex items-center gap-3 mb-6">
+  const SidebarContent = () => (
+    <div className="h-full flex flex-col text-sidebar-foreground">
+        <div className="flex items-center gap-3 mb-6 px-2">
           <div className="h-10 w-10 rounded-md bg-primary flex items-center justify-center text-primary-foreground font-bold">SM</div>
           <div>
             <div className="font-semibold">StudyMate AI</div>
@@ -42,7 +41,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </div>
         </div>
 
-        <nav className="space-y-1">
+        <nav className="space-y-1 flex-1">
           {navItems.map((item) => {
             const Icon = item.icon
             const isActive = location.pathname.startsWith(item.to)
@@ -50,6 +49,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               <Link 
                 key={item.to}
                 to={item.to} 
+                onClick={() => setIsMobileOpen(false)}
                 className={`flex items-center gap-3 rounded-md px-3 py-2 transition-colors ${
                   isActive 
                     ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium' 
@@ -63,19 +63,19 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           })}
         </nav>
 
-  <div className="mt-6 flex flex-col flex-1">
-       
-
-          <div className="mt-auto">
-               <Separator />
-          <div className="mt-4 text-xs text-sidebar-foreground/80">Logged in as</div>
-          <div className="mt-2 flex items-center gap-2">
-            <div className="h-8 w-8 rounded-full bg-accent" />
-            <div className="text-sm">Student</div>
-          </div>
+        <div className="mt-auto">
+          <Separator className="my-4" />
+          <div className="px-2">
+            <div className="text-xs text-sidebar-foreground/80">Logged in as</div>
+            <div className="mt-2 flex items-center gap-2 mb-4">
+              <div className="h-8 w-8 rounded-full bg-accent flex items-center justify-center">
+                <span className="text-xs font-bold">S</span>
+              </div>
+              <div className="text-sm font-medium">Student</div>
+            </div>
             <Button
               variant="ghost"
-              className="w-full justify-start gap-2 text-sm"
+              className="w-full justify-start gap-2 text-sm -ml-2"
               onClick={() => setLogoutOpen(true)}
             >
               <LogOut className="h-4 w-4" />
@@ -83,41 +83,31 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             </Button>
           </div>
         </div>
+    </div>
+  )
 
-        {/* Logout Confirmation Dialog */}
-        <Dialog open={logoutOpen} onOpenChange={setLogoutOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Confirm Logout</DialogTitle>
-              <DialogDescription>Are you sure you want to sign out? You will need to log back in to access your account.</DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button variant="ghost" onClick={() => setLogoutOpen(false)}>Cancel</Button>
-              <Button
-                variant="destructive"
-                className=''
-                onClick={async () => {
-                  try {
-                    await authService.logout()
-                  } catch {
-                    // ignore
-                  }
-                  localStorage.removeItem('access_token')
-                  localStorage.removeItem('token')
-                  window.location.href = '/login'
-                }}
-              >
-                Logout
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+  return (
+    <div className="min-h-screen flex bg-background text-foreground">
+      {/* Desktop Sidebar */}
+      <aside className="hidden md:flex fixed left-0 top-0 bottom-0 w-64 border-r border-sidebar-border bg-sidebar p-4 flex-col z-30">
+        <SidebarContent />
       </aside>
 
-      {/* Main (offset by sidebar) */}
-      <div className="flex-1 ml-64">
-        <header className="fixed top-0 left-64 right-0 h-16 flex items-center justify-between px-6 border-b border-sidebar-border bg-background z-40">
+      {/* Mobile Sidebar (Sheet) */}
+      <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
+        <SheetContent side="left" className="w-64 p-4 bg-sidebar border-r border-sidebar-border">
+          <SidebarContent />
+        </SheetContent>
+      </Sheet>
+
+      {/* Main Content */}
+      <div className="flex-1 md:ml-64 transition-all duration-200 ease-in-out">
+        <header className="fixed top-0 left-0 md:left-64 right-0 h-16 flex items-center justify-between px-4 md:px-6 border-b border-sidebar-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-20">
           <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setIsMobileOpen(true)}>
+              <Menu className="h-5 w-5" />
+              <span className="sr-only">Toggle menu</span>
+            </Button>
             <div className="text-lg font-semibold">{pageTitle}</div>
           </div>
           <div className="flex items-center gap-4">
@@ -125,8 +115,38 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main className="p-6 pt-16 min-h-screen overflow-auto">{children}</main>
+        <main className="p-4 md:p-6 pt-20 min-h-screen overflow-auto">
+          {children}
+        </main>
       </div>
+
+      {/* Logout Confirmation Dialog */}
+      <Dialog open={logoutOpen} onOpenChange={setLogoutOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Logout</DialogTitle>
+            <DialogDescription>Are you sure you want to sign out? You will need to log back in to access your account.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setLogoutOpen(false)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                try {
+                  await authService.logout()
+                } catch {
+                  // ignore
+                }
+                localStorage.removeItem('access_token')
+                localStorage.removeItem('token')
+                window.location.href = '/login'
+              }}
+            >
+              Logout
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

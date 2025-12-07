@@ -159,6 +159,10 @@ Once set up, deployments are automatic:
 - Ensure all environment variables are set
 - Verify `prisma generate` runs in build
 
+### "Cannot find module" Error
+- If you see `Error: Cannot find module .../dist/main`, it means the build output structure is incorrect.
+- Ensure `prisma.config.ts` is excluded in `tsconfig.build.json`.
+
 ### Database Connection Issues
 - Verify `DATABASE_URL` and `DIRECT_URL` are correct
 - Check database is in the same region

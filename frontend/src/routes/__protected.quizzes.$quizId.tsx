@@ -141,7 +141,7 @@ function RouteComponent() {
 
   return (
     <AppLayout>
-      <div className="max-w-4xl mx-auto py-4">
+      <div className="max-w-4xl mx-auto py-4 mt-13">
         <div className="mb-6 space-y-4">
           <Link to="/quizzes">
             <Button variant="ghost" size="sm" className="gap-2 -ml-2">

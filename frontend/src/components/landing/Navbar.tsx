@@ -17,7 +17,7 @@ const Navbar = memo(function Navbar() {
             <img
               src="/logo.png"
               alt="AI Study Buddy Logo"
-              className="w-20 h-20 sm:w-20 sm:h-20 object-contain transform-gpu group-hover:scale-110 transition-transform duration-200 drop-shadow-md"
+              className="w-12 h-12 sm:w-16 sm:h-16 object-contain transform-gpu group-hover:scale-110 transition-transform duration-200 drop-shadow-md"
             />
             <span className="text-2xl sm:text-2xl font-extrabold leading-none" style={{ color: '#3B82F6' }}>Buds</span>
           </Link>
@@ -26,7 +26,7 @@ const Navbar = memo(function Navbar() {
               <Button variant="ghost" className="text-muted-foreground hover:text-primary font-medium text-sm py-1">Sign In</Button>
             </Link>
             <Link to="/register">
-              <Button className="rounded-full px-6 py-2.5 text-sm sm:text-base font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all bg-primary text-primary-foreground hover:bg-primary/90">
+              <Button className="rounded-full px-4 sm:px-6 py-2.5 text-sm sm:text-base font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all bg-primary text-primary-foreground hover:bg-primary/90">
                 Get Started
               </Button>
             </Link>

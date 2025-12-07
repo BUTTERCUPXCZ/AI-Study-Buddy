@@ -86,7 +86,7 @@ function RouteComponent() {
   return (
     <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2">
       <div className="flex items-center justify-center py-12">
-        <div className="mx-auto grid w-[350px] gap-6">
+        <div className="mx-auto grid w-full max-w-[350px] gap-6 px-4 sm:px-0">
           <div className="grid gap-2 text-center">
             <div className="flex items-center justify-center gap-2">
               <img src="/logo.png" alt="Buds logo" className="w-12 h-12 sm:w-14 sm:h-14 object-contain drop-shadow-sm" />

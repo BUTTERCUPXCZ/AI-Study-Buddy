@@ -295,7 +295,7 @@ function RouteComponent() {
 
   return (
     <AppLayout>
-      <div className="flex mt-10 gap-6 h-[calc(100vh-8rem)]">
+      <div className="flex mt-15 gap-6 h-[calc(100vh-8rem)]">
         {/* Chat History Sidebar */}
         <div className="w-80 shrink-0">
           <Card className="h-full flex flex-col">
