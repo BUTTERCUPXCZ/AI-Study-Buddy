@@ -10,6 +10,7 @@ import { QuizzesModule } from './quizzes/quizzes.module';
 import { WebsocketModule } from './websocket/websocket.module';
 import { JobsModule } from './jobs/jobs.module';
 import configurations from './config';
+import { HealthController } from './health.controller';
 
 @Module({
   imports: [
@@ -27,7 +28,7 @@ import configurations from './config';
     QuizzesModule,
     WebsocketModule,
   ],
-  controllers: [],
+  controllers: [HealthController],
   providers: [],
 })
 export class AppModule {}

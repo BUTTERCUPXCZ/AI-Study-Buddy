@@ -1,0 +1,57 @@
+services:
+  # PostgreSQL Database
+  - type: pserv
+    name: ai-study-buddy-db
+    env: node
+    plan: free
+    databases:
+      - name: ai_study_buddy
+        databaseName: ai_study_buddy
+        user: ai_study_buddy_user
+
+  # Backend Web Service
+  - type: web
+    name: ai-study-buddy-backend
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:prod
+    rootDir: backend
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ai-study-buddy-db
+          property: connectionString
+      - key: DIRECT_URL
+        fromDatabase:
+          name: ai-study-buddy-db
+          property: connectionString
+      # Add other environment variables in Render dashboard
+      - key: FRONTEND_ORIGIN
+        sync: false  # Set manually in dashboard
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: REDIS_HOST
+        sync: false
+      - key: REDIS_PORT
+        sync: false
+      - key: REDIS_PASSWORD
+        sync: false
+      - key: REDIS_TLS
+        value: true
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: MAX_FILE_SIZE
+        value: 10485760
+      - key: ALLOWED_FILE_TYPES
+        value: application/pdf,text/plain
