@@ -1,6 +1,6 @@
 /**
  * Standardized Job Event DTOs
- * 
+ *
  * These DTOs ensure consistent event structure across all workers and WebSocket communications.
  * Use these types for all job-related events to maintain type safety and consistency.
  */

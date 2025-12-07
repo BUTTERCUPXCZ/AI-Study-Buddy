@@ -1,16 +1,20 @@
 import { Logger } from '@nestjs/common';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import * as http from 'http';
+import * as https from 'https';
+
+type HttpAgent = http.Agent | https.Agent;
 
 /**
  * Connection Pool Utility for Optimized Resource Management
- * 
+ *
  * Reuses connections and resources to reduce overhead and improve performance.
  * Implements pooling for Supabase clients, HTTP connections, and other resources.
  */
 export class ConnectionPoolUtil {
   private static readonly logger = new Logger('ConnectionPoolUtil');
   private static supabasePool: Map<string, SupabaseClient> = new Map();
-  private static httpAgents: Map<string, any> = new Map();
+  private static httpAgents: Map<string, HttpAgent> = new Map();
 
   /**
    * Get or create a Supabase client from pool
@@ -40,9 +44,6 @@ export class ConnectionPoolUtil {
    * Create optimized fetch with connection pooling
    */
   private static createOptimizedFetch() {
-    const http = require('http');
-    const https = require('https');
-
     // Create HTTP agents with connection pooling
     const httpAgent = new http.Agent({
       keepAlive: true,
@@ -60,12 +61,13 @@ export class ConnectionPoolUtil {
       timeout: 60000,
     });
 
-    return (url: string, options: any = {}) => {
+    return (url: string, options: RequestInit = {}) => {
       const parsedUrl = new URL(url);
       const agent = parsedUrl.protocol === 'https:' ? httpsAgent : httpAgent;
 
       return fetch(url, {
         ...options,
+        // @ts-expect-error - agent is valid for node environment
         agent,
       });
     };
@@ -74,10 +76,9 @@ export class ConnectionPoolUtil {
   /**
    * Get or create HTTP agent for connection pooling
    */
-  static getHttpAgent(protocol: 'http' | 'https' = 'https'): any {
+  static getHttpAgent(protocol: 'http' | 'https' = 'https'): HttpAgent {
     if (!this.httpAgents.has(protocol)) {
-      const Agent =
-        protocol === 'https' ? require('https').Agent : require('http').Agent;
+      const Agent = protocol === 'https' ? https.Agent : http.Agent;
 
       const agent = new Agent({
         keepAlive: true,
@@ -107,7 +108,7 @@ export class ConnectionPoolUtil {
 
     return fetch(url, {
       ...options,
-      // @ts-ignore - agent is valid for node-fetch
+      // @ts-expect-error - agent is valid for node environment
       agent,
     });
   }
@@ -168,7 +169,7 @@ export class ConnectionPoolUtil {
         );
 
         if (attempt < maxRetries - 1) {
-          await new Promise(resolve =>
+          await new Promise((resolve) =>
             setTimeout(resolve, 1000 * Math.pow(2, attempt)),
           );
         }

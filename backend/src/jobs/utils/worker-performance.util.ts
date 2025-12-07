@@ -2,7 +2,7 @@ import { Logger } from '@nestjs/common';
 
 /**
  * Worker Performance Optimization Utilities
- * 
+ *
  * Provides tools for monitoring, profiling, and optimizing background job performance.
  */
 export class WorkerPerformanceUtil {
@@ -104,62 +104,64 @@ export class WorkerPerformanceUtil {
    * Sleep utility
    */
   static sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /**
    * Create a throttled function that limits execution rate
    */
-  static throttle<T extends (...args: any[]) => any>(
+  static throttle<T extends (...args: unknown[]) => unknown>(
     fn: T,
     delayMs: number,
-  ): T {
+  ): (...args: Parameters<T>) => ReturnType<T> | undefined {
     let lastRun = 0;
     let timeout: NodeJS.Timeout | null = null;
 
-    return ((...args: Parameters<T>) => {
+    return (...args: Parameters<T>): ReturnType<T> | undefined => {
       const now = Date.now();
       const timeSinceLastRun = now - lastRun;
 
       if (timeSinceLastRun >= delayMs) {
         lastRun = now;
-        return fn(...args);
+        return fn(...args) as ReturnType<T>;
       } else {
         if (timeout) clearTimeout(timeout);
         timeout = setTimeout(() => {
           lastRun = Date.now();
           fn(...args);
         }, delayMs - timeSinceLastRun);
+        return undefined;
       }
-    }) as T;
+    };
   }
 
   /**
    * Create a debounced function that delays execution
    */
-  static debounce<T extends (...args: any[]) => any>(
+  static debounce<T extends (...args: unknown[]) => unknown>(
     fn: T,
     delayMs: number,
-  ): T {
+  ): (...args: Parameters<T>) => undefined {
     let timeout: NodeJS.Timeout | null = null;
 
-    return ((...args: Parameters<T>) => {
+    return (...args: Parameters<T>): undefined => {
       if (timeout) clearTimeout(timeout);
       timeout = setTimeout(() => fn(...args), delayMs);
-    }) as T;
+      return undefined;
+    };
   }
 
   /**
    * Calculate optimal concurrency based on system resources
    */
-  static calculateOptimalConcurrency(): {
+  static async calculateOptimalConcurrency(): Promise<{
     cpuBased: number;
     memoryBased: number;
     recommended: number;
-  } {
-    const cpuCount = require('os').cpus().length;
-    const totalMemory = require('os').totalmem();
-    const freeMemory = require('os').freemem();
+  }> {
+    const os = await import('os');
+    const cpuCount = os.cpus().length;
+    const freeMemory = os.freemem();
 
     // CPU-based: number of cores * 2 (for I/O-bound tasks)
     const cpuBased = cpuCount * 2;
@@ -180,7 +182,14 @@ export class WorkerPerformanceUtil {
   /**
    * Monitor queue health metrics
    */
-  static async getQueueHealthMetrics(queue: any): Promise<{
+  static async getQueueHealthMetrics(queue: {
+    getWaitingCount: () => Promise<number>;
+    getActiveCount: () => Promise<number>;
+    getCompletedCount: () => Promise<number>;
+    getFailedCount: () => Promise<number>;
+    getDelayedCount: () => Promise<number>;
+    isPaused: () => Promise<boolean>;
+  }): Promise<{
     waiting: number;
     active: number;
     completed: number;
@@ -200,7 +209,7 @@ export class WorkerPerformanceUtil {
       ]);
 
     // Calculate processing rate (jobs per minute)
-    const processingRate = completed > 0 ? (completed / (Date.now() / 60000)) : 0;
+    const processingRate = completed > 0 ? completed / (Date.now() / 60000) : 0;
 
     return {
       waiting,
@@ -248,14 +257,16 @@ export class WorkerPerformanceUtil {
   /**
    * Create a circuit breaker for failing operations
    */
-  static createCircuitBreaker<T extends (...args: any[]) => Promise<any>>(
+  static createCircuitBreaker<
+    T extends (...args: unknown[]) => Promise<unknown>,
+  >(
     fn: T,
     options: {
       threshold: number; // Number of failures before opening
       timeout: number; // Time to wait before trying again (ms)
       resetTimeout: number; // Time to wait before closing circuit (ms)
     },
-  ) {
+  ): (...args: Parameters<T>) => Promise<ReturnType<T>> {
     let failureCount = 0;
     let lastFailureTime = 0;
     let state: 'closed' | 'open' | 'half-open' = 'closed';
@@ -264,10 +275,7 @@ export class WorkerPerformanceUtil {
       const now = Date.now();
 
       // Check if circuit should be half-open
-      if (
-        state === 'open' &&
-        now - lastFailureTime > options.resetTimeout
-      ) {
+      if (state === 'open' && now - lastFailureTime > options.resetTimeout) {
         state = 'half-open';
         this.logger.log('Circuit breaker entering half-open state');
       }
@@ -287,7 +295,7 @@ export class WorkerPerformanceUtil {
           this.logger.log('Circuit breaker closed');
         }
 
-        return result;
+        return result as ReturnType<T>;
       } catch (error) {
         failureCount++;
         lastFailureTime = now;

@@ -13,7 +13,10 @@ import { PdfCacheUtil } from '../utils/pdf-cache.util';
 import { PdfParserUtil } from '../utils/pdf-parser.util';
 import { EXAM_READY_NOTES_PROMPT } from '../../ai/prompts/optimized-prompts';
 import { JobStatus } from '@prisma/client';
-import { cleanAiMarkdown, formatNotesMarkdown } from '../../ai/utils/markdown.util';
+import {
+  cleanAiMarkdown,
+  formatNotesMarkdown,
+} from '../../ai/utils/markdown.util';
 
 export interface CreatePdfNotesJobDto {
   fileId: string;
@@ -40,7 +43,7 @@ export interface PdfNotesJobResult {
 /**
  * ULTRA-OPTIMIZED PDF Notes Worker
  * Target: 3-8s for 500KB PDF (down from 30-50s)
- * 
+ *
  * Optimizations:
  * 1. PDF content hashing → instant cache hits (0.5s)
  * 2. Single comprehensive LLM call for detailed exam-ready notes
@@ -109,9 +112,8 @@ export class PdfNotesOptimizedWorker extends WorkerHost {
       await this.updateProgress(job, 5, 'downloading');
       const downloadStart = Date.now();
 
-      const { data: pdfData, error: downloadError } = await this.supabase.storage
-        .from('pdfs')
-        .download(filePath);
+      const { data: pdfData, error: downloadError } =
+        await this.supabase.storage.from('pdfs').download(filePath);
 
       if (downloadError || !pdfData) {
         throw new Error(`Download failed: ${downloadError?.message}`);
@@ -120,14 +122,16 @@ export class PdfNotesOptimizedWorker extends WorkerHost {
       const arrayBuffer = await pdfData.arrayBuffer();
       const pdfBuffer = Buffer.from(arrayBuffer);
       const downloadTime = Date.now() - downloadStart;
-      
-      this.logger.log(`📥 Downloaded ${(pdfBuffer.length / 1024).toFixed(2)}KB in ${downloadTime}ms`);
+
+      this.logger.log(
+        `📥 Downloaded ${(pdfBuffer.length / 1024).toFixed(2)}KB in ${downloadTime}ms`,
+      );
 
       // ============ PHASE 3: PARALLEL CACHE CHECK + TEXT EXTRACTION (10-25%) ============
       await this.updateProgress(job, 10, 'checking_cache');
-      
+
       const pdfHash = PdfCacheUtil.hashPDF(pdfBuffer);
-      
+
       // Run cache check and text extraction in parallel for speed
       const [cachedNotes, extractionResult] = await Promise.allSettled([
         PdfCacheUtil.getCachedNotes(this.redis, pdfHash),
@@ -136,7 +140,9 @@ export class PdfNotesOptimizedWorker extends WorkerHost {
           const extractStart = Date.now();
           const result = await PdfParserUtil.extractTextFromBuffer(pdfBuffer);
           const extractTime = Date.now() - extractStart;
-          this.logger.log(`📄 Extracted ${result.text.length} chars from ${result.pageCount} pages in ${extractTime}ms`);
+          this.logger.log(
+            `📄 Extracted ${result.text.length} chars from ${result.pageCount} pages in ${extractTime}ms`,
+          );
           return { ...result, extractTime };
         })(),
       ]);
@@ -144,12 +150,12 @@ export class PdfNotesOptimizedWorker extends WorkerHost {
       // Check if we have a cache hit
       if (cachedNotes.status === 'fulfilled' && cachedNotes.value) {
         this.logger.log('⚡ CACHE HIT - Returning cached notes instantly');
-        
+
         const cached = cachedNotes.value;
-        
+
         await this.updateProgress(job, 90, 'saving');
         const dbStart = Date.now();
-        
+
         try {
           // Create new note record for this user with cached content
           this.logger.log(`💾 Creating note from cache for user ${userId}`);
@@ -161,12 +167,14 @@ export class PdfNotesOptimizedWorker extends WorkerHost {
               userId: userId,
             },
           });
-          
+
           const dbTime = Date.now() - dbStart;
-          this.logger.log(`💾 Saved to DB in ${dbTime}ms (CACHE HIT) - Note ID: ${noteRecord.id}`);
+          this.logger.log(
+            `💾 Saved to DB in ${dbTime}ms (CACHE HIT) - Note ID: ${noteRecord.id}`,
+          );
 
           await this.updateProgress(job, 100, 'completed');
-          
+
           const totalTime = Date.now() - startTime;
           this.logger.log(`✅ Completed in ${totalTime}ms (CACHE HIT)`);
 
@@ -188,13 +196,18 @@ export class PdfNotesOptimizedWorker extends WorkerHost {
 
           // Emit completion event to frontend (cache hit)
           await this.wsGateway.emitJobCompleted(job.id!, cacheResult);
-          this.logger.log(`📡 WebSocket completion event sent (CACHE HIT) for note ${noteRecord.id}`);
+          this.logger.log(
+            `📡 WebSocket completion event sent (CACHE HIT) for note ${noteRecord.id}`,
+          );
 
           return cacheResult;
         } catch (dbError) {
-          const errorMsg = dbError instanceof Error ? dbError.message : 'Unknown DB error';
+          const errorMsg =
+            dbError instanceof Error ? dbError.message : 'Unknown DB error';
           this.logger.error(`❌ Database save failed (CACHE HIT): ${errorMsg}`);
-          throw new Error(`Failed to save cached note to database: ${errorMsg}`);
+          throw new Error(
+            `Failed to save cached note to database: ${errorMsg}`,
+          );
         }
       }
 
@@ -204,16 +217,19 @@ export class PdfNotesOptimizedWorker extends WorkerHost {
         throw new Error(`Text extraction failed: ${extractionResult.reason}`);
       }
 
-      const { text: extractedText, pageCount, extractTime } = extractionResult.value;
+      const { text: extractedText, extractTime } = extractionResult.value;
       await this.updateProgress(job, 30, 'text_ready');
 
       // ============ PHASE 5: COMPREHENSIVE LLM PROCESSING (30-85%) ============
       const aiStart = Date.now();
-      
+
       this.logger.log('🤖 Generating comprehensive exam-ready study notes');
       await this.updateProgress(job, 50, 'generating_notes');
-      
-      const noteContent = await this.generateComprehensiveNotes(extractedText, fileName);
+
+      const noteContent = await this.generateComprehensiveNotes(
+        extractedText,
+        fileName,
+      );
 
       const aiTime = Date.now() - aiStart;
       this.logger.log(`🤖 AI processing completed in ${aiTime}ms`);
@@ -232,18 +248,20 @@ export class PdfNotesOptimizedWorker extends WorkerHost {
       );
 
       const dbTime = Date.now() - dbStart;
-      this.logger.log(`💾 Saved to DB in ${dbTime}ms - Note ID: ${noteRecord.id}`);
+      this.logger.log(
+        `💾 Saved to DB in ${dbTime}ms - Note ID: ${noteRecord.id}`,
+      );
 
       // ============ PHASE 7: CACHE FOR FUTURE (95%) ============
       await this.updateProgress(job, 95, 'caching');
-      
+
       const notesToCache = {
         noteId: noteRecord.id,
         title: noteRecord.title,
         content: noteRecord.content,
         summary: noteContent.substring(0, 200) + '...',
       };
-      
+
       await PdfCacheUtil.cacheNotes(this.redis, pdfHash, notesToCache);
 
       // ============ PHASE 8: COMPLETE (100%) ============
@@ -271,7 +289,9 @@ export class PdfNotesOptimizedWorker extends WorkerHost {
 
       // Emit completion event to frontend
       await this.wsGateway.emitJobCompleted(job.id!, result);
-      this.logger.log(`📡 WebSocket completion event sent for note ${noteRecord.id}`);
+      this.logger.log(
+        `📡 WebSocket completion event sent for note ${noteRecord.id}`,
+      );
 
       return result;
     } catch (error) {
@@ -284,11 +304,14 @@ export class PdfNotesOptimizedWorker extends WorkerHost {
    * Generate comprehensive exam-ready study notes from the entire document
    * Uses a single LLM call with detailed instructions for thorough content coverage
    */
-  private async generateComprehensiveNotes(text: string, fileName: string): Promise<string> {
+  private async generateComprehensiveNotes(
+    text: string,
+    fileName: string,
+  ): Promise<string> {
     const title = this.generateTitle(fileName);
-    
+
     this.logger.log(`📄 Processing ${text.length} characters of content`);
-    
+
     const result = await this.aiService['model'].generateContent([
       EXAM_READY_NOTES_PROMPT,
       `\n\nDocument: ${title}\n\nContent:\n${text}`,
@@ -297,12 +320,12 @@ export class PdfNotesOptimizedWorker extends WorkerHost {
     const generatedNotes = formatNotesMarkdown(
       cleanAiMarkdown(result.response.text()),
     );
-    
+
     // Ensure title is included
     if (!generatedNotes.startsWith('#')) {
       return `# ${title}\n\n${generatedNotes}`;
     }
-    
+
     return generatedNotes;
   }
 
@@ -317,28 +340,44 @@ export class PdfNotesOptimizedWorker extends WorkerHost {
     // Use upsert to ensure the job record exists in the database
     await Promise.all([
       job.updateProgress(progress),
-      this.jobsService.upsertJobStatus(job.id!, 'processing' as JobStatus, {
-        progress,
-        name: 'generate-notes-optimized',
-        queueName: 'pdf-notes-optimized',
-        data: job.data,
-        userId: job.data.userId,
-      }),
+      this.jobsService.upsertJobStatus(
+        job.id!,
+        'processing' as
+          | 'active'
+          | 'completed'
+          | 'failed'
+          | 'waiting'
+          | 'delayed'
+          | 'paused',
+        {
+          progress,
+          name: 'generate-notes-optimized',
+          queueName: 'pdf-notes-optimized',
+          data: job.data as CreatePdfNotesJobDto,
+          userId: (job.data as CreatePdfNotesJobDto).userId,
+        },
+      ),
     ]);
 
     // Set stage separately (it modifies opts JSON field)
-    await this.jobsService.setJobStage(job.id!, stage).catch(err => {
+    await this.jobsService.setJobStage(job.id!, stage).catch((err: Error) => {
       this.logger.warn(`Failed to set stage for job ${job.id}: ${err.message}`);
     });
 
-    this.wsGateway.emitJobProgress(job.id!, progress, stage, job.data.userId);
+    this.wsGateway.emitJobProgress(
+      job.id!,
+      progress,
+      stage,
+      (job.data as CreatePdfNotesJobDto).userId,
+    );
   }
 
   /**
    * Handle errors with proper cleanup
    */
   private async handleError(job: Job, error: any): Promise<void> {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
     this.logger.error(`❌ Job ${job.id} failed: ${errorMessage}`);
 
     // Use upsert to ensure the job record exists even on failure
@@ -347,18 +386,22 @@ export class PdfNotesOptimizedWorker extends WorkerHost {
       failedAt: new Date(),
       name: 'generate-notes-optimized',
       queueName: 'pdf-notes-optimized',
-      data: job.data,
-      userId: job.data.userId,
+      data: job.data as CreatePdfNotesJobDto,
+      userId: (job.data as CreatePdfNotesJobDto).userId,
     });
 
     // Set stage separately
-    await this.jobsService.setJobStage(job.id!, 'failed').catch(err => {
-      this.logger.warn(`Failed to set stage for failed job ${job.id}: ${err.message}`);
-    });
+    await this.jobsService
+      .setJobStage(job.id!, 'failed')
+      .catch((err: Error) => {
+        this.logger.warn(
+          `Failed to set stage for failed job ${job.id}: ${err.message}`,
+        );
+      });
 
     this.wsGateway.emitJobUpdate(job.id!, 'failed', {
       jobId: job.id!,
-      userId: job.data.userId,
+      userId: (job.data as CreatePdfNotesJobDto).userId,
       progress: 0,
       message: `Failed: ${errorMessage}`,
     });

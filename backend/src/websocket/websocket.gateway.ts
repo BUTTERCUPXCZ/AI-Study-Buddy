@@ -80,9 +80,12 @@ export class JobsWebSocketGateway
 
     // If subscribing to a specific job, send cached progress immediately
     if (data.jobId) {
-      const cachedProgress = await this.getJobProgress(data.jobId);
+      const cachedProgress: Record<string, unknown> | null =
+        await this.getJobProgress(data.jobId);
       if (cachedProgress) {
-        this.logger.log(`Sending cached progress for job ${data.jobId} to client ${client.id}`);
+        this.logger.log(
+          `Sending cached progress for job ${data.jobId} to client ${client.id}`,
+        );
         client.emit('job:progress', cachedProgress);
       }
     }
@@ -181,7 +184,9 @@ export class JobsWebSocketGateway
       this.server.to(`user:${userId}`).emit('job:completed', payload);
       this.logger.log(`Emitted job:completed to user:${userId}`);
     } else {
-      this.logger.warn(`No userId found in result for job ${jobId}, only job room notified`);
+      this.logger.warn(
+        `No userId found in result for job ${jobId}, only job room notified`,
+      );
     }
 
     // Emit to all jobs room as fallback
@@ -223,7 +228,12 @@ export class JobsWebSocketGateway
   /**
    * Emit job progress update
    */
-  emitJobProgress(jobId: string, progress: number, message?: string, userId?: string) {
+  emitJobProgress(
+    jobId: string,
+    progress: number,
+    message?: string,
+    userId?: string,
+  ) {
     const payload = {
       jobId,
       status: 'in_progress',
@@ -237,13 +247,17 @@ export class JobsWebSocketGateway
 
     // Emit to job-specific room
     this.server.to(`job:${jobId}`).emit('job:progress', payload);
-    
+
     // Also emit to user room if userId is provided
     if (userId) {
       this.server.to(`user:${userId}`).emit('job:progress', payload);
-      this.logger.log(`Job progress update for job ${jobId}: ${progress}% (rooms: job:${jobId}, user:${userId})`);
+      this.logger.log(
+        `Job progress update for job ${jobId}: ${progress}% (rooms: job:${jobId}, user:${userId})`,
+      );
     } else {
-      this.logger.log(`Job progress update for job ${jobId}: ${progress}% (room: job:${jobId})`);
+      this.logger.log(
+        `Job progress update for job ${jobId}: ${progress}% (room: job:${jobId})`,
+      );
     }
   }
 
@@ -327,12 +341,14 @@ export class JobsWebSocketGateway
   /**
    * Get cached job progress from Redis
    */
-  private async getJobProgress(jobId: string): Promise<any | null> {
+  private async getJobProgress(
+    jobId: string,
+  ): Promise<Record<string, unknown> | null> {
     try {
       const key = `job-progress:${jobId}`;
       const cached = await this.redisService.get(key);
       if (cached) {
-        return JSON.parse(cached);
+        return JSON.parse(cached) as Record<string, unknown>;
       }
       return null;
     } catch (error) {

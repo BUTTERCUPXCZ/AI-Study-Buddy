@@ -3,7 +3,7 @@ import Redis from 'ioredis';
 
 /**
  * Redis Optimization Utilities
- * 
+ *
  * Provides optimized Redis operations with pipelining, batching, and caching strategies
  * to reduce round trips and improve performance.
  */
@@ -21,7 +21,7 @@ export class RedisOptimizationUtil {
     if (keys.length === 0) return new Map();
 
     const pipeline = redis.pipeline();
-    keys.forEach(key => pipeline.get(key));
+    keys.forEach((key) => pipeline.get(key));
 
     const results = await pipeline.exec();
     const resultMap = new Map<string, string | null>();
@@ -130,8 +130,10 @@ export class RedisOptimizationUtil {
         // Set in L1
         if (l1Cache.size >= l1MaxSize) {
           // Evict oldest entry
-          const firstKey = l1Cache.keys().next().value;
-          l1Cache.delete(firstKey);
+          const firstKey = l1Cache.keys().next().value as string | undefined;
+          if (firstKey) {
+            l1Cache.delete(firstKey);
+          }
         }
 
         l1Cache.set(key, {
@@ -174,7 +176,11 @@ export class RedisOptimizationUtil {
   /**
    * Optimized Redis pub/sub with message batching
    */
-  static createBatchedPublisher(redis: Redis, batchSize: number = 10, batchDelay: number = 100) {
+  static createBatchedPublisher(
+    redis: Redis,
+    batchSize: number = 10,
+    batchDelay: number = 100,
+  ) {
     const messageQueue: Array<{ channel: string; message: string }> = [];
     let flushTimer: NodeJS.Timeout | null = null;
 
@@ -201,12 +207,12 @@ export class RedisOptimizationUtil {
         if (messageQueue.length >= batchSize) {
           // Flush immediately if batch is full
           if (flushTimer) clearTimeout(flushTimer);
-          flush();
+          void flush();
         } else if (!flushTimer) {
           // Schedule flush
           flushTimer = setTimeout(() => {
             flushTimer = null;
-            flush();
+            void flush();
           }, batchDelay);
         }
       },
@@ -260,8 +266,8 @@ export class RedisOptimizationUtil {
        * Batch load multiple IDs
        */
       async batchGet(ids: string[]): Promise<Map<string, T>> {
-        const keys = ids.map(id => `${keyPrefix}:${id}`);
-        const cached = await this.batchGet(redis, keys);
+        const keys = ids.map((id) => `${keyPrefix}:${id}`);
+        const cached = await RedisOptimizationUtil.batchGet(redis, keys);
 
         const results = new Map<string, T>();
         const missingIds: string[] = [];
@@ -277,7 +283,7 @@ export class RedisOptimizationUtil {
 
         // Load missing values
         if (missingIds.length > 0) {
-          const loadPromises = missingIds.map(async id => {
+          const loadPromises = missingIds.map(async (id) => {
             const value = await loader(id);
             results.set(id, value);
             // Cache it
@@ -340,7 +346,7 @@ export class RedisOptimizationUtil {
       }
     } else {
       // Wait for lock holder to finish
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       // Retry getting from cache
       const retryCache = await redis.get(key);
@@ -361,17 +367,16 @@ export class RedisOptimizationUtil {
     script: string,
     keys: string[],
     args: string[],
-  ): Promise<any> {
+  ): Promise<unknown> {
     // Use EVALSHA to avoid sending script every time
-    const sha = require('crypto')
-      .createHash('sha1')
-      .update(script)
-      .digest('hex');
+    const crypto = await import('crypto');
+    const sha = crypto.createHash('sha1').update(script).digest('hex');
 
     try {
       return await redis.evalsha(sha, keys.length, ...keys, ...args);
-    } catch (error: any) {
-      if (error.message.includes('NOSCRIPT')) {
+    } catch (error) {
+      const err = error as Error;
+      if (err.message.includes('NOSCRIPT')) {
         // Script not cached, send it
         return await redis.eval(script, keys.length, ...keys, ...args);
       }
@@ -409,10 +414,7 @@ export class RedisOptimizationUtil {
   /**
    * Delete keys by pattern efficiently
    */
-  static async deleteByPattern(
-    redis: Redis,
-    pattern: string,
-  ): Promise<number> {
+  static async deleteByPattern(redis: Redis, pattern: string): Promise<number> {
     let totalDeleted = 0;
 
     for await (const keys of this.scanKeys(redis, pattern, 100)) {

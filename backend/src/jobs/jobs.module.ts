@@ -34,7 +34,8 @@ import { JobEventEmitterService } from './job-event-emitter.service';
         // BullMQ requires a standard Redis connection (not Upstash REST API)
         // You'll need to add REDIS_HOST, REDIS_PORT, REDIS_PASSWORD to your .env
         // For Upstash, use their Redis TCP endpoint
-        const redisHost = configService.get<string>('REDIS_HOST') || 'localhost';
+        const redisHost =
+          configService.get<string>('REDIS_HOST') || 'localhost';
         const redisPort = configService.get<number>('REDIS_PORT') || 6379;
         const redisPassword = configService.get<string>('REDIS_PASSWORD');
         const redisTls = configService.get<string>('REDIS_TLS');
@@ -72,7 +73,7 @@ import { JobEventEmitterService } from './job-event-emitter.service';
       inject: [ConfigService],
     }),
     BullModule.registerQueue(
-      { 
+      {
         name: 'pdf-extract',
         // Worker settings to reduce Redis polling
         defaultJobOptions: {
@@ -83,7 +84,7 @@ import { JobEventEmitterService } from './job-event-emitter.service';
           },
         },
       },
-      { 
+      {
         name: 'pdf-notes',
         defaultJobOptions: {
           attempts: 3,
@@ -93,7 +94,7 @@ import { JobEventEmitterService } from './job-event-emitter.service';
           },
         },
       },
-      { 
+      {
         name: 'pdf-notes-optimized',
         defaultJobOptions: {
           attempts: 3,
@@ -107,7 +108,7 @@ import { JobEventEmitterService } from './job-event-emitter.service';
           },
         },
       },
-      { 
+      {
         name: 'pdf-ultra-optimized',
         defaultJobOptions: {
           attempts: 3,
@@ -121,7 +122,7 @@ import { JobEventEmitterService } from './job-event-emitter.service';
           },
         },
       },
-      { 
+      {
         name: 'ai-notes',
         defaultJobOptions: {
           attempts: 3,
@@ -131,7 +132,7 @@ import { JobEventEmitterService } from './job-event-emitter.service';
           },
         },
       },
-      { 
+      {
         name: 'ai-quiz',
         defaultJobOptions: {
           attempts: 3,
@@ -141,7 +142,7 @@ import { JobEventEmitterService } from './job-event-emitter.service';
           },
         },
       },
-      { 
+      {
         name: 'completion',
         defaultJobOptions: {
           attempts: 2,

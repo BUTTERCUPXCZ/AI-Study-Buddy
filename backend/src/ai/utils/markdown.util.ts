@@ -5,9 +5,9 @@
 
 // Regex patterns
 const CODE_FENCE_REGEX = /```[\w+-]*\n?[\s\S]*?```/g;
-const BULLET_CHARS = /^(\s*)[•●◦▪‣·*+\-]\s+/;
+const BULLET_CHARS = /^(\s*)[•●◦▪‣·*+-]\s+/;
 const MULTI_NEWLINES_REGEX = /\n{3,}/g;
-  const TABLE_ROW_REGEX = /^\|.+\|$/;
+const TABLE_ROW_REGEX = /^\|.+\|$/;
 
 /**
  * Clean AI-generated markdown text
@@ -77,18 +77,20 @@ export function formatNotesMarkdown(markdown: string): string {
 
   // Ensure there's a main title
   const lines = cleaned.split('\n');
-  let titleIndex = lines.findIndex((line) => /^#\s+/.test(line.trim()));
+  const titleIndex = lines.findIndex((line) => /^#\s+/.test(line.trim()));
 
   if (titleIndex === -1) {
     // No title found, add one
     const firstContentIndex = lines.findIndex((line) => line.trim().length > 0);
-    const derivedTitle = firstContentIndex >= 0 ? lines[firstContentIndex].trim() : 'Study Notes';
-    
-    const title = derivedTitle
-      .replace(/^#+\s+/, '')
-      .replace(/^\*\*(.*)\*\*$/, '$1')
-      .replace(/[:.]+$/, '')
-      .trim() || 'Study Notes';
+    const derivedTitle =
+      firstContentIndex >= 0 ? lines[firstContentIndex].trim() : 'Study Notes';
+
+    const title =
+      derivedTitle
+        .replace(/^#+\s+/, '')
+        .replace(/^\*\*(.*)\*\*$/, '$1')
+        .replace(/[:.]+$/, '')
+        .trim() || 'Study Notes';
 
     if (firstContentIndex >= 0) {
       lines.splice(firstContentIndex, 1, `# ${title}`);
@@ -157,7 +159,11 @@ function ensureHeadingSpacing(text: string): string {
 
     if (isHeading) {
       // Ensure one blank line before heading (unless at start or after another heading)
-      if (result.length > 0 && prevLine.trim() !== '' && !/^#{1,6}\s+/.test(prevLine.trim())) {
+      if (
+        result.length > 0 &&
+        prevLine.trim() !== '' &&
+        !/^#{1,6}\s+/.test(prevLine.trim())
+      ) {
         if (result[result.length - 1] !== '') {
           result.push('');
         }
@@ -230,7 +236,7 @@ function formatTableRows(rows: string[]): string[] {
   return rows.map((row) => {
     // Split by pipe, trim each cell, rejoin with proper spacing
     const cells = row.split('|').map((cell) => cell.trim());
-    
+
     // Remove empty cells at start and end
     if (cells[0] === '') cells.shift();
     if (cells[cells.length - 1] === '') cells.pop();

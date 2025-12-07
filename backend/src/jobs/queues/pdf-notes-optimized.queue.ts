@@ -172,7 +172,7 @@ export class PdfNotesOptimizedQueue {
       processedOn: job.processedOn,
       finishedOn: job.finishedOn,
       failedReason: job.failedReason,
-      returnvalue: job.returnvalue, // Includes metrics!
+      returnvalue: job.returnvalue as unknown, // Includes metrics!
     };
   }
 
@@ -238,6 +238,8 @@ export class PdfNotesOptimizedQueue {
    */
   async invalidateCacheForFile(pdfHash: string) {
     await PdfCacheUtil.invalidateCache(this.redis, pdfHash);
-    this.logger.log(`Invalidated cache for hash ${pdfHash.substring(0, 16)}...`);
+    this.logger.log(
+      `Invalidated cache for hash ${pdfHash.substring(0, 16)}...`,
+    );
   }
 }

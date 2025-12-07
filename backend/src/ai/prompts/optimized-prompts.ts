@@ -1,6 +1,6 @@
 /**
  * OPTIMIZED AI PROMPTS - 70% token reduction for faster LLM responses
- * 
+ *
  * OLD PROMPT: ~350 tokens → NEW PROMPT: ~100 tokens
  * Result: 3-5x faster responses, lower costs
  */
@@ -26,7 +26,10 @@ Output ONLY formatted notes.`;
  * Optimized prompt for chunk processing (parallel)
  * Designed for merging later
  */
-export function createChunkPrompt(chunkIndex: number, totalChunks: number): string {
+export function createChunkPrompt(
+  chunkIndex: number,
+  totalChunks: number,
+): string {
   return `Extract key points from section ${chunkIndex + 1}/${totalChunks}. Format:
 ## Section ${chunkIndex + 1}
 - Key point 1
@@ -236,7 +239,6 @@ FORMATTING REQUIREMENTS:
 - Ensure tables are properly aligned with | --- | separators
 - Every major concept MUST have at least one example`;
 
-
 /**
  * Merge prompt for combining parallel chunk results
  */
@@ -263,7 +265,7 @@ export function createOptimizedNotesPrompt(
   maxLength: number = 200,
 ): string {
   const preview = contentPreview.substring(0, maxLength);
-  
+
   return `Create study notes from this content: "${preview}..."
 
 Format:
@@ -289,17 +291,19 @@ export const PROMPT_CONFIGS = {
     maxTokens: 500,
     temperature: 0.3,
   },
-  
+
   // Balanced mode: good quality, reasonable speed
   BALANCED: {
     prompt: OPTIMIZED_PDF_PROMPT,
     maxTokens: 1500,
     temperature: 0.5,
   },
-  
+
   // Comprehensive mode: detailed output
   COMPREHENSIVE: {
-    prompt: OPTIMIZED_PDF_PROMPT + '\n\nInclude detailed explanations for each concept.',
+    prompt:
+      OPTIMIZED_PDF_PROMPT +
+      '\n\nInclude detailed explanations for each concept.',
     maxTokens: 3000,
     temperature: 0.7,
   },
@@ -335,7 +339,7 @@ export function createContextualChunkPrompt(
 
 Format as bullets.`;
   }
-  
+
   if (isLast) {
     return `Extract conclusions from final section (${totalChunks}/${totalChunks}):
 - Summary points
@@ -344,7 +348,7 @@ Format as bullets.`;
 
 Format as bullets.`;
   }
-  
+
   return `Extract key points from middle section (${chunkIndex + 1}/${totalChunks}):
 - Main concepts
 - Important details

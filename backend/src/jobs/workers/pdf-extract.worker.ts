@@ -11,7 +11,7 @@ import {
   CreatePdfExtractJobDto,
   PdfExtractJobResult,
 } from '../dto/pdf-extract.dto';
-import { File, JobStatus, Note } from '@prisma/client';
+import { File, JobStatus } from '@prisma/client';
 
 // CRITICAL: Configure worker to reduce Redis polling and avoid hitting Upstash request limits
 @Processor('pdf-extract', {
@@ -47,9 +47,13 @@ export class PdfExtractWorker extends WorkerHost {
 
     try {
       // Update job status to processing and set stage
-      await this.jobsService.updateJobStatus(job.id!, 'processing' as JobStatus, {
-        progress: 0,
-      });
+      await this.jobsService.updateJobStatus(
+        job.id!,
+        'processing' as JobStatus,
+        {
+          progress: 0,
+        },
+      );
       await this.jobsService.setJobStage(job.id!, 'processing');
       this.wsGateway.emitJobUpdate(job.id!, 'processing', {
         fileId,
@@ -164,7 +168,7 @@ export class PdfExtractWorker extends WorkerHost {
       // });
 
       // Option 2: Create a Note from the extracted text
-      const extractedNote = await this.databaseService.note.create({
+      await this.databaseService.note.create({
         data: {
           title: `Extracted from: ${fileName}`,
           content: cleanedText,
@@ -203,10 +207,14 @@ export class PdfExtractWorker extends WorkerHost {
 
       // Update job status to completed and stage
       await this.jobsService.setJobStage(job.id!, 'completed');
-      await this.jobsService.updateJobStatus(job.id!, 'completed' as JobStatus, {
-        progress: 100,
-        finishedAt: new Date(),
-      });
+      await this.jobsService.updateJobStatus(
+        job.id!,
+        'completed' as JobStatus,
+        {
+          progress: 100,
+          finishedAt: new Date(),
+        },
+      );
       await this.wsGateway.emitJobCompleted(job.id!, { fileId, userId });
 
       const result: PdfExtractJobResult = {

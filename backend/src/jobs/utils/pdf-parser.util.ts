@@ -190,11 +190,11 @@ export class PdfParserUtil {
   }> {
     try {
       if (onProgress) onProgress(10);
-      
+
       const result = await this.extractTextFromBuffer(buffer);
-      
+
       if (onProgress) onProgress(100);
-      
+
       return result;
     } catch (error) {
       const errorMessage =

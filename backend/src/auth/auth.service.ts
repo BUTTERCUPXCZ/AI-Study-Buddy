@@ -72,7 +72,8 @@ export class AuthService {
       where: { supabaseId: supabaseUser.id },
     });
 
-    let dbUser;
+    type UserRecord = { id: string; email: string; Fullname: string };
+    let dbUser: UserRecord;
     if (!existingUser) {
       // Create new user from OAuth data
       const fullname =
@@ -228,7 +229,8 @@ export class AuthService {
       where: { supabaseId: supabaseUser.id },
     });
 
-    let dbUser;
+    type UserRecord = { id: string; email: string; Fullname: string };
+    let dbUser: UserRecord;
     if (!existingDbUser) {
       // This is an OAuth user signing in for the first time
       // Create a record in our database

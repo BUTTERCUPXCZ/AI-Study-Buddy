@@ -128,7 +128,9 @@ export class JobsService {
       where: { jobId },
     });
     const currentOpts =
-      (existingJob && typeof existingJob.opts === 'object' && existingJob.opts !== null
+      (existingJob &&
+      typeof existingJob.opts === 'object' &&
+      existingJob.opts !== null
         ? (existingJob.opts as Record<string, any>)
         : {}) || {};
     const newOpts = { ...currentOpts, stage } as Record<string, any>;

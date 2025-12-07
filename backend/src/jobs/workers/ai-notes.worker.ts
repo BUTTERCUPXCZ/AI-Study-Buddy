@@ -39,9 +39,13 @@ export class AiNotesWorker extends WorkerHost {
 
     try {
       // Update job status to processing and set stage
-      await this.jobsService.updateJobStatus(job.id!, 'processing' as JobStatus, {
-        progress: 0,
-      });
+      await this.jobsService.updateJobStatus(
+        job.id!,
+        'processing' as JobStatus,
+        {
+          progress: 0,
+        },
+      );
       await this.jobsService.setJobStage(job.id!, 'processing');
       this.wsGateway.emitJobUpdate(job.id!, 'processing', {
         fileId,
@@ -117,10 +121,14 @@ export class AiNotesWorker extends WorkerHost {
 
       // Update job status to completed and stage
       await this.jobsService.setJobStage(job.id!, 'completed');
-      await this.jobsService.updateJobStatus(job.id!, 'completed' as JobStatus, {
-        progress: 100,
-        finishedAt: new Date(),
-      });
+      await this.jobsService.updateJobStatus(
+        job.id!,
+        'completed' as JobStatus,
+        {
+          progress: 100,
+          finishedAt: new Date(),
+        },
+      );
       await this.wsGateway.emitJobCompleted(job.id!, {
         noteId: notesResult.noteId,
         userId,

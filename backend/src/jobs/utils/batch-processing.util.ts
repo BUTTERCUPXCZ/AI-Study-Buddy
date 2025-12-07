@@ -1,8 +1,8 @@
-    import { Logger } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
 
 /**
  * Batch Processing Utilities
- * 
+ *
  * Optimizes processing of large datasets by batching operations,
  * parallel execution, and intelligent chunking.
  */
@@ -47,7 +47,7 @@ export class BatchProcessingUtil {
         onError,
       );
 
-      results.push(...batchResults.filter(r => r !== null) as R[]);
+      results.push(...(batchResults.filter((r) => r !== null) as R[]));
       completed += batch.length;
 
       if (onProgress) {
@@ -68,7 +68,7 @@ export class BatchProcessingUtil {
     continueOnError: boolean,
     onError?: (item: T, error: Error) => void,
   ): Promise<(R | null)[]> {
-    const results: (R | null)[] = new Array(items.length).fill(null);
+    const results: (R | null)[] = new Array<R | null>(items.length).fill(null);
     const executing: Promise<void>[] = [];
 
     for (let i = 0; i < items.length; i++) {
@@ -91,14 +91,17 @@ export class BatchProcessingUtil {
         }
       })();
 
-      executing.push(promise);
+      const promiseToExecute = promise;
+      executing.push(promiseToExecute);
 
       if (executing.length >= concurrency) {
         await Promise.race(executing);
-        executing.splice(
-          executing.findIndex(p => p === promise),
-          1,
+        const completedIndex = executing.findIndex(
+          (p) => Promise.resolve(p) === Promise.resolve(promiseToExecute),
         );
+        if (completedIndex !== -1) {
+          executing.splice(completedIndex, 1);
+        }
       }
     }
 
@@ -133,7 +136,7 @@ export class BatchProcessingUtil {
         false,
       );
 
-      mapped.push(...batchResults.filter(r => r !== null) as M[]);
+      mapped.push(...(batchResults.filter((r) => r !== null) as M[]));
     }
 
     // Reduce phase
@@ -173,10 +176,13 @@ export class BatchProcessingUtil {
   /**
    * Split large array into optimal chunks based on system resources
    */
-  static smartSplit<T>(items: T[], options?: {
-    maxChunkSize?: number;
-    targetChunks?: number;
-  }): T[][] {
+  static smartSplit<T>(
+    items: T[],
+    options?: {
+      maxChunkSize?: number;
+      targetChunks?: number;
+    },
+  ): T[][] {
     const { maxChunkSize = 1000, targetChunks } = options || {};
 
     let chunkSize: number;
@@ -220,7 +226,7 @@ export class BatchProcessingUtil {
       const timeSinceLastExecution = now - lastExecutionTime;
 
       if (timeSinceLastExecution < intervalMs) {
-        await new Promise(resolve =>
+        await new Promise((resolve) =>
           setTimeout(resolve, intervalMs - timeSinceLastExecution),
         );
       }
@@ -243,9 +249,6 @@ export class BatchProcessingUtil {
       if (executing.length >= concurrency) {
         await Promise.race(executing);
         // Remove the first completed promise
-        const settled = await Promise.race(
-          executing.map(async (p, idx) => ({ promise: p, index: idx }))
-        );
         executing.splice(0, 1);
       }
     }
@@ -265,7 +268,7 @@ export class BatchProcessingUtil {
     } = {},
   ): Promise<R[]> {
     const { strategy = 'round-robin' } = options;
-    const results: R[] = new Array(items.length);
+    const results: R[] = new Array<R>(items.length);
     const workerLoads = new Array(workers.length).fill(0);
 
     const selectWorker = (index: number): number => {
@@ -274,8 +277,10 @@ export class BatchProcessingUtil {
           return index % workers.length;
         case 'random':
           return Math.floor(Math.random() * workers.length);
-        case 'least-busy':
-          return workerLoads.indexOf(Math.min(...workerLoads));
+        case 'least-busy': {
+          const minLoad = Math.min(...(workerLoads as number[]));
+          return workerLoads.indexOf(minLoad);
+        }
         default:
           return 0;
       }
@@ -340,7 +345,7 @@ export class BatchProcessingUtil {
               `Retry ${attempt + 1}/${maxRetries} after ${delay}ms`,
             );
 
-            await new Promise(resolve => setTimeout(resolve, delay));
+            await new Promise((resolve) => setTimeout(resolve, delay));
           }
         }
       }
@@ -368,7 +373,7 @@ export class BatchProcessingUtil {
     const sorted = [...items].sort((a, b) => b.priority - a.priority);
 
     return this.processBatch(
-      sorted.map(i => i.item),
+      sorted.map((i) => i.item),
       processor,
       { concurrency },
     );
@@ -389,7 +394,7 @@ export class BatchProcessingUtil {
     const processing = new Set<Promise<void>>();
     let isRunning = false;
 
-    const processNext = async () => {
+    const processNext = () => {
       if (queue.length === 0 || processing.size >= concurrency) {
         return;
       }
@@ -409,16 +414,17 @@ export class BatchProcessingUtil {
         }
       })();
 
-      processing.add(promise);
-      
-      promise.finally(() => {
-        processing.delete(promise);
+      const promiseToProcess = promise;
+      processing.add(promiseToProcess);
+
+      void promiseToProcess.finally(() => {
+        processing.delete(promiseToProcess);
         if (isRunning) {
-          processNext();
+          void processNext();
         }
       });
-      
-      processNext(); // Start next item
+
+      void processNext(); // Start next item
     };
 
     return {
@@ -428,7 +434,7 @@ export class BatchProcessingUtil {
       add(item: T): void {
         queue.push(item);
         if (isRunning) {
-          processNext();
+          void processNext();
         }
       },
 
@@ -439,7 +445,7 @@ export class BatchProcessingUtil {
         queue.push(...items);
         if (isRunning) {
           for (let i = 0; i < Math.min(concurrency, items.length); i++) {
-            processNext();
+            void processNext();
           }
         }
       },
@@ -450,7 +456,7 @@ export class BatchProcessingUtil {
       start(): void {
         isRunning = true;
         for (let i = 0; i < Math.min(concurrency, queue.length); i++) {
-          processNext();
+          void processNext();
         }
       },
 

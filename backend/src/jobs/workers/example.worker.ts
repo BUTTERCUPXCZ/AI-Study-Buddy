@@ -1,9 +1,9 @@
 /**
  * Example Worker Implementation Using JobEventEmitter
- * 
+ *
  * This is a reference implementation showing how to use the JobEventEmitter service
  * in your workers to emit standardized, consistent events.
- * 
+ *
  * Key Patterns:
  * 1. Inject JobEventEmitterService in constructor
  * 2. Use JobStage enum for consistent stage naming
@@ -11,7 +11,7 @@
  * 4. Always emit completed or failed events
  * 5. Include metadata for better UX
  * 6. Use try-catch to ensure errors are reported
- * 
+ *
  * Copy this pattern to all your workers for consistency.
  */
 
@@ -186,29 +186,26 @@ export class ExampleWorker extends WorkerHost {
 
   // ============ HELPER METHODS ============
 
-  private async downloadFile(fileId: string): Promise<Buffer> {
-    // Implementation here
+  private async downloadFile(): Promise<Buffer> {
+    // Implementation here - fileId would be used in real implementation
     await this.sleep(1000);
     return Buffer.from('mock data');
   }
 
-  private async extractText(buffer: Buffer): Promise<string> {
-    // Implementation here
+  private async extractText(): Promise<string> {
+    // Implementation here - buffer would be used in real implementation
     await this.sleep(1000);
     return 'Extracted text content';
   }
 
-  private async generateNotes(text: string): Promise<string> {
-    // Implementation here
+  private async generateNotes(): Promise<string> {
+    // Implementation here - text would be used in real implementation
     await this.sleep(2000);
     return '# Study Notes\n\nContent here...';
   }
 
-  private async saveNotes(
-    notes: string,
-    userId: string,
-  ): Promise<{ id: string; title: string }> {
-    // Implementation here
+  private async saveNotes(): Promise<{ id: string; title: string }> {
+    // Implementation here - notes and userId would be used in real implementation
     await this.sleep(500);
     return { id: 'note-123', title: 'Study Notes' };
   }

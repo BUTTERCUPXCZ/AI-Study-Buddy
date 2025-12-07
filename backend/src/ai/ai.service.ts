@@ -102,7 +102,10 @@ export class AiService {
 
       const result = await this.model.generateContent(prompt);
       const response = result.response;
-      const generatedContent = this.cleanGeneratedText(response.text(), 'notes');
+      const generatedContent = this.cleanGeneratedText(
+        response.text(),
+        'notes',
+      );
 
       // Generate a title from the filename or content
       const title = this.generateTitleFromFileName(fileName);
@@ -131,7 +134,9 @@ export class AiService {
       if (error instanceof Error) {
         throw error;
       }
-      throw new Error('Unknown error occurred while generating structured notes');
+      throw new Error(
+        'Unknown error occurred while generating structured notes',
+      );
     }
   }
 
@@ -152,7 +157,9 @@ export class AiService {
     summary: string;
   }> {
     try {
-      this.logger.log(`[AI] Processing PDF: ${fileName} (${(pdfBuffer.length / 1024).toFixed(2)}KB)`);
+      this.logger.log(
+        `[AI] Processing PDF: ${fileName} (${(pdfBuffer.length / 1024).toFixed(2)}KB)`,
+      );
       const aiStartTime = Date.now();
 
       // Convert buffer to base64 for inline data (optimized)
@@ -285,8 +292,11 @@ Create detailed exam study notes now following the format exactly. Ensure every 
       ]);
 
       const response = result.response;
-      const generatedContent = this.cleanGeneratedText(response.text(), 'notes');
-      
+      const generatedContent = this.cleanGeneratedText(
+        response.text(),
+        'notes',
+      );
+
       const aiProcessingTime = Date.now() - aiStartTime;
       this.logger.log(
         `[AI] Generated ${generatedContent.length} chars in ${aiProcessingTime}ms`,
@@ -295,7 +305,7 @@ Create detailed exam study notes now following the format exactly. Ensure every 
       // After AI reads and generates, save to database
       this.logger.log('[DB] Saving AI-generated notes to database...');
       const dbStartTime = Date.now();
-      
+
       const noteRecord = await this.notesService.createNote(
         userId,
         title,

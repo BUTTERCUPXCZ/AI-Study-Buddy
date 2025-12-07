@@ -8,4 +8,3 @@ import { RedisModule } from '../redis/redis.module';
   exports: [JobsWebSocketGateway],
 })
 export class WebsocketModule {}
-     

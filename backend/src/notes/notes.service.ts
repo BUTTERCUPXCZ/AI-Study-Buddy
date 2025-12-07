@@ -52,8 +52,10 @@ export class NotesService {
       try {
         this.logger.log(`Fetching notes from cache for user: ${userId}`);
         return JSON.parse(cachedNotes);
-      } catch (error) {
-        this.logger.warn(`Invalid cache data for user ${userId}, fetching from DB`);
+      } catch {
+        this.logger.warn(
+          `Invalid cache data for user ${userId}, fetching from DB`,
+        );
         await this.redisService.del(cacheKey);
       }
     }
@@ -80,10 +82,14 @@ export class NotesService {
     const cachedNote = await this.redisService.get(cacheKey);
     if (cachedNote) {
       try {
-        this.logger.log(`Fetching note ${noteId} from cache for user: ${userId}`);
+        this.logger.log(
+          `Fetching note ${noteId} from cache for user: ${userId}`,
+        );
         return JSON.parse(cachedNote);
-      } catch (error) {
-        this.logger.warn(`Invalid cache data for note ${noteId}, fetching from DB`);
+      } catch {
+        this.logger.warn(
+          `Invalid cache data for note ${noteId}, fetching from DB`,
+        );
         await this.redisService.del(cacheKey);
       }
     }

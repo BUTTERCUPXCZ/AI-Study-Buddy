@@ -10,7 +10,7 @@ export class TextChunkUtil {
   /**
    * Chunk text semantically for parallel processing
    * Aims for ~4000 chars per chunk but respects paragraph boundaries
-   * 
+   *
    * @param text - The full text to chunk
    * @param targetChunkSize - Target size in characters (default: 4000)
    * @param maxChunks - Maximum number of chunks (default: 5)
@@ -23,7 +23,7 @@ export class TextChunkUtil {
   ): string[] {
     // Clean the text first
     const cleanedText = this.cleanText(text);
-    
+
     // If text is small enough, return as single chunk
     if (cleanedText.length <= targetChunkSize) {
       this.logger.log('Text small enough for single chunk');
@@ -33,7 +33,7 @@ export class TextChunkUtil {
     // Split into paragraphs (double newline or more)
     const paragraphs = cleanedText
       .split(/\n\s*\n+/)
-      .filter(p => p.trim().length > 0);
+      .filter((p) => p.trim().length > 0);
 
     this.logger.log(
       `Splitting ${cleanedText.length} chars across ${paragraphs.length} paragraphs`,
@@ -73,7 +73,7 @@ export class TextChunkUtil {
     }
 
     this.logger.log(
-      `Created ${chunks.length} chunks: ${chunks.map(c => c.length).join(', ')} chars`,
+      `Created ${chunks.length} chunks: ${chunks.map((c) => c.length).join(', ')} chars`,
     );
 
     return chunks;
@@ -89,7 +89,7 @@ export class TextChunkUtil {
     overlapSize: number = 400,
   ): string[] {
     const cleanedText = this.cleanText(text);
-    
+
     if (cleanedText.length <= chunkSize) {
       return [cleanedText];
     }
@@ -175,11 +175,11 @@ export class TextChunkUtil {
     for (const sectionName of sectionOrder) {
       if (allSections[sectionName]) {
         merged += `## ${sectionName}\n\n`;
-        
+
         // Deduplicate and combine content
         const uniqueContent = [...new Set(allSections[sectionName])];
         merged += uniqueContent.join('\n\n') + '\n\n';
-        
+
         delete allSections[sectionName];
       }
     }

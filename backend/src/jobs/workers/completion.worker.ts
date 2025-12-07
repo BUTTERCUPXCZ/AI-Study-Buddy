@@ -38,9 +38,13 @@ export class CompletionWorker extends WorkerHost {
       });
 
       // Set final stage
-      await this.jobsService.setJobStage(jobId, 'completed').catch(err => {
-        this.logger.warn(`Failed to set stage for job ${jobId}: ${err.message}`);
-      });
+      await this.jobsService
+        .setJobStage(jobId, 'completed')
+        .catch((err: Error) => {
+          this.logger.warn(
+            `Failed to set stage for job ${jobId}: ${err.message}`,
+          );
+        });
 
       // Emit websocket completion
       await this.wsGateway.emitJobCompleted(

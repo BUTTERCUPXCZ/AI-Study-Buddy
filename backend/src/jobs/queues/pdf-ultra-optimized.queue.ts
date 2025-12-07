@@ -85,7 +85,8 @@ export class PdfUltraOptimizedQueue {
             return { jobId: existingJobId, deduplicated: true };
           }
         } catch (error) {
-          this.logger.warn(`Deduplication check failed: ${error.message}`);
+          const err = error as Error;
+          this.logger.warn(`Deduplication check failed: ${err.message}`);
         }
       }
 
@@ -114,7 +115,8 @@ export class PdfUltraOptimizedQueue {
         try {
           await PdfCacheUtil.registerJob(this.redis, data.fileId, job.id!);
         } catch (error) {
-          this.logger.warn(`Failed to register job in cache: ${error.message}`);
+          const err = error as Error;
+          this.logger.warn(`Failed to register job in cache: ${err.message}`);
         }
       }
 
@@ -137,8 +139,9 @@ export class PdfUltraOptimizedQueue {
 
       return { jobId: job.id, deduplicated: false };
     } catch (error) {
+      const err = error as Error;
       this.logger.error(
-        `Failed to add ultra-optimized PDF job: ${error.message}`,
+        `Failed to add ultra-optimized PDF job: ${err.message}`,
       );
       throw error;
     }
@@ -259,7 +262,8 @@ export class PdfUltraOptimizedQueue {
         await PdfCacheUtil.invalidateCache(this.redis, pdfHash);
         this.logger.log(`Cache invalidated for PDF hash: ${pdfHash}`);
       } catch (error) {
-        this.logger.warn(`Failed to invalidate cache: ${error.message}`);
+        const err = error as Error;
+        this.logger.warn(`Failed to invalidate cache: ${err.message}`);
       }
     }
   }
@@ -269,7 +273,8 @@ export class PdfUltraOptimizedQueue {
       try {
         await this.redis.quit();
       } catch (error) {
-        this.logger.warn(`Failed to close Redis connection: ${error.message}`);
+        const err = error as Error;
+        this.logger.warn(`Failed to close Redis connection: ${err.message}`);
       }
     }
   }

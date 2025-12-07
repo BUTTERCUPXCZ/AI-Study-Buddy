@@ -12,12 +12,12 @@ import { JobStatus as PrismaJobStatus } from '@prisma/client';
 
 /**
  * JobEventEmitterService
- * 
+ *
  * Centralized service for emitting job events across the applica
  * tion.
  * Ensures consistent event format, handles multiple destinations (WebSocket, DB, cache),
  * and provides error handling for event emission failures.
- * 
+ *
  * Benefits:
  * - Single source of truth for event emission
  * - Consistent event structure across all workers
@@ -25,7 +25,7 @@ import { JobStatus as PrismaJobStatus } from '@prisma/client';
  * - WebSocket broadcasting with room targeting
  * - Non-blocking async operations
  * - Comprehensive error handling
- * 
+ *
  * Usage:
  * ```typescript
  * await this.jobEventEmitter.emitProgress({
@@ -49,10 +49,10 @@ export class JobEventEmitterService {
 
   /**
    * Emit job progress update
-   * 
+   *
    * Broadcasts progress to WebSocket clients and updates database.
    * Database updates are async and non-blocking to avoid slowing down workers.
-   * 
+   *
    * @param payload - Job progress payload
    */
   async emitProgress(payload: JobProgressPayload): Promise<void> {
@@ -78,16 +78,16 @@ export class JobEventEmitterService {
       );
 
       // Update database (async, non-blocking)
-      this.updateJobInDatabase(payload).catch((err) =>
+      this.updateJobInDatabase(payload).catch((err: Error) =>
         this.logger.error(
           `Failed to update database for job ${payload.jobId}: ${err.message}`,
         ),
       );
 
       // Update stage in opts (async, non-blocking)
-      this.jobsService
+      await this.jobsService
         .setJobStage(payload.jobId, payload.stage)
-        .catch((err) =>
+        .catch((err: Error) =>
           this.logger.warn(
             `Failed to set stage for job ${payload.jobId}: ${err.message}`,
           ),
@@ -104,10 +104,10 @@ export class JobEventEmitterService {
 
   /**
    * Emit job completed event
-   * 
+   *
    * Broadcasts completion to WebSocket clients and marks job as completed in database.
    * Includes final result data (noteId, processingTime, etc.)
-   * 
+   *
    * @param payload - Job completed payload
    */
   async emitCompleted(payload: JobCompletedPayload): Promise<void> {
@@ -142,7 +142,7 @@ export class JobEventEmitterService {
       // Set final stage
       await this.jobsService
         .setJobStage(payload.jobId, payload.stage)
-        .catch((err) =>
+        .catch((err: Error) =>
           this.logger.warn(
             `Failed to set final stage for job ${payload.jobId}: ${err.message}`,
           ),
@@ -158,10 +158,10 @@ export class JobEventEmitterService {
 
   /**
    * Emit job failed event
-   * 
+   *
    * Broadcasts failure to WebSocket clients and marks job as failed in database.
    * Includes error details and whether the job is recoverable/retryable.
-   * 
+   *
    * @param payload - Job failed payload
    */
   async emitFailed(payload: JobFailedPayload): Promise<void> {
@@ -196,7 +196,7 @@ export class JobEventEmitterService {
       // Set final stage
       await this.jobsService
         .setJobStage(payload.jobId, payload.stage)
-        .catch((err) =>
+        .catch((err: Error) =>
           this.logger.warn(
             `Failed to set failed stage for job ${payload.jobId}: ${err.message}`,
           ),
@@ -212,10 +212,10 @@ export class JobEventEmitterService {
 
   /**
    * Emit job queued event
-   * 
+   *
    * Called when a job is first added to the queue.
    * Useful for tracking jobs from the very beginning.
-   * 
+   *
    * @param payload - Job event payload with QUEUED status
    */
   async emitQueued(payload: JobEventPayload): Promise<void> {
@@ -237,7 +237,7 @@ export class JobEventEmitterService {
       );
 
       // Update database (async)
-      this.updateJobInDatabase(payload).catch((err) =>
+      await this.updateJobInDatabase(payload).catch((err: Error) =>
         this.logger.error(
           `Failed to update database for queued job ${payload.jobId}: ${err.message}`,
         ),
@@ -312,10 +312,12 @@ export class JobEventEmitterService {
   /**
    * Emit batch progress updates
    * Useful when you need to emit multiple progress updates in quick succession
-   * 
+   *
    * @param payloads - Array of progress payloads
    */
   async emitBatchProgress(payloads: JobProgressPayload[]): Promise<void> {
-    await Promise.allSettled(payloads.map((payload) => this.emitProgress(payload)));
+    await Promise.allSettled(
+      payloads.map((payload) => this.emitProgress(payload)),
+    );
   }
 }

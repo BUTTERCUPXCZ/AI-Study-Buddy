@@ -10,7 +10,6 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { PdfNotesQueue } from '../jobs/queues/pdf-notes.queue';
 import { PdfUltraOptimizedQueue } from '../jobs/queues/pdf-ultra-optimized.queue';
 
-
 @Injectable()
 export class PdfService {
   private supabase: SupabaseClient;

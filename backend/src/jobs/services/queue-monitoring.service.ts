@@ -1,11 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { InjectQueue } from '@nestjs/bullmq';
 import { Queue, QueueEvents } from 'bullmq';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 /**
  * Queue Monitoring Service
- * 
+ *
  * Provides real-time monitoring, metrics, and health checks for job queues.
  * Helps identify bottlenecks and optimize worker performance.
  */
@@ -42,20 +41,22 @@ export class QueueMonitoringService {
     });
 
     // Listen to queue events
-    queueEvents.on('completed', async ({ jobId, returnvalue }) => {
-      const job = await queue.getJob(jobId);
-      if (job) {
-        const processingTime = job.finishedOn! - job.processedOn!;
-        this.updateMetrics(queueName, 'completed', processingTime);
-      }
+    queueEvents.on('completed', ({ jobId }) => {
+      void (async () => {
+        const job = await queue.getJob(jobId);
+        if (job) {
+          const processingTime = job.finishedOn! - job.processedOn!;
+          this.updateMetrics(queueName, 'completed', processingTime);
+        }
+      })();
     });
 
-    queueEvents.on('failed', async ({ jobId, failedReason }) => {
+    queueEvents.on('failed', ({ jobId, failedReason }) => {
       this.updateMetrics(queueName, 'failed');
       this.logger.warn(`Job ${jobId} in ${queueName} failed: ${failedReason}`);
     });
 
-    queueEvents.on('stalled', async ({ jobId }) => {
+    queueEvents.on('stalled', ({ jobId }) => {
       this.logger.warn(`Job ${jobId} in ${queueName} stalled`);
       this.updateHealthStatus(queueName, 'degraded');
     });
@@ -194,7 +195,7 @@ export class QueueMonitoringService {
    * Generate performance recommendations
    */
   private generateRecommendations(
-    counts: any,
+    counts: { waiting: number; active: number; failed: number; total: number },
     metrics?: QueueMetrics,
   ): string[] {
     const recommendations: string[] = [];
@@ -251,7 +252,7 @@ export class QueueMonitoringService {
     }
 
     this.healthCheckInterval = setInterval(() => {
-      this.performHealthCheck();
+      void this.performHealthCheck();
     }, intervalMs);
 
     this.logger.log(`Started health checks every ${intervalMs}ms`);
@@ -260,7 +261,7 @@ export class QueueMonitoringService {
   /**
    * Perform health check on all monitored queues
    */
-  private async performHealthCheck(): Promise<void> {
+  private performHealthCheck(): void {
     for (const [queueName, metrics] of this.metrics.entries()) {
       // Check if metrics haven't been updated recently
       const timeSinceLastUpdate = Date.now() - metrics.lastUpdate;
@@ -326,11 +327,11 @@ export class QueueMonitoringService {
       ),
       totalJobsFailed: allMetrics.reduce((sum, m) => sum + m.jobsFailed, 0),
       avgThroughput: allMetrics.reduce((sum, m) => sum + m.throughput, 0),
-      healthyQueues: allMetrics.filter(m => m.healthStatus === 'healthy')
+      healthyQueues: allMetrics.filter((m) => m.healthStatus === 'healthy')
         .length,
-      degradedQueues: allMetrics.filter(m => m.healthStatus === 'degraded')
+      degradedQueues: allMetrics.filter((m) => m.healthStatus === 'degraded')
         .length,
-      unhealthyQueues: allMetrics.filter(m => m.healthStatus === 'unhealthy')
+      unhealthyQueues: allMetrics.filter((m) => m.healthStatus === 'unhealthy')
         .length,
       queues: allMetrics,
     };

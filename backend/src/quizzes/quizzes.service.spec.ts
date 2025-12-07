@@ -5,7 +5,6 @@ import { DatabaseService } from '../database/database.service';
 
 describe('QuizzesService', () => {
   let service: QuizzesService;
-  let databaseService: DatabaseService;
 
   const mockDatabaseService = {
     quiz: {

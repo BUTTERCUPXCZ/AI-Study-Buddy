@@ -1,5 +1,5 @@
 export const NOTES_GENERATION_PROMPT = (pdfText: string): string => {
-return `
+  return `
 You are an expert academic note-maker. Produce comprehensive, exam-ready notes using the EXACT structure below.
 
 RULES:
