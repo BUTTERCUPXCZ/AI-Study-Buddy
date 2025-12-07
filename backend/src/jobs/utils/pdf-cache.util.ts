@@ -47,7 +47,12 @@ export class PdfCacheUtil {
 
       if (cached) {
         this.logger.log(`✅ Cache HIT for ${pdfHash.substring(0, 16)}...`);
-        return JSON.parse(cached) as { noteId: string; title: string; content: string; summary: string; } | null;
+        return JSON.parse(cached) as {
+          noteId: string;
+          title: string;
+          content: string;
+          summary: string;
+        } | null;
       }
 
       this.logger.log(`❌ Cache MISS for ${pdfHash.substring(0, 16)}...`);

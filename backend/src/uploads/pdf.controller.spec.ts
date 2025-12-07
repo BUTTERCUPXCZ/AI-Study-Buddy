@@ -42,7 +42,10 @@ describe('PdfController', () => {
         { provide: DatabaseService, useValue: mockDatabaseService },
         { provide: ConfigService, useValue: mockConfigService },
         { provide: PdfNotesQueue, useValue: mockPdfNotesQueue },
-        { provide: PdfUltraOptimizedQueue, useValue: mockPdfUltraOptimizedQueue },
+        {
+          provide: PdfUltraOptimizedQueue,
+          useValue: mockPdfUltraOptimizedQueue,
+        },
       ],
     }).compile();
 

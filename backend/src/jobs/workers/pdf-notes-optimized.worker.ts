@@ -340,17 +340,13 @@ export class PdfNotesOptimizedWorker extends WorkerHost {
     // Use upsert to ensure the job record exists in the database
     await Promise.all([
       job.updateProgress(progress),
-      this.jobsService.upsertJobStatus(
-        job.id!,
-        'processing' as JobStatus,
-        {
-          progress,
-          name: 'generate-notes-optimized',
-          queueName: 'pdf-notes-optimized',
-          data: job.data as CreatePdfNotesJobDto,
-          userId: (job.data as CreatePdfNotesJobDto).userId,
-        },
-      ),
+      this.jobsService.upsertJobStatus(job.id!, 'processing' as JobStatus, {
+        progress,
+        name: 'generate-notes-optimized',
+        queueName: 'pdf-notes-optimized',
+        data: job.data as CreatePdfNotesJobDto,
+        userId: (job.data as CreatePdfNotesJobDto).userId,
+      }),
     ]);
 
     // Set stage separately (it modifies opts JSON field)
