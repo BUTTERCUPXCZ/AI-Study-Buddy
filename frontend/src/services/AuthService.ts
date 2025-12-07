@@ -19,6 +19,11 @@ export interface OAuthUrlResponse {
 class AuthService {
   /**
    * Register a new user with email/password
+   * @param email - User's email address
+   * @param password - User's password
+   * @param fullname - User's full name
+   * @returns Authentication response with token and user data
+   * @throws Error if registration fails
    */
   async register(email: string, password: string, fullname: string): Promise<AuthResponse> {
     try {
@@ -36,6 +41,10 @@ class AuthService {
 
   /**
    * Login with email/password
+   * @param email - User's email address
+   * @param password - User's password
+   * @returns Authentication response with token and user data
+   * @throws Error if login fails
    */
   async login(email: string, password: string): Promise<AuthResponse> {
     try {
@@ -58,6 +67,7 @@ class AuthService {
   /**
    * Initiate OAuth flow
    * @param provider - OAuth provider (google, github, etc.)
+   * @throws Error if OAuth initiation fails
    */
   async initiateOAuth(provider: 'google' | 'github' | 'facebook' | 'twitter' | 'azure' | 'linkedin'): Promise<void> {
     try {
@@ -73,16 +83,21 @@ class AuthService {
   }
 
 
+  /**
+   * Sign in with OAuth provider using Supabase
+   * @param provider - OAuth provider
+   * @param mode - Whether this is a login or registration flow
+   * @throws Error if OAuth sign-in fails
+   */
   async signInWithOAuth(
     provider: 'google' | 'github' | 'facebook' | 'twitter' | 'azure' | 'linkedin',
     mode: 'login' | 'register' = 'login'
   ): Promise<void> {
     try {
-    
       localStorage.setItem('oauth_mode', mode);
       
       const { error } = await supabase.auth.signInWithOAuth({
-        provider: provider,
+        provider,
         options: {
           redirectTo: `${window.location.origin}/supabaseCallback`,
           queryParams: {
@@ -106,6 +121,8 @@ class AuthService {
   /**
    * Handle OAuth callback after redirect from provider
    * This should be called in your callback route
+   * @returns Authentication response with token and user data
+   * @throws Error if callback handling fails
    */
   async handleOAuthCallback(): Promise<AuthResponse> {
     try {
@@ -133,6 +150,8 @@ class AuthService {
 
   /**
    * Get current authenticated user
+   * @returns User data
+   * @throws Error if user is not authenticated or request fails
    */
   async getCurrentUser() {
     try {
@@ -155,7 +174,8 @@ class AuthService {
   }
 
   /**
-   * Logout user
+   * Logout user and clear local storage
+   * @throws Error if logout fails
    */
   async logout(): Promise<void> {
     try {
@@ -193,6 +213,68 @@ class AuthService {
    */
   clearOAuthMode(): void {
     localStorage.removeItem('oauth_mode');
+  }
+
+  /**
+   * Send password reset email
+   * @param email - User's email address
+   * @throws Error if sending reset email fails
+   */
+  async resetPassword(email: string): Promise<void> {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/resetpassword`,
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+    } catch (error: unknown) {
+      const err = error as { message?: string };
+      throw new Error(err.message || 'Failed to send reset email');
+    }
+  }
+
+  /**
+   * Verify password reset token
+   * @returns True if the token is valid, false otherwise
+   */
+  async verifyPasswordResetToken(): Promise<boolean> {
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        return false;
+      }
+
+      // Check if we have a session and it's a password recovery session
+      return !!session;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Update password after reset
+   * @param newPassword - New password to set
+   * @throws Error if password update fails
+   */
+  async updatePassword(newPassword: string): Promise<void> {
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      // Sign out after password reset
+      await this.logout();
+    } catch (error: unknown) {
+      const err = error as { message?: string };
+      throw new Error(err.message || 'Failed to update password');
+    }
   }
 }
 

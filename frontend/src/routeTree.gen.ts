@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SupabaseCallbackRouteImport } from './routes/supabaseCallback'
+import { Route as ResetpasswordRouteImport } from './routes/resetpassword'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ForgotpasswordRouteImport } from './routes/forgotpassword'
@@ -29,6 +30,11 @@ import { Route as _protectedNotesNoteIdRouteImport } from './routes/__protected.
 const SupabaseCallbackRoute = SupabaseCallbackRouteImport.update({
   id: '/supabaseCallback',
   path: '/supabaseCallback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetpasswordRoute = ResetpasswordRouteImport.update({
+  id: '/resetpassword',
+  path: '/resetpassword',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RegisterRoute = RegisterRouteImport.update({
@@ -113,6 +119,7 @@ export interface FileRoutesByFullPath {
   '/forgotpassword': typeof ForgotpasswordRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/resetpassword': typeof ResetpasswordRoute
   '/supabaseCallback': typeof SupabaseCallbackRoute
   '/library': typeof _protectedLibraryRoute
   '/notes': typeof _protectedNotesRouteWithChildren
@@ -130,6 +137,7 @@ export interface FileRoutesByTo {
   '/forgotpassword': typeof ForgotpasswordRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/resetpassword': typeof ResetpasswordRoute
   '/supabaseCallback': typeof SupabaseCallbackRoute
   '/library': typeof _protectedLibraryRoute
   '/tutor': typeof _protectedTutorRoute
@@ -147,6 +155,7 @@ export interface FileRoutesById {
   '/forgotpassword': typeof ForgotpasswordRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/resetpassword': typeof ResetpasswordRoute
   '/supabaseCallback': typeof SupabaseCallbackRoute
   '/__protected/library': typeof _protectedLibraryRoute
   '/__protected/notes': typeof _protectedNotesRouteWithChildren
@@ -166,6 +175,7 @@ export interface FileRouteTypes {
     | '/forgotpassword'
     | '/login'
     | '/register'
+    | '/resetpassword'
     | '/supabaseCallback'
     | '/library'
     | '/notes'
@@ -183,6 +193,7 @@ export interface FileRouteTypes {
     | '/forgotpassword'
     | '/login'
     | '/register'
+    | '/resetpassword'
     | '/supabaseCallback'
     | '/library'
     | '/tutor'
@@ -199,6 +210,7 @@ export interface FileRouteTypes {
     | '/forgotpassword'
     | '/login'
     | '/register'
+    | '/resetpassword'
     | '/supabaseCallback'
     | '/__protected/library'
     | '/__protected/notes'
@@ -218,6 +230,7 @@ export interface RootRouteChildren {
   ForgotpasswordRoute: typeof ForgotpasswordRoute
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
+  ResetpasswordRoute: typeof ResetpasswordRoute
   SupabaseCallbackRoute: typeof SupabaseCallbackRoute
 }
 
@@ -228,6 +241,13 @@ declare module '@tanstack/react-router' {
       path: '/supabaseCallback'
       fullPath: '/supabaseCallback'
       preLoaderRoute: typeof SupabaseCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/resetpassword': {
+      id: '/resetpassword'
+      path: '/resetpassword'
+      fullPath: '/resetpassword'
+      preLoaderRoute: typeof ResetpasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/register': {
@@ -391,6 +411,7 @@ const rootRouteChildren: RootRouteChildren = {
   ForgotpasswordRoute: ForgotpasswordRoute,
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
+  ResetpasswordRoute: ResetpasswordRoute,
   SupabaseCallbackRoute: SupabaseCallbackRoute,
 }
 export const routeTree = rootRouteImport
