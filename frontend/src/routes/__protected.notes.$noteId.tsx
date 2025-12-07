@@ -110,7 +110,7 @@ function RouteComponent() {
 
   return (
     <AppLayout>
-    <div className="max-w-4xl mx-auto py-4">
+    <div className="max-w-4xl mx-auto py-4 mt-10">
       {/* Compact Header */}
       <div className="mb-6 space-y-4">
         <div className="flex items-center justify-between">
