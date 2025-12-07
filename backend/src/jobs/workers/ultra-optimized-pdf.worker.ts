@@ -162,13 +162,15 @@ export class UltraOptimizedPdfWorker extends WorkerHost {
       // Cache will still work with L1 (in-memory) even if Redis fails
     }
 
-    // Log optimal concurrency recommendations
-    const optimalConcurrency =
-      await WorkerPerformanceUtil.calculateOptimalConcurrency();
-    this.logger.log(
-      `Optimal concurrency: ${optimalConcurrency.recommended} ` +
-        `(CPU: ${optimalConcurrency.cpuBased}, Memory: ${optimalConcurrency.memoryBased})`,
-    );
+    // Log optimal concurrency recommendations (async, non-blocking)
+    void (async () => {
+      const optimalConcurrency =
+        await WorkerPerformanceUtil.calculateOptimalConcurrency();
+      this.logger.log(
+        `Optimal concurrency: ${optimalConcurrency.recommended} ` +
+          `(CPU: ${optimalConcurrency.cpuBased}, Memory: ${optimalConcurrency.memoryBased})`,
+      );
+    })();
   }
 
   async process(job: Job<OptimizedPdfJobDto>): Promise<OptimizedPdfJobResult> {

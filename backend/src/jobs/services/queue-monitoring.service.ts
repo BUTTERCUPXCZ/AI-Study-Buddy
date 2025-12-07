@@ -181,9 +181,7 @@ export class QueueMonitoringService {
         {
           waiting,
           active,
-          completed,
           failed,
-          delayed,
           total: waiting + active + completed + failed + delayed,
         },
         metrics,
