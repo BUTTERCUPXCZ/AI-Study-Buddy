@@ -48,7 +48,7 @@ export interface JobEventPayload {
     cacheHit?: boolean;
     processingTimeMs?: number;
     estimatedTimeRemainingMs?: number;
-    [key: string]: any;
+    [key: string]: unknown;
   };
   timestamp: string;
 }
@@ -63,7 +63,7 @@ export interface JobCompletedPayload extends JobEventPayload {
     title?: string;
     processingTimeMs: number;
     cacheHit: boolean;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 

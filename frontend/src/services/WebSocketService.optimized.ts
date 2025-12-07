@@ -264,9 +264,10 @@ class WebSocketService {
 
     // Subscribe now
     console.log('[WS] Subscribing to:', params);
-    this.socket.emit('subscribe:jobs', params, (response: any) => {
-      if (response?.success) {
-        console.log('[WS] Subscription confirmed:', response.room);
+    this.socket.emit('subscribe:jobs', params, (response: unknown) => {
+      const res = response as { success?: boolean; room?: string };
+      if (res?.success) {
+        console.log('[WS] Subscription confirmed:', res.room);
       }
     });
 

@@ -157,36 +157,36 @@ function RouteComponent() {
           <ReactMarkdown 
             remarkPlugins={[remarkGfm]}
             components={{
-              h1: ({node, ...props}) => <h1 className="text-3xl font-bold mt-8 mb-4 first:mt-0" {...props} />,
-              h2: ({node, ...props}) => <h2 className="text-2xl font-bold mt-8 mb-4 first:mt-0" {...props} />,
-              h3: ({node, ...props}) => <h3 className="text-xl font-bold mt-6 mb-3 first:mt-0" {...props} />,
-              h4: ({node, ...props}) => <h4 className="text-lg font-semibold mt-5 mb-2 first:mt-0" {...props} />,
-              p: ({node, ...props}) => <p className="text-base leading-7 mb-4" {...props} />,
-              ul: ({node, ...props}) => <ul className="list-disc list-outside ml-6 my-4 space-y-2" {...props} />,
-              ol: ({node, ...props}) => <ol className="list-decimal list-outside ml-6 my-4 space-y-2" {...props} />,
-              li: ({node, ...props}) => <li className="text-base leading-7" {...props} />,
-              strong: ({node, ...props}) => <strong className="font-semibold" {...props} />,
-              em: ({node, ...props}) => <em className="italic" {...props} />,
-              code: ({node, className, ...props}) => {
+              h1: ({...props}) => <h1 className="text-3xl font-bold mt-8 mb-4 first:mt-0" {...props} />,
+              h2: ({...props}) => <h2 className="text-2xl font-bold mt-8 mb-4 first:mt-0" {...props} />,
+              h3: ({...props}) => <h3 className="text-xl font-bold mt-6 mb-3 first:mt-0" {...props} />,
+              h4: ({...props}) => <h4 className="text-lg font-semibold mt-5 mb-2 first:mt-0" {...props} />,
+              p: ({...props}) => <p className="text-base leading-7 mb-4" {...props} />,
+              ul: ({...props}) => <ul className="list-disc list-outside ml-6 my-4 space-y-2" {...props} />,
+              ol: ({...props}) => <ol className="list-decimal list-outside ml-6 my-4 space-y-2" {...props} />,
+              li: ({...props}) => <li className="text-base leading-7" {...props} />,
+              strong: ({...props}) => <strong className="font-semibold" {...props} />,
+              em: ({...props}) => <em className="italic" {...props} />,
+              code: ({className, ...props}) => {
                 const isInline = !className?.includes('language-')
                 return isInline 
                   ? <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono" {...props} />
                   : <code className={className} {...props} />
               },
-              pre: ({node, ...props}) => <pre className="bg-muted border rounded-lg p-4 overflow-x-auto my-4" {...props} />,
-              blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-muted-foreground/20 pl-4 italic my-4" {...props} />,
-              a: ({node, ...props}) => <a className="text-primary underline hover:text-primary/80 transition-colors" {...props} />,
-              hr: ({node, ...props}) => <hr className="my-8 border-border" {...props} />,
-              table: ({node, ...props}) => (
+              pre: ({...props}) => <pre className="bg-muted border rounded-lg p-4 overflow-x-auto my-4" {...props} />,
+              blockquote: ({...props}) => <blockquote className="border-l-4 border-muted-foreground/20 pl-4 italic my-4" {...props} />,
+              a: ({...props}) => <a className="text-primary underline hover:text-primary/80 transition-colors" {...props} />,
+              hr: ({...props}) => <hr className="my-8 border-border" {...props} />,
+              table: ({...props}) => (
                 <div className="overflow-x-auto my-4">
                   <table className="min-w-full divide-y divide-border" {...props} />
                 </div>
               ),
-              thead: ({node, ...props}) => <thead className="bg-muted" {...props} />,
-              tbody: ({node, ...props}) => <tbody className="divide-y divide-border" {...props} />,
-              tr: ({node, ...props}) => <tr {...props} />,
-              th: ({node, ...props}) => <th className="px-4 py-2 text-left text-sm font-semibold" {...props} />,
-              td: ({node, ...props}) => <td className="px-4 py-2 text-sm" {...props} />,
+              thead: ({...props}) => <thead className="bg-muted" {...props} />,
+              tbody: ({...props}) => <tbody className="divide-y divide-border" {...props} />,
+              tr: ({...props}) => <tr {...props} />,
+              th: ({...props}) => <th className="px-4 py-2 text-left text-sm font-semibold" {...props} />,
+              td: ({...props}) => <td className="px-4 py-2 text-sm" {...props} />,
             }}
           >
             {note.content}

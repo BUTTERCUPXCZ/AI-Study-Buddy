@@ -29,7 +29,7 @@ api.interceptors.response.use(
     if (isGeminiLimit) {
       try {
         showToast('Gemini free tier limit reached — please try again later.', 'error')
-      } catch (e) {
+      } catch {
         // ignore
       }
     }

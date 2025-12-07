@@ -181,7 +181,7 @@ export function useJobWebSocket(
               pollingIntervalRef.current = null;
             }
 
-            onJobFailedRef.current?.((status as any).error?.message || (status as any).failedReason || 'Job failed');
+            onJobFailedRef.current?.((status as unknown as { error?: { message?: string }; failedReason?: string }).error?.message || (status as unknown as { error?: { message?: string }; failedReason?: string }).failedReason || 'Job failed');
             setJobProgress(null);
           }
         } catch (error) {
@@ -315,7 +315,7 @@ export function useJobWebSocket(
           // Paraphrased user message: "Gemini free tier limit reached — please try again later."
           try {
             toast.error('Gemini free tier limit reached — please try again later.');
-          } catch (e) {
+          } catch {
             // Fallback to console and the callback
             console.warn('[Hook] Toast failed, falling back to callback');
           }
@@ -331,7 +331,7 @@ export function useJobWebSocket(
       webSocketService.unsubscribe({ userId });
       stopPolling();
     };
-  }, [userId, enabled, queryClient, startPolling, stopPolling]);
+  }, [userId, enabled, queryClient, startPolling, stopPolling, currentJobId, toast, usingPolling]);
 
   /**
    * Track a specific job

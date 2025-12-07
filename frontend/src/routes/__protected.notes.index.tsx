@@ -264,7 +264,7 @@ function RouteComponent() {
 
   // File size validation: disable generate when any file > 10MB
   const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB in bytes
-  const hasFileTooLarge = useMemo(() => selectedFiles.some(f => f.size > MAX_FILE_SIZE), [selectedFiles])
+  const hasFileTooLarge = useMemo(() => selectedFiles.some(f => f.size > MAX_FILE_SIZE), [selectedFiles, MAX_FILE_SIZE])
 
   useEffect(() => {
     // Only set the size error if present; otherwise don't overwrite other validation messages

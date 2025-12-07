@@ -183,7 +183,7 @@ class WebSocketService {
     }
 
     console.log('[WebSocketService] Emitting subscribe:jobs with params:', params);
-    this.socket.emit('subscribe:jobs', params, (response: any) => {
+    this.socket.emit('subscribe:jobs', params, (response: unknown) => {
       console.log('[WebSocketService] Subscription response:', response);
     });
     this.subscriptions.add(subKey);
