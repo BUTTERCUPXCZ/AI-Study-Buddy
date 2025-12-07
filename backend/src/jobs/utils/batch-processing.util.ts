@@ -100,7 +100,7 @@ export class BatchProcessingUtil {
           (p) => Promise.resolve(p) === Promise.resolve(promiseToExecute),
         );
         if (completedIndex !== -1) {
-          executing.splice(completedIndex, 1);
+          void executing.splice(completedIndex, 1);
         }
       }
     }
@@ -249,7 +249,7 @@ export class BatchProcessingUtil {
       if (executing.length >= concurrency) {
         await Promise.race(executing);
         // Remove the first completed promise
-        executing.splice(0, 1);
+        void executing.splice(0, 1);
       }
     }
 

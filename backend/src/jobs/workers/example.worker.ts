@@ -186,26 +186,26 @@ export class ExampleWorker extends WorkerHost {
 
   // ============ HELPER METHODS ============
 
-  private async downloadFile(fileId: string): Promise<Buffer> {
-    // Implementation here - fileId would be used in real implementation
+  private async downloadFile(_fileId: string): Promise<Buffer> {
+    // Implementation here - _fileId would be used in real implementation
     await this.sleep(1000);
     return Buffer.from('mock data');
   }
 
-  private async extractText(buffer: Buffer): Promise<string> {
-    // Implementation here - buffer would be used in real implementation
+  private async extractText(_buffer: Buffer): Promise<string> {
+    // Implementation here - _buffer would be used in real implementation
     await this.sleep(1000);
     return 'Extracted text content';
   }
 
-  private async generateNotes(text: string): Promise<string> {
-    // Implementation here - text would be used in real implementation
+  private async generateNotes(_text: string): Promise<string> {
+    // Implementation here - _text would be used in real implementation
     await this.sleep(2000);
     return '# Study Notes\n\nContent here...';
   }
 
-  private async saveNotes(notes: string, userId: string): Promise<{ id: string; title: string }> {
-    // Implementation here - notes and userId would be used in real implementation
+  private async saveNotes(_notes: string, _userId: string): Promise<{ id: string; title: string }> {
+    // Implementation here - _notes and _userId would be used in real implementation
     await this.sleep(500);
     return { id: 'note-123', title: 'Study Notes' };
   }
