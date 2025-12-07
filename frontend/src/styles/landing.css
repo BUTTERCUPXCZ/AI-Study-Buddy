@@ -34,8 +34,12 @@ html {
 
 /* Custom gradient text */
 .gradient-text {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+  /* Brand blues: blue-500 -> blue-600 */
+  background: linear-gradient(90deg, #3B82F6 0%, #2563EB 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  /* Improve legibility on light backgrounds */
+  filter: drop-shadow(0 0 0 rgba(0,0,0,0.0));
 }
+    

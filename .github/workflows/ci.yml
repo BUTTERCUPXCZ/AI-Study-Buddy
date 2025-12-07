@@ -35,6 +35,9 @@ jobs:
   backend:
     name: Build backend
     runs-on: ubuntu-latest
+    
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
     steps:
       - name: Checkout repo

@@ -3,7 +3,6 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { Eye, EyeOff } from 'lucide-react'
 import { z } from 'zod'
@@ -85,17 +84,21 @@ function RouteComponent() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md shadow-lg">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-3xl font-bold text-center">Create Account</CardTitle>
-          <CardDescription className="text-center">
-            Sign up to get started with your account
-          </CardDescription>
-        </CardHeader>
+    <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2">
+      <div className="flex items-center justify-center py-12">
+        <div className="mx-auto grid w-[350px] gap-6">
+          <div className="grid gap-2 text-center">
+            <div className="flex items-center justify-center gap-2">
+              <img src="/logo.png" alt="Buds logo" className="w-12 h-12 sm:w-14 sm:h-14 object-contain drop-shadow-sm" />
+              <span className="text-2xl font-extrabold" style={{ color: '#2563EB' }}>Buds</span>
+            </div>
+            <h1 className="text-3xl font-bold">Create Account</h1>
+            <p className="text-balance text-muted-foreground">
+              Sign up to get started with your account
+            </p>
+          </div>
 
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <CardContent className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4">
             {/* Google OAuth Button */}
             <Button 
               variant="outline" 
@@ -136,34 +139,34 @@ function RouteComponent() {
                 <Separator />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">
+                <span className="bg-background px-2 text-muted-foreground">
                   Or continue with email
                 </span>
               </div>
             </div>
 
             {/* Fullname */}
-            <div className="space-y-2">
+            <div className="grid gap-2">
               <Label htmlFor="fullname">Full Name</Label>
               <Input id="fullname" type="text" placeholder="John Doe" className="h-11" {...register('fullname')} />
               {errors.fullname && <p className="text-sm text-destructive">{errors.fullname.message}</p>}
             </div>
 
             {/* Email */}
-            <div className="space-y-2">
+            <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
               <Input id="email" type="email" placeholder="name@example.com" className="h-11" {...register('email')} />
               {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
             </div>
 
             {/* Password */}
-            <div className="space-y-2">
+            <div className="grid gap-2">
               <Label htmlFor="password">Password</Label>
               <PasswordField id="password" placeholder="Create a password" registerProps={register('password')} error={errors.password?.message} />
             </div>
 
             {/* Confirm Password */}
-            <div className="space-y-2">
+            <div className="grid gap-2">
               <Label htmlFor="confirmPassword">Confirm Password</Label>
               <PasswordField id="confirmPassword" placeholder="Confirm your password" registerProps={register('confirmPassword')} error={errors.confirmPassword?.message} />
             </div>
@@ -181,18 +184,23 @@ function RouteComponent() {
               <a href="#" className="text-primary hover:underline">Terms of Service</a> and{' '}
               <a href="#" className="text-primary hover:underline">Privacy Policy</a>
             </p>
-          </CardContent>
-        </form>
+          </form>
 
-        <CardFooter className="flex flex-col">
-          <div className="text-sm text-center text-muted-foreground">
+          <div className="text-center text-sm">
             Already have an account?{' '}
             <Link to="/login" className="text-primary hover:underline font-semibold">
               Sign in
             </Link>
           </div>
-        </CardFooter>
-      </Card>
+        </div>
+      </div>
+      <div className="hidden bg-muted lg:block">
+        <img
+          src="https://images.unsplash.com/photo-1519389950473-47ba0277781c?q=80&w=2070&auto=format&fit=crop"
+          alt="Image"
+          className="h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
+        />
+      </div>
     </div>
   )
 }
