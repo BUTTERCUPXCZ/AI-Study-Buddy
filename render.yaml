@@ -33,8 +33,8 @@ services:
           name: ai-study-buddy-db
           property: connectionString
       # Add other environment variables in Render dashboard
-      - key: FRONTEND_ORIGIN
-        sync: false  # Set manually in dashboard
+      - key: FRONTEND_URL
+        sync: false  # Set to your deployed frontend URL (e.g., https://your-app.vercel.app)
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_KEY

@@ -30,7 +30,7 @@ export class AuthService {
    */
   async getOAuthUrl(provider: Provider) {
     const frontendUrl =
-      this.configService.get<string>('FRONTEND_URL') ?? 'http://localhost:5173';
+      this.configService.get<string>('FRONTEND_URL');
 
     const { data, error } = await this.supabase.auth.signInWithOAuth({
       provider: provider,
@@ -128,7 +128,7 @@ export class AuthService {
     const hashedPassword = await bcrypt.hash(registerDto.password, 10);
 
     const frontendUrl =
-      this.configService.get<string>('FRONTEND_URL') ?? 'http://localhost:5173';
+      this.configService.get<string>('FRONTEND_URL');
 
     const { data, error } = await this.supabase.auth.signUp({
       email: registerDto.email,
