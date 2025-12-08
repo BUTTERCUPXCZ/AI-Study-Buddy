@@ -38,7 +38,7 @@ export class RedisThrottlerStorage implements ThrottlerStorage {
         isBlocked: false,
         timeToBlockExpire: 0,
       };
-    } catch (error) {
+    } catch {
       // Fallback to allow request if Redis fails
       return {
         totalHits: 0,
