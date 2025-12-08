@@ -225,7 +225,6 @@ export class PdfService {
         .remove(filePaths);
 
       if (deleteError) {
-        console.error('Failed to delete from storage:', deleteError);
         // Continue with database deletion even if storage deletion fails
       }
 

@@ -1,10 +1,11 @@
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, OnModuleInit, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Redis } from '@upstash/redis';
 
 @Injectable()
 export class RedisService implements OnModuleInit, OnModuleDestroy {
   private client: Redis;
+  private readonly logger = new Logger(RedisService.name);
 
   constructor(private configService: ConfigService) {}
 
@@ -23,12 +24,12 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       token,
     });
 
-    console.log('Redis client initialized successfully');
+    this.logger.log('Redis client initialized successfully');
   }
 
   onModuleDestroy() {
     // Upstash Redis doesn't require explicit cleanup
-    console.log('Redis module destroyed');
+    this.logger.log('Redis module destroyed');
   }
 
   getClient(): Redis {

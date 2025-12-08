@@ -39,7 +39,6 @@ export class RedisThrottlerStorage implements ThrottlerStorage {
         timeToBlockExpire: 0,
       };
     } catch (error) {
-      console.error('Redis throttler error:', error);
       // Fallback to allow request if Redis fails
       return {
         totalHits: 0,
