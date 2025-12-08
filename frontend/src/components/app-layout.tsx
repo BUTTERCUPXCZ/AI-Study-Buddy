@@ -34,9 +34,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const SidebarContent = () => (
     <div className="h-full flex flex-col text-sidebar-foreground">
         <div className="flex items-center gap-3 mb-6 px-2">
-          <div className="h-10 w-10 rounded-md bg-primary flex items-center justify-center text-primary-foreground font-bold">SM</div>
+           <img src="/logo.png" alt="Buds logo" className="w-13 h-13 sm:w-15 sm:h-15 object-contain drop-shadow-sm" />
           <div>
-            <div className="font-semibold">StudyMate AI</div>
+            <div className="font-semibold">Buds AI</div>
             <div className="text-xs text-sidebar-foreground/70">Study smarter</div>
           </div>
         </div>

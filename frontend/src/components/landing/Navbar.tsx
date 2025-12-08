@@ -19,7 +19,7 @@ const Navbar = memo(function Navbar() {
               alt="AI Study Buddy Logo"
               className="w-12 h-12 sm:w-16 sm:h-16 object-contain transform-gpu group-hover:scale-110 transition-transform duration-200 drop-shadow-md"
             />
-            <span className="text-2xl sm:text-2xl font-extrabold leading-none" style={{ color: '#3B82F6' }}>Buds</span>
+            <span className="text-2xl text-gray-800 sm:text-2xl font-extrabold leading-none">Buds</span>
           </Link>
           <div className="flex items-center gap-3">
             <Link to="/login">

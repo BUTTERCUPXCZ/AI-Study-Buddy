@@ -75,7 +75,7 @@ function RouteComponent() {
           <div className="grid gap-2 text-center">
             <div className="flex items-center justify-center gap-2">
               <img src="/logo.png" alt="Buds logo" className="w-12 h-12 sm:w-14 sm:h-14 object-contain drop-shadow-sm" />
-              <span className="text-2xl font-extrabold" style={{ color: '#2563EB' }}>Buds</span>
+              <span className="text-2xl text-gray-800 font-extrabold">Buds</span>
             </div>
             <h1 className="text-3xl font-bold">Welcome Back</h1>
             <p className="text-balance text-muted-foreground">
