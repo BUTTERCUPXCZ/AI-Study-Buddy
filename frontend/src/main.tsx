@@ -1,7 +1,6 @@
 import { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
-import { ThemeProvider } from '@/components/theme-provider'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider } from '@/context/AuthContext'
 import { ToastProvider } from '@/components/ToastProvider'
@@ -30,13 +29,13 @@ if (!rootElement.innerHTML) {
   root.render(
     <StrictMode>
       <QueryClientProvider client={queryClient}>  
-        <ThemeProvider defaultTheme="light" storageKey="ui-theme">
+       
           <AuthProvider>
             <ToastProvider>
               <RouterProvider router={router} />
             </ToastProvider>
           </AuthProvider>
-        </ThemeProvider>
+      
       </QueryClientProvider>
     </StrictMode>,
   )

@@ -1,6 +1,5 @@
 import { memo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { 
   DropdownMenu, 
@@ -9,7 +8,7 @@ import {
   DropdownMenuTrigger, 
   DropdownMenuSeparator 
 } from '@/components/ui/dropdown-menu'
-import { Download, Trash2, MoreVertical, FileText } from 'lucide-react'
+import { Download, Trash2, MoreVertical, FileText} from 'lucide-react'
 
 // Helper functions
 const formatDate = (dateString: string) => {
@@ -62,11 +61,9 @@ const NoteCard = memo(({
             {note.title}
           </CardTitle>  
           <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant="secondary" className="text-xs font-medium bg-secondary/50 text-secondary-foreground">
-              {note.source ? 'PDF' : 'Manual'}
-            </Badge>
+
             <span className="text-xs text-muted-foreground flex items-center gap-1">
-              <span className="w-1 h-1 rounded-full bg-muted-foreground/50"></span>
+             
               {formatDate(note.createdAt)}
             </span>
           </div>

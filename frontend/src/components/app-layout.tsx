@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { useState } from 'react'
 import { Link, useLocation } from '@tanstack/react-router'
-import { ThemeToggle } from '@/components/theme-toggle'
+
 import { Separator } from '@/components/ui/separator'
 import { FileText, Brain, GraduationCap, Library, LogOut, Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -109,9 +109,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               <span className="sr-only">Toggle menu</span>
             </Button>
             <div className="text-lg font-semibold">{pageTitle}</div>
-          </div>
-          <div className="flex items-center gap-4">
-            <ThemeToggle />
           </div>
         </header>
 

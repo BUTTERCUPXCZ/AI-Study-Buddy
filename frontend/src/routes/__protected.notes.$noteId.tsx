@@ -1,6 +1,5 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, Download, Star, Calendar, Brain, CheckCircle } from 'lucide-react'
 import AppLayout from '@/components/app-layout'
 import { useAuth } from '@/context/AuthContextDefinition'
@@ -140,9 +139,6 @@ function RouteComponent() {
         <div>
           <h1 className="text-3xl font-bold mb-2 leading-tight">{note.title}</h1>
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
-            <Badge variant="secondary" className="text-xs font-medium">
-              {note.source ? 'PDF Generated' : 'Manual'}
-            </Badge>
             <div className="flex items-center gap-1.5">
               <Calendar className="h-3.5 w-3.5" />
               <span>{formatDate(note.createdAt)}</span>
