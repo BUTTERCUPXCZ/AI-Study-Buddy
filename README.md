@@ -1,4 +1,4 @@
-# 🎓 AI-Study-Buddy
+# 🎓 Buds AI
 
 An AI-powered study platform that helps students learn smarter with intelligent note summarization, quiz generation, and personalized study assistance powered by Gemini 2.5 Flash.
 
