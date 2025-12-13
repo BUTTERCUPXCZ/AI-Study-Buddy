@@ -39,7 +39,7 @@ const Navbar = memo(function Navbar() {
             alt="AI Study Buddy Logo"
             className="h-12 w-12 rounded-full border border-slate-200 bg-white object-contain p-1 shadow-sm"
           />
-          <span className="hidden text-xl font-semibold tracking-tight text-slate-900 sm:inline">AI Study Buddy</span>
+          <span className="hidden text-xl font-semibold tracking-tight text-slate-900 sm:inline">Buds</span>
         </Link>
 
         <nav
