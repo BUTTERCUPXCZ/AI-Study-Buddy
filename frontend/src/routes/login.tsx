@@ -4,13 +4,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
-import { Eye, EyeOff } from 'lucide-react'
+import { ArrowLeft, Eye, EyeOff } from 'lucide-react'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import type { UseFormRegisterReturn } from 'react-hook-form'
-import { authService } from '@/services/AuthService'
-import { useLogin } from '@/hooks/useAuth'
+import { useLogin, useOAuthSignIn } from '@/hooks/useAuth'
+import { Spinner } from '@/components/ui/spinner'
 
 
 const loginSchema = z.object({
@@ -25,7 +25,6 @@ export const Route = createFileRoute('/login')({
 })
 
 function RouteComponent() {
-  const [oauthLoading, setOauthLoading] = useState(false)
   const [oauthError, setOauthError] = useState<string>('')
   
   const {
@@ -37,6 +36,7 @@ function RouteComponent() {
   })
 
   const { mutate: loginMutate, isPending, error: loginError } = useLogin()
+  const { mutate: oauthSignIn, isPending: isOAuthLoading } = useOAuthSignIn()
 
   async function onSubmit(data: LoginFormData) {
     loginMutate(data, {
@@ -48,28 +48,32 @@ function RouteComponent() {
     })
   }
 
-  const handleOAuthLogin = async (provider: 'google' | 'github') => {
-    try {
-      setOauthLoading(true)
-      setOauthError('')
-      
-      // Use the authService to initiate OAuth flow with 'login' mode
-      await authService.signInWithOAuth(provider, 'login')
-      
-      // The redirect will happen automatically
-    } catch (error: unknown) {
-      console.error('OAuth error:', error)
-      const message = (error as { message?: string }).message || `Failed to sign in with ${provider}. Please try again.`
-      setOauthError(message)
-    } finally {
-      setOauthLoading(false)
-    }
+  const handleOAuthLogin = (provider: 'google' | 'github') => {
+    setOauthError('')
+    
+    oauthSignIn({ provider, mode: 'login' }, {
+      onError: (error) => {
+        console.error('OAuth error:', error)
+        const message = error.message || `Failed to sign in with ${provider}. Please try again.`
+        setOauthError(message)
+      }
+    })
   }
 
 
 
   return (
-    <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2">
+    <div className="relative w-full lg:grid lg:min-h-screen lg:grid-cols-2">
+      <Link to="/LandingPage" className="absolute left-4 top-4 z-10 sm:left-6 sm:top-6">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="flex items-center gap-2 px-3 text-slate-600 hover:text-primary"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to home
+        </Button>
+      </Link>
       <div className="flex items-center justify-center py-12">
         <div className="mx-auto grid w-full max-w-[350px] gap-6 px-4 sm:px-0">
           <div className="grid gap-2 text-center">
@@ -90,7 +94,7 @@ function RouteComponent() {
               size="lg" 
               type="button"
               onClick={() => handleOAuthLogin('google')}
-              disabled={oauthLoading}
+              disabled={isOAuthLoading}
             >
               <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24">
                 <path
@@ -110,7 +114,7 @@ function RouteComponent() {
                   fill="#EA4335"
                 />
               </svg>
-              {oauthLoading ? 'Connecting...' : 'Continue with Google'}
+              {isOAuthLoading ? 'Connecting...' : 'Continue with Google'}
             </Button>
 
       
@@ -170,7 +174,14 @@ function RouteComponent() {
 
             {/* Sign In Button */}
             <Button className="w-full" size="lg" type="submit" disabled={isSubmitting || isPending}>
-              {isSubmitting || isPending ? 'Signing in…' : 'Sign In'}
+              {isSubmitting || isPending ? (
+                <span className="flex items-center gap-2">
+                  <Spinner className="h-4 w-4" />
+                  Signing in…
+                </span>
+              ) : (
+                'Sign In'
+              )}
             </Button>
           </form>
 

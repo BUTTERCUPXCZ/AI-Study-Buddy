@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
-import { Eye, EyeOff } from 'lucide-react'
+import { ArrowLeft, Eye, EyeOff } from 'lucide-react'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
@@ -84,7 +84,17 @@ function RouteComponent() {
   }
 
   return (
-    <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2">
+    <div className="relative w-full lg:grid lg:min-h-screen lg:grid-cols-2">
+      <Link to="/LandingPage" className="absolute left-4 top-4 z-10 sm:left-6 sm:top-6">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="flex items-center gap-2 px-3 text-slate-600 hover:text-primary"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to home
+        </Button>
+      </Link>
       <div className="flex items-center justify-center py-12">
         <div className="mx-auto grid w-full max-w-[350px] gap-6 px-4 sm:px-0">
           <div className="grid gap-2 text-center">

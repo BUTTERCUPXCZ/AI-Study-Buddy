@@ -1,7 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Sparkles, ArrowRight, CheckCircle2, Library } from 'lucide-react'
+import { ArrowRight, Library } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { memo } from 'react'
 
@@ -16,10 +15,6 @@ const HeroSection = memo(function HeroSection() {
             transition={{ duration: 0.6 }}
             className="will-change-transform"
           >
-            <Badge variant="outline" className="mb-6 px-4 py-2 text-sm font-medium border-blue-200 bg-blue-50 text-blue-600 rounded-full shadow-sm">
-              <Sparkles className="h-4 w-4 mr-2 inline text-yellow-400 fill-yellow-400" />
-              Your Personal AI Tutor
-            </Badge>
 
             <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight mb-8 text-slate-900 leading-[1.1]">
               Ace Your Exams <br />
@@ -47,16 +42,7 @@ const HeroSection = memo(function HeroSection() {
               </Link>
             </div>
 
-            <div className="mt-10 flex items-center gap-6 text-sm font-medium text-slate-500">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                <span>No credit card required</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                <span>Free forever plan</span>
-              </div>
-            </div>
+            
           </motion.div>
 
           <motion.div

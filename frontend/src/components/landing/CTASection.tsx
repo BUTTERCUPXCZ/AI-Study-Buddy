@@ -6,7 +6,7 @@ import { memo } from 'react'
 
 const CTASection = memo(function CTASection() {
   return (
-    <section className="py-24 relative overflow-hidden bg-primary">
+    <section id="pricing" className="py-24 relative overflow-hidden bg-primary">
       <div className="absolute inset-0 -z-10">
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&q=80&w=1000')] bg-cover bg-center opacity-10 mix-blend-overlay" />
         <div className="absolute inset-0 bg-primary/90" />

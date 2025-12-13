@@ -22,7 +22,7 @@ const HowItWorksSection = memo(function HowItWorksSection() {
   ]
 
   return (
-    <section className="py-24 relative overflow-hidden bg-slate-800 text-white">
+    <section id="how-it-works" className="py-24 relative overflow-hidden bg-slate-800 text-white">
       {/* Chalkboard Texture Effect - simplified opacity */}
       <div className="absolute inset-0 opacity-5 bg-[url('https://www.transparenttextures.com/patterns/black-scales.png')]"></div>
       
