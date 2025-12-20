@@ -89,21 +89,21 @@ function RouteComponent() {
         <Button
           variant="ghost"
           size="sm"
-          className="flex items-center gap-2 px-3 text-slate-600 hover:text-primary"
+          className="flex items-center gap-2 px-3 text-slate-600 hover:text-blue-600 hover:bg-blue-50"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to home
         </Button>
       </Link>
-      <div className="flex items-center justify-center py-12">
+      <div className="flex items-center justify-center py-12 bg-white">
         <div className="mx-auto grid w-full max-w-[350px] gap-6 px-4 sm:px-0">
           <div className="grid gap-2 text-center">
             <div className="flex items-center justify-center gap-2">
-              <img src="/logo.png" alt="Buds logo" className="w-12 h-12 sm:w-14 sm:h-14 object-contain drop-shadow-sm" />
-              <span className="text-2xl text-gray-800 font-extrabold">Buds</span>
+              <img src="/logo_svg.svg" alt="Buds logo" className="w-12 h-12 sm:w-14 sm:h-14 object-contain" />
+              <span className="text-2xl text-slate-900 font-bold tracking-tight">Buds</span>
             </div>
-            <h1 className="text-3xl font-bold">Create Account</h1>
-            <p className="text-balance text-muted-foreground">
+            <h1 className="text-3xl font-bold text-slate-900">Create Account</h1>
+            <p className="text-balance text-slate-600">
               Sign up to get started with your account
             </p>
           </div>
@@ -185,26 +185,26 @@ function RouteComponent() {
             {error && <p className="text-sm text-destructive text-center mt-2">{error.message}</p>}
             {isSuccess && <p className="text-sm text-green-600 text-center mt-2">{data?.message}</p>}
 
-            <Button className="w-full" size="lg" type="submit" disabled={isPending}>
+            <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md hover:shadow-lg transition-all" size="lg" type="submit" disabled={isPending}>
               {isPending ? 'Creating…' : 'Create Account'}
             </Button>
 
-            <p className="text-xs text-center text-muted-foreground">
+            <p className="text-xs text-center text-slate-500">
               By signing up, you agree to our{' '}
-              <a href="#" className="text-primary hover:underline">Terms of Service</a> and{' '}
-              <a href="#" className="text-primary hover:underline">Privacy Policy</a>
+              <a href="#" className="text-blue-600 hover:text-blue-700 hover:underline">Terms of Service</a> and{' '}
+              <a href="#" className="text-blue-600 hover:text-blue-700 hover:underline">Privacy Policy</a>
             </p>
           </form>
 
-          <div className="text-center text-sm">
+          <div className="text-center text-sm text-slate-600">
             Already have an account?{' '}
-            <Link to="/login" className="text-primary hover:underline font-semibold">
+            <Link to="/login" className="text-blue-600 hover:text-blue-700 hover:underline font-semibold">
               Sign in
             </Link>
           </div>
         </div>
       </div>
-      <div className="hidden bg-muted lg:block">
+      <div className="hidden bg-slate-50 lg:block">
         <img
           src="https://images.unsplash.com/photo-1519389950473-47ba0277781c?q=80&w=2070&auto=format&fit=crop"
           alt="Image"

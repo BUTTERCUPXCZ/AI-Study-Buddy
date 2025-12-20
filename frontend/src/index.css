@@ -44,38 +44,38 @@
 
 :root {
   --radius: 0.75rem;
-  --background: #F8FAFC; /* Off-White */
-  --foreground: #1F2937; /* Gray 800 */
-  --card: #FFFFFF;
-  --card-foreground: #1F2937;
-  --popover: #FFFFFF;
-  --popover-foreground: #1F2937;
-  --primary: #3B82F6; /* Sky Blue */
-  --primary-foreground: #FFFFFF;
-  --secondary: #34D399; /* Highlighter Green */
-  --secondary-foreground: #064E3B; /* Dark Green */
-  --muted: #F3F4F6; /* Gray 100 */
-  --muted-foreground: #6B7280; /* Cool Gray */
-  --accent: #FDE047; /* Sticky Note Yellow */
-  --accent-foreground: #713F12; /* Dark Yellow/Brown */
-  --destructive: #F87171; /* Coral Red */
-  --destructive-foreground: #FFFFFF;
-  --border: #E5E7EB; /* Gray 200 */
-  --input: #E5E7EB;
-  --ring: #3B82F6;
-  --chart-1: #3B82F6;
-  --chart-2: #34D399;
-  --chart-3: #FDE047;
-  --chart-4: #FB923C; /* Soft Orange */
-  --chart-5: #F87171;
-  --sidebar: #FFFFFF;
-  --sidebar-foreground: #1F2937;
-  --sidebar-primary: #3B82F6;
-  --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #F3F4F6;
-  --sidebar-accent-foreground: #1F2937;
-  --sidebar-border: #E5E7EB;
-  --sidebar-ring: #3B82F6;
+  --background: #f8fafc; /* Slate 50 */
+  --foreground: #0f172a; /* Slate 900 */
+  --card: #ffffff;
+  --card-foreground: #0f172a; /* Slate 900 */
+  --popover: #ffffff;
+  --popover-foreground: #0f172a; /* Slate 900 */
+  --primary: #2563eb; /* Blue 600 */
+  --primary-foreground: #ffffff;
+  --secondary: #f1f5f9; /* Slate 100 */
+  --secondary-foreground: #0f172a; /* Slate 900 */
+  --muted: #f1f5f9; /* Slate 100 */
+  --muted-foreground: #64748b; /* Slate 500 */
+  --accent: #eff6ff; /* Blue 50 */
+  --accent-foreground: #2563eb; /* Blue 600 */
+  --destructive: #ef4444; /* Red 500 */
+  --destructive-foreground: #ffffff;
+  --border: #e2e8f0; /* Slate 200 */
+  --input: #e2e8f0; /* Slate 200 */
+  --ring: #2563eb; /* Blue 600 */
+  --chart-1: #2563eb;
+  --chart-2: #34d399;
+  --chart-3: #fde047;
+  --chart-4: #fb923c;
+  --chart-5: #f87171;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #475569; /* Slate 600 */
+  --sidebar-primary: #2563eb; /* Blue 600 */
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #eff6ff; /* Blue 50 */
+  --sidebar-accent-foreground: #2563eb; /* Blue 600 */
+  --sidebar-border: #e2e8f0; /* Slate 200 */
+  --sidebar-ring: #2563eb; /* Blue 600 */
 }
 
 .dark {

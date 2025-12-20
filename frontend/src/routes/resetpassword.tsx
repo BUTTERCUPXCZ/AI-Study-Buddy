@@ -74,27 +74,27 @@ function RouteComponent() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <Card className="w-full max-w-md shadow-lg">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+        <Card className="w-full max-w-md shadow-lg border-none">
           <CardHeader className="space-y-1">
             <div className="flex justify-center mb-4">
               <CheckCircle2 className="h-16 w-16 text-green-500" />
             </div>
-            <CardTitle className="text-3xl font-bold text-center">Password Reset Successful!</CardTitle>
-            <CardDescription className="text-center">
+            <CardTitle className="text-3xl font-bold text-center text-slate-900">Password Reset Successful!</CardTitle>
+            <CardDescription className="text-center text-slate-600">
               Your password has been successfully reset
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="bg-accent/50 p-4 rounded-md">
-              <p className="text-sm text-center text-muted-foreground">
+            <div className="bg-blue-50 p-4 rounded-md">
+              <p className="text-sm text-center text-slate-600">
                 You can now sign in with your new password. Redirecting to login...
               </p>
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
             <Link to="/login" className="w-full">
-              <Button className="w-full">
+              <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md hover:shadow-lg transition-all">
                 Go to Sign In
               </Button>
             </Link>
@@ -106,28 +106,28 @@ function RouteComponent() {
 
   if (!validToken && error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <Card className="w-full max-w-md shadow-lg">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+        <Card className="w-full max-w-md shadow-lg border-none">
           <CardHeader className="space-y-1">
             <CardTitle className="text-3xl font-bold text-center text-destructive">Invalid Reset Link</CardTitle>
-            <CardDescription className="text-center">
+            <CardDescription className="text-center text-slate-600">
               {error}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="bg-destructive/10 p-4 rounded-md">
-              <p className="text-sm text-center text-muted-foreground">
+              <p className="text-sm text-center text-slate-600">
                 Reset links expire after 1 hour for security reasons. Please request a new password reset link.
               </p>
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
             <Link to="/forgotpassword" className="w-full">
-              <Button className="w-full">
+              <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md hover:shadow-lg transition-all">
                 Request New Reset Link
               </Button>
             </Link>
-            <Link to="/login" className="text-sm text-center text-muted-foreground hover:text-primary">
+            <Link to="/login" className="text-sm text-center text-slate-600 hover:text-blue-600">
               Return to Sign In
             </Link>
           </CardFooter>
@@ -137,11 +137,11 @@ function RouteComponent() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md shadow-lg">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+      <Card className="w-full max-w-md shadow-lg border-none">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-3xl font-bold text-center">Reset Your Password</CardTitle>
-          <CardDescription className="text-center">
+          <CardTitle className="text-3xl font-bold text-center text-slate-900">Reset Your Password</CardTitle>
+          <CardDescription className="text-center text-slate-600">
             Enter your new password below
           </CardDescription>
         </CardHeader>
@@ -177,7 +177,7 @@ function RouteComponent() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-slate-500">
                 Must be at least 8 characters long
               </p>
             </div>
@@ -208,15 +208,15 @@ function RouteComponent() {
             </div>
 
             {/* Submit Button */}
-            <Button className="w-full" size="lg" type="submit" disabled={loading || !validToken}>
+            <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md hover:shadow-lg transition-all" size="lg" type="submit" disabled={loading || !validToken}>
               {loading ? 'Resetting Password...' : 'Reset Password'}
             </Button>
           </CardContent>
         </form>
         <CardFooter className="flex flex-col space-y-4">
-          <div className="text-sm text-center text-muted-foreground">
+          <div className="text-sm text-center text-slate-600">
             Remember your password?{' '}
-            <Link to="/login" className="text-primary hover:underline font-semibold">
+            <Link to="/login" className="text-blue-600 hover:text-blue-700 hover:underline font-semibold">
               Sign in
             </Link>
           </div>

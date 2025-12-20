@@ -28,25 +28,25 @@ function RouteComponent() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md shadow-lg">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+      <Card className="w-full max-w-md shadow-lg border-none">
         <CardHeader className="space-y-4 text-center">
-          <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
-            <Mail className="w-8 h-8 text-primary" />
+          <div className="mx-auto w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center">
+            <Mail className="w-8 h-8 text-blue-600" />
           </div>
-          <CardTitle className="text-3xl font-bold">Verify Your Email</CardTitle>
-          <CardDescription className="text-base">
+          <CardTitle className="text-3xl font-bold text-slate-900">Verify Your Email</CardTitle>
+          <CardDescription className="text-base text-slate-600">
             We've sent a verification link to your email address
           </CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-6">
-          <div className="bg-accent border border-border rounded-lg p-4 space-y-3">
+          <div className="bg-blue-50 border-none rounded-lg p-4 space-y-3">
             <div className="flex items-start gap-3">
-              <Mail className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+              <Mail className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
               <div className="space-y-1">
-                <p className="text-sm font-medium">Check your inbox</p>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm font-medium text-slate-900">Check your inbox</p>
+                <p className="text-sm text-slate-600">
                   Click the verification link in the email we sent you to activate your account.
                 </p>
               </div>
@@ -54,11 +54,11 @@ function RouteComponent() {
           </div>
 
           {resendSuccess && (
-            <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 flex items-start gap-3">
-              <CheckCircle className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-start gap-3">
+              <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
               <div>
-                <p className="text-sm font-medium text-primary">Email sent successfully!</p>
-                <p className="text-sm text-muted-foreground mt-0.5">
+                <p className="text-sm font-medium text-green-700">Email sent successfully!</p>
+                <p className="text-sm text-green-600 mt-0.5">
                   Please check your inbox and spam folder.
                 </p>
               </div>
@@ -67,12 +67,12 @@ function RouteComponent() {
 
           <div className="space-y-4">
             <div className="text-center space-y-2">
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-slate-500">
                 Didn't receive the email?
               </p>
               <Button
                 variant="outline"
-                className="w-full"
+                className="w-full border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-blue-600"
                 size="lg"
                 onClick={handleResendEmail}
                 disabled={isResending}
@@ -93,16 +93,16 @@ function RouteComponent() {
 
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-border" />
+                <div className="w-full border-t border-slate-200" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">Tips</span>
+                <span className="bg-slate-50 px-2 text-slate-500">Tips</span>
               </div>
             </div>
 
-            <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-              <p className="text-xs font-medium text-foreground">Can't find the email?</p>
-              <ul className="text-xs text-muted-foreground space-y-1.5 ml-4 list-disc">
+            <div className="bg-slate-50 rounded-lg p-4 space-y-2">
+              <p className="text-xs font-medium text-slate-900">Can't find the email?</p>
+              <ul className="text-xs text-slate-600 space-y-1.5 ml-4 list-disc">
                 <li>Check your spam or junk folder</li>
                 <li>Make sure you entered the correct email address</li>
                 <li>Wait a few minutes and check again</li>
@@ -113,9 +113,9 @@ function RouteComponent() {
         </CardContent>
 
         <CardFooter className="flex flex-col space-y-4">
-          <div className="text-sm text-center text-muted-foreground">
+          <div className="text-sm text-center text-slate-600">
             Already verified?{' '}
-            <Link to="/login" className="text-primary hover:underline font-semibold">
+            <Link to="/login" className="text-blue-600 hover:underline font-semibold">
               Sign in
             </Link>
           </div>
