@@ -14,6 +14,13 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+enum SubscriptionStatus {
+  FREE
+  PRO
+  CANCELED
+  PAST_DUE
+}
+
 model User {
   id        String   @id @default(cuid())
   Fullname  String
@@ -26,6 +33,7 @@ model User {
   uploads   Upload[]
   jobs      Job[]
   chatSessions ChatSession[]
+  
 }
 
 model Note {

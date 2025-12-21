@@ -13,6 +13,7 @@ import { PdfCacheUtil } from '../utils/pdf-cache.util';
 import { ConnectionPoolUtil } from '../utils/connection-pool.util';
 import { WorkerPerformanceUtil } from '../utils/worker-performance.util';
 import { RedisOptimizationUtil } from '../utils/redis-optimization.util';
+import { parsePdfInWorker } from './pdf-parser.thread';
 import Redis from 'ioredis';
 
 export interface OptimizedPdfJobDto {
@@ -357,8 +358,7 @@ export class UltraOptimizedPdfWorker extends WorkerHost {
         timestamp: new Date().toISOString(),
       });
 
-      const { text, pageCount } =
-        await PdfParserUtil.extractTextFromBuffer(pdfBuffer);
+      const { text, pageCount } = await parsePdfInWorker(pdfBuffer);
       const cleanedText = PdfParserUtil.cleanText(text);
 
       metrics.textExtractionTimeMs = extractTimer.end('Text extraction');
