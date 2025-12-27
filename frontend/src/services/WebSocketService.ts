@@ -88,7 +88,8 @@ class WebSocketService {
       ...options,
     };
 
-    this.socket = io(`${import.meta.env.VITE_API_URL}/jobs`, defaultOptions);
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+    this.socket = io(`${apiUrl}/jobs`, defaultOptions);
 
     this.setupEventListeners();
 

@@ -130,7 +130,8 @@ class WebSocketService {
     }
 
     this.isConnecting = true;
-    console.log('[WS] Initiating connection to', import.meta.env.VITE_API_URL);
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+    console.log('[WS] Initiating connection to', apiUrl);
 
     const defaultOptions: ConnectionOptions = {
       transports: ['websocket'], // Prefer WebSocket over polling
@@ -141,7 +142,7 @@ class WebSocketService {
       ...options,
     };
 
-    this.socket = io(`${import.meta.env.VITE_API_URL}/jobs`, defaultOptions);
+    this.socket = io(`${apiUrl}/jobs`, defaultOptions);
     this.setupEventListeners();
 
     return this.socket;

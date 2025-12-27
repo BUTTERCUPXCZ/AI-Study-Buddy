@@ -193,6 +193,13 @@ export class AuthService {
       );
     }
 
+    // Check if email is verified
+    if (!user.email_confirmed_at) {
+      throw new UnauthorizedException(
+        'Please verify your email address before logging in.',
+      );
+    }
+
     // Type the user to avoid unsafe assignment
     const typedUser = user as {
       email?: string;
@@ -253,6 +260,50 @@ export class AuthService {
       email: supabaseUser.email,
       fullname: dbUser.Fullname,
       supabaseUser: supabaseUser,
+    };
+  }
+
+  /**
+   * Resend email verification
+   * @param email - User's email address
+   * @returns Success message
+   */
+  async resendVerificationEmail(email: string) {
+    const { error } = await this.supabase.auth.resend({
+      type: 'signup',
+      email: email,
+    });
+
+    if (error) {
+      throw new BadRequestException(
+        `Failed to resend verification email: ${error.message}`,
+      );
+    }
+
+    return {
+      message: 'Verification email sent successfully. Please check your inbox.',
+    };
+  }
+
+  /**
+   * Verify email with token
+   * @param token - Verification token
+   * @returns Success message
+   */
+  async verifyEmail(token: string) {
+    const { error } = await this.supabase.auth.verifyOtp({
+      token_hash: token,
+      type: 'email',
+    });
+
+    if (error) {
+      throw new BadRequestException(
+        `Email verification failed: ${error.message}`,
+      );
+    }
+
+    return {
+      message: 'Email verified successfully. You can now log in.',
     };
   }
 }

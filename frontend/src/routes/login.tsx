@@ -30,6 +30,7 @@ function RouteComponent() {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -169,7 +170,21 @@ function RouteComponent() {
 
             {/* Login error message */}
             {loginError && (
-              <p className="text-sm text-destructive text-center">{loginError.message}</p>
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <p className="text-sm text-red-700 font-medium">Login failed</p>
+                <p className="text-sm text-red-600 mt-1">{loginError.message}</p>
+                {loginError.message.includes('verify your email') && (
+                  <div className="mt-3">
+                    <Link
+                      to="/emailVerify"
+                      search={{ email: watch('email') }}
+                      className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
+                    >
+                      Go to email verification →
+                    </Link>
+                  </div>
+                )}
+              </div>
             )}
 
             {/* Sign In Button */}

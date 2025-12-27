@@ -14,19 +14,15 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-enum SubscriptionStatus {
-  FREE
-  PRO
-  CANCELED
-  PAST_DUE
-}
-
 model User {
   id        String   @id @default(cuid())
   Fullname  String
   email     String   @unique
   supabaseId String   @unique
   password  String
+  emailVerified Boolean @default(false)
+  emailVerificationToken String?
+  emailVerificationExpiresAt DateTime?
   notes     Note[]
   quizzes   Quiz[]
   files     File[]

@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -40,6 +40,7 @@ function RouteComponent() {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
@@ -47,22 +48,24 @@ function RouteComponent() {
 
   const { mutate, isPending, isSuccess, error, data, } = useRegister()
 
+  // Redirect to email verification page after successful registration
+  useEffect(() => {
+    if (isSuccess && data) {
+      const email = watch('email')
+      const timer = setTimeout(() => {
+        window.location.href = `/emailVerify?email=${encodeURIComponent(email)}`
+      }, 2000) // Show success message for 2 seconds
+
+      return () => clearTimeout(timer)
+    }
+  }, [isSuccess, data, watch])
+
   const onSubmit = (formData: RegisterFormData) => {
     mutate({
       Fullname: formData.fullname,
       email: formData.email,
       password: formData.password,
-    },
-    {
-    onSuccess: () => {
-      // Redirect to the email verification page after successful registration.
-      // Use a simple path string to avoid passing an unexpected object shape to useNavigate.
-  // If router navigate typing is strict in this project, fall back to a direct
-  // location change which reliably redirects the user to the verification page.
-  window.location.href = `/emailVerify?email=${encodeURIComponent(formData.email)}`;
-    },
-  },
-  );
+    })
   }
 
   const handleOAuthSignup = async (provider: 'google' | 'github') => {
@@ -183,7 +186,14 @@ function RouteComponent() {
 
             {/* Server messages */}
             {error && <p className="text-sm text-destructive text-center mt-2">{error.message}</p>}
-            {isSuccess && <p className="text-sm text-green-600 text-center mt-2">{data?.message}</p>}
+            {isSuccess && data && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mt-4">
+                <p className="text-sm font-medium text-green-700">Registration successful!</p>
+                <p className="text-sm text-green-600 mt-1">
+                  {data.message} Redirecting to email verification...
+                </p>
+              </div>
+            )}
 
             <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md hover:shadow-lg transition-all" size="lg" type="submit" disabled={isPending}>
               {isPending ? 'Creating…' : 'Create Account'}

@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/Register-dto';
+import { LoginDto } from './dto/Login-dto';
 import { Provider } from '@supabase/supabase-js';
 import { Throttle } from '../common/decorators/throttle.decorator';
 
@@ -24,7 +25,7 @@ export class AuthController {
 
   @Post('login')
   @Throttle(5, 60) // 5 login attempts per minute per IP
-  login(@Body() createAuthDto: RegisterDto) {
+  login(@Body() createAuthDto: LoginDto) {
     return this.authService.Login(createAuthDto);
   }
 
@@ -72,5 +73,34 @@ export class AuthController {
     }
 
     return this.authService.handleOAuthCallback(accessToken);
+  }
+
+  /**
+   * Resend email verification
+   * POST /auth/resend-verification
+   * Body: { email: string }
+   */
+  @Post('resend-verification')
+  @Throttle(3, 300) // 3 resend requests per 5 minutes per IP
+  async resendVerification(@Body('email') email: string) {
+    if (!email) {
+      throw new BadRequestException('Email is required');
+    }
+
+    return this.authService.resendVerificationEmail(email);
+  }
+
+  /**
+   * Verify email with token
+   * POST /auth/verify-email
+   * Body: { token: string }
+   */
+  @Post('verify-email')
+  async verifyEmail(@Body('token') token: string) {
+    if (!token) {
+      throw new BadRequestException('Verification token is required');
+    }
+
+    return this.authService.verifyEmail(token);
   }
 }
