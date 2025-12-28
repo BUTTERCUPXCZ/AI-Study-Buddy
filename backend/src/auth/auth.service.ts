@@ -52,11 +52,6 @@ export class AuthService {
     };
   }
 
-  /**
-   * Handle OAuth callback and create/update user in database
-   * @param token - Access token from OAuth provider
-   * @returns User information
-   */
   async handleOAuthCallback(token: string) {
     const { data, error } = await this.supabase.auth.getUser(token);
 
@@ -74,6 +69,16 @@ export class AuthService {
     type UserRecord = { id: string; email: string; Fullname: string };
     let dbUser: UserRecord;
     if (!existingUser) {
+      // Check if email already exists from a different account
+      const existingByEmail = await this.databaseService.user.findUnique({
+        where: { email: supabaseUser.email! },
+      });
+      if (existingByEmail) {
+        throw new BadRequestException(
+          'This email is already registered with a different account. Please use email/password login.',
+        );
+      }
+
       // Create new user from OAuth data
       const fullname =
         (supabaseUser.user_metadata?.full_name as string) ||
@@ -239,6 +244,14 @@ export class AuthService {
     type UserRecord = { id: string; email: string; Fullname: string };
     let dbUser: UserRecord;
     if (!existingDbUser) {
+      // Check if email already exists from a different account
+      const existingByEmail = await this.databaseService.user.findUnique({
+        where: { email: supabaseUser.email! },
+      });
+      if (existingByEmail) {
+        throw new BadRequestException('This email is already registered with a different account. Please use email/password login.');
+      }
+
       // This is an OAuth user signing in for the first time
       // Create a record in our database
       dbUser = await this.databaseService.user.create({
