@@ -6,8 +6,14 @@ import authService, { type AuthResponse } from '../services/AuthService';
 export const useRegister = () => {
   return useMutation<AuthResponse, Error, RegisterData>({
     mutationFn: async (userData) => {
-      const res = await api.post<AuthResponse>('/auth/register', userData);
-      return res.data;
+      try {
+        const res = await api.post<AuthResponse>('/auth/register', userData);
+        return res.data;
+      } catch (error: unknown) {
+        // Surface backend message (e.g. "This email already exists. Use another one.") so the UI can show it
+        const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Registration failed';
+        throw new Error(message);
+      }
     },
   });
 };

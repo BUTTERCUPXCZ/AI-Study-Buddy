@@ -25,52 +25,6 @@ export const useNote = (noteId: string, userId: string) => {
   });
 };
 
-export const useUpdateNote = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ noteId, userId, data }: { 
-      noteId: string; 
-      userId: string; 
-      data: { title?: string; content?: string } 
-    }) => NotesService.updateNote(noteId, userId, data),
-    // Optimistic update for better UX
-    onMutate: async ({ noteId, userId, data }) => {
-      // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ['note', noteId, userId] });
-      await queryClient.cancelQueries({ queryKey: ['notes', userId] });
-
-      // Snapshot the previous value
-      const previousNote = queryClient.getQueryData(['note', noteId, userId]);
-      const previousNotes = queryClient.getQueryData(['notes', userId]);
-
-      // Optimistically update to the new value
-      if (previousNote) {
-        queryClient.setQueryData(['note', noteId, userId], (old: Record<string, unknown>) => ({
-          ...old,
-          ...data,
-        }));
-      }
-
-      // Return a context object with the snapshotted values
-      return { previousNote, previousNotes };
-    },
-    onError: (_, variables, context) => {
-      // If the mutation fails, use the context returned from onMutate to roll back
-      if (context?.previousNote) {
-        queryClient.setQueryData(['note', variables.noteId, variables.userId], context.previousNote);
-      }
-      if (context?.previousNotes) {
-        queryClient.setQueryData(['notes', variables.userId], context.previousNotes);
-      }
-    },
-    onSuccess: (_, variables) => {
-      // Invalidate and refetch notes after successful update
-      queryClient.invalidateQueries({ queryKey: ['notes', variables.userId] });
-      queryClient.invalidateQueries({ queryKey: ['note', variables.noteId, variables.userId] });
-    },
-  });
-};
 
 export const useDeleteNote = () => {
   const queryClient = useQueryClient();

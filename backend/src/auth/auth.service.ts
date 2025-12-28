@@ -121,7 +121,9 @@ export class AuthService {
       where: { email: registerDto.email },
     });
     if (existingUser) {
-      throw new BadRequestException('User with this email already exists');
+      throw new BadRequestException(
+        'This email already exists. Use another one.',
+      );
     }
 
     const hashedPassword = await bcrypt.hash(registerDto.password, 10);

@@ -99,17 +99,25 @@ export class WebhookController {
             `Updating subscription status for user ${user.id} to ${subscription.status === 'active' ? 'PRO' : 'FREE'}`,
           );
           const status = subscription.status === 'active' ? 'PRO' : 'FREE';
+
+          // Safely compute period end timestamp from first item in items.data
+          const periodEndTimestamp =
+            subscription.items?.data?.[0]?.current_period_end;
+
+          const periodEnd = (() => {
+            const ts = periodEndTimestamp;
+            if (typeof ts === 'number' && ts > 0) {
+              const date = new Date(ts * 1000);
+              return isNaN(date.getTime()) ? null : date;
+            }
+            return null;
+          })();
+
           await this.databaseService.user.update({
             where: { id: user.id },
             data: {
               subscriptionStatus: status,
-              subscriptionCurrentPeriodEnd:
-                status === 'PRO'
-                  ? new Date(
-                      // @ts-expect-error Stripe types do not include current_period_end
-                      subscription.current_period_end * 1000,
-                    )
-                  : null,
+              subscriptionCurrentPeriodEnd: status === 'PRO' ? periodEnd : null,
             },
           });
         } else {
@@ -135,10 +143,15 @@ export class WebhookController {
               where: { id: user.id },
               data: {
                 subscriptionStatus: 'PRO',
-                subscriptionCurrentPeriodEnd: new Date(
-                  // @ts-expect-error Stripe types do not include current_period_end
-                  subscription.current_period_end * 1000,
-                ),
+                // Safely compute period end timestamp from first item in items.data
+                subscriptionCurrentPeriodEnd: (() => {
+                  const ts = subscription.items?.data?.[0]?.current_period_end;
+                  if (typeof ts === 'number' && ts > 0) {
+                    const date = new Date(ts * 1000);
+                    return isNaN(date.getTime()) ? null : date;
+                  }
+                  return null;
+                })(),
               },
             });
           } else if (
@@ -167,6 +180,13 @@ export class WebhookController {
           console.log(`Deleting subscription for user ${user.id}`);
           await this.subscriptionsService.handleSubscriptionCancelled(user.id);
         }
+        break;
+      }
+
+      case 'invoice.payment_succeeded': {
+        console.log('Invoice payment succeeded:', event.data.object.id);
+        // The subscription status is already handled in customer.subscription.created
+        // This event confirms the payment, but no additional action needed
         break;
       }
 
