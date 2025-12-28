@@ -21,8 +21,6 @@ model User {
   supabaseId String   @unique
   password  String
   emailVerified Boolean @default(false)
-  emailVerificationToken String?
-  emailVerificationExpiresAt DateTime?
   
    
   // Subscription fields
