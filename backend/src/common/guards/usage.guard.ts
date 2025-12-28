@@ -3,6 +3,7 @@ import {
   CanActivate,
   ExecutionContext,
   ForbiddenException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { DatabaseService } from '../../database/database.service';
@@ -24,7 +25,7 @@ export class UsageGuard implements CanActivate {
     const user = request.user;
 
     if (!user) {
-      return false;
+      throw new UnauthorizedException('Authentication required');
     }
 
     // Get user with subscription status
@@ -37,7 +38,7 @@ export class UsageGuard implements CanActivate {
     });
 
     if (!dbUser) {
-      return false;
+      throw new UnauthorizedException('Authentication required');
     }
 
     // Pro users have unlimited access

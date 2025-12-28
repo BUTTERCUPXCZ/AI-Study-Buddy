@@ -19,6 +19,7 @@ import { Throttle } from '../common/decorators/throttle.decorator';
 import { UsageGuard } from 'src/common/guards/usage.guard';
 import { UseGuards } from '@nestjs/common';
 import { UsageService } from 'src/usage/usage.service';
+import { AuthGuard } from 'src/auth/auth.guard';
 
 @Controller('ai')
 export class AiController {
@@ -32,7 +33,7 @@ export class AiController {
   @Post('generate/notes')
   @HttpCode(HttpStatus.CREATED)
   @Throttle(5, 60) // 5 requests per minute for note generation
-  @UseGuards(UsageGuard)
+  @UseGuards(AuthGuard, UsageGuard)
   async generateNotes(@Body() dto: GenerateNotesDto) {
     const result = await this.aiService.generateNotes(
       dto.pdfText,
@@ -49,7 +50,7 @@ export class AiController {
 
   @Post('generate/quiz')
   @HttpCode(HttpStatus.CREATED)
-  @UseGuards(UsageGuard)
+  @UseGuards(AuthGuard, UsageGuard)
   @Throttle(5, 60) // 5 requests per minute for quiz generation
   async generateQuiz(@Body() dto: GenerateQuizDto) {
     const result = await this.aiService.generateQuiz(
