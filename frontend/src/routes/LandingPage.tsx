@@ -8,6 +8,7 @@ const HeroSection = lazy(() => import('@/components/landing/HeroSection'))
 const FeaturesSection = lazy(() => import('@/components/landing/FeaturesSection'))
 const HowItWorksSection = lazy(() => import('@/components/landing/HowItWorksSection'))
 const TestimonialsSection = lazy(() => import('@/components/landing/TestimonialsSection'))
+const Pricing = lazy(() => import('@/components/landing/Pricing'))
 const CTASection = lazy(() => import('@/components/landing/CTASection'))
 const Footer = lazy(() => import('@/components/landing/Footer'))
 
@@ -53,6 +54,10 @@ function RouteComponent() {
 
       <Suspense fallback={<div className="py-24 h-96 bg-slate-50" />}>
         <TestimonialsSection />
+      </Suspense>
+
+      <Suspense fallback={<div className="py-24 h-96 bg-gradient-to-b from-slate-50 to-white" />}>
+        <Pricing />
       </Suspense>
 
       <Suspense fallback={<div className="py-24 h-96 bg-primary" />}>

@@ -4,8 +4,9 @@ import { Link, useLocation } from '@tanstack/react-router'
 import { useAuth } from '@/context/AuthContextDefinition'
 
 import { Separator } from '@/components/ui/separator'
-import { FileText, Brain, GraduationCap, Library, LogOut, Menu } from 'lucide-react'
+import { FileText, Brain, GraduationCap, Library, LogOut, Menu, Crown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { authService } from '@/services/AuthService'
 import {
   Dialog,
@@ -16,12 +17,24 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
+import { subscriptionService } from '@/services/SubscriptionService'
+import { useQuery } from '@tanstack/react-query'
+
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const location = useLocation()
   const { user } = useAuth()
   const [logoutOpen, setLogoutOpen] = useState(false)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
+
+  // In component:
+const { data: usageStats } = useQuery({
+  queryKey: ['usage-stats'],
+  queryFn: () => subscriptionService.getSubscriptionStatus(),
+  enabled: !!user,
+})
+  
   
   const navItems = [
     { to: '/notes', label: 'Study Notes', icon: FileText },
@@ -32,6 +45,27 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   const currentRoute = navItems.find(item => location.pathname.startsWith(item.to))
   const pageTitle = currentRoute?.label || 'Dashboard'
+
+   const handleUpgrade = async () => {
+    if (!user) {
+      // Redirect to login/register
+      window.location.href = '/register'
+      return
+    }
+
+    setLoading(true)
+    try {
+      await subscriptionService.createCheckoutSession()
+    } catch (error) {
+      console.error('Checkout error:', error)
+      alert('Failed to start checkout. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Check if user is on Pro plan (use fresh data from query if available)
+  const isProUser = usageStats?.plan === 'PRO' || user?.subscriptionStatus === 'PRO' || user?.plan === 'pro' || user?.subscriptionStatus === 'pro'
 
   const SidebarContent = () => (
     <div className="h-full flex flex-col text-slate-600">
@@ -73,11 +107,61 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
                 <span className="text-xs font-bold">{user?.fullname?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'U'}</span>
               </div>
-              <div className="flex flex-col">
-                <div className="text-sm font-medium text-slate-900">{user?.fullname || 'Student'}</div>
+              <div className="flex flex-col flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <div className="text-sm font-medium text-slate-900 truncate">{user?.fullname || 'Student'}</div>
+                  {isProUser && (
+                    <Badge 
+                      variant="default" 
+                      className="bg-gradient-to-r from-blue-600 to-blue-500 text-white border-0 text-[10px] px-1.5 py-0.5 flex items-center gap-1 shrink-0"
+                    >
+                      <Crown className="h-2.5 w-2.5" />
+                      Pro
+                    </Badge>
+                  )}
+                </div>
                 <div className="text-xs text-slate-500 truncate max-w-[160px]">{user?.email || ''}</div>
               </div>
             </div>
+
+            {/* Upgrade to Pro Button (for non-pro users) */}
+            {!isProUser && usageStats && (
+              <div className="mb-3 p-3 rounded-lg bg-amber-50 border border-amber-200">
+                <div className="text-xs font-semibold text-amber-900 mb-1">
+                  Free Plan Usage
+                </div>
+                <div className="text-xs text-amber-700">
+                  {usageStats.attemptsUsed} / {usageStats.attemptsLimit} attempts used
+                </div>
+                {usageStats.attemptsLimit && usageStats.attemptsUsed >= usageStats.attemptsLimit && (
+                  <div className="text-xs text-red-600 font-medium mt-1">
+                    Limit reached. Upgrade to continue.
+                  </div>
+                )}
+              </div>
+            )}
+            {!isProUser && (
+              <Button
+                variant="default"
+                className="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white shadow-md hover:shadow-lg transition-all duration-200 rounded-lg mb-3"
+                onClick={handleUpgrade}
+                disabled={loading}
+              >
+                {loading ? 'Processing...' : 'Upgrade to Pro'}
+              </Button>
+            )}
+
+            {/* Pro Plan Indicator (for pro users) */}
+            {isProUser && (
+              <div className="mb-3 p-3 rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200">
+                <div className="flex items-center gap-2 mb-1">
+                  <Crown className="h-4 w-4 text-blue-600" />
+                  <span className="text-xs font-semibold text-blue-900">Pro Plan Active</span>
+                </div>
+                <p className="text-[10px] text-blue-700">Unlimited access to all features</p>
+              </div>
+            )}
+
             <Button
               variant="ghost"
               className="w-full justify-start gap-2 text-sm -ml-2 text-slate-600 hover:text-red-600 hover:bg-red-50"

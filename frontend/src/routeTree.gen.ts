@@ -18,6 +18,7 @@ import { Route as EmailVerifyRouteImport } from './routes/emailVerify'
 import { Route as _protectedRouteImport } from './routes/__protected'
 import { Route as LandingPageRouteImport } from './routes/LandingPage'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SubscriptionSuccessRouteImport } from './routes/subscription.success'
 import { Route as _protectedTutorRouteImport } from './routes/__protected.tutor'
 import { Route as _protectedQuizzesRouteImport } from './routes/__protected.quizzes'
 import { Route as _protectedNotesRouteImport } from './routes/__protected.notes'
@@ -69,6 +70,11 @@ const LandingPageRoute = LandingPageRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SubscriptionSuccessRoute = SubscriptionSuccessRouteImport.update({
+  id: '/subscription/success',
+  path: '/subscription/success',
   getParentRoute: () => rootRouteImport,
 } as any)
 const _protectedTutorRoute = _protectedTutorRouteImport.update({
@@ -125,6 +131,7 @@ export interface FileRoutesByFullPath {
   '/notes': typeof _protectedNotesRouteWithChildren
   '/quizzes': typeof _protectedQuizzesRouteWithChildren
   '/tutor': typeof _protectedTutorRoute
+  '/subscription/success': typeof SubscriptionSuccessRoute
   '/notes/$noteId': typeof _protectedNotesNoteIdRoute
   '/quizzes/$quizId': typeof _protectedQuizzesQuizIdRoute
   '/notes/': typeof _protectedNotesIndexRoute
@@ -141,6 +148,7 @@ export interface FileRoutesByTo {
   '/supabaseCallback': typeof SupabaseCallbackRoute
   '/library': typeof _protectedLibraryRoute
   '/tutor': typeof _protectedTutorRoute
+  '/subscription/success': typeof SubscriptionSuccessRoute
   '/notes/$noteId': typeof _protectedNotesNoteIdRoute
   '/quizzes/$quizId': typeof _protectedQuizzesQuizIdRoute
   '/notes': typeof _protectedNotesIndexRoute
@@ -161,6 +169,7 @@ export interface FileRoutesById {
   '/__protected/notes': typeof _protectedNotesRouteWithChildren
   '/__protected/quizzes': typeof _protectedQuizzesRouteWithChildren
   '/__protected/tutor': typeof _protectedTutorRoute
+  '/subscription/success': typeof SubscriptionSuccessRoute
   '/__protected/notes/$noteId': typeof _protectedNotesNoteIdRoute
   '/__protected/quizzes/$quizId': typeof _protectedQuizzesQuizIdRoute
   '/__protected/notes/': typeof _protectedNotesIndexRoute
@@ -181,6 +190,7 @@ export interface FileRouteTypes {
     | '/notes'
     | '/quizzes'
     | '/tutor'
+    | '/subscription/success'
     | '/notes/$noteId'
     | '/quizzes/$quizId'
     | '/notes/'
@@ -197,6 +207,7 @@ export interface FileRouteTypes {
     | '/supabaseCallback'
     | '/library'
     | '/tutor'
+    | '/subscription/success'
     | '/notes/$noteId'
     | '/quizzes/$quizId'
     | '/notes'
@@ -216,6 +227,7 @@ export interface FileRouteTypes {
     | '/__protected/notes'
     | '/__protected/quizzes'
     | '/__protected/tutor'
+    | '/subscription/success'
     | '/__protected/notes/$noteId'
     | '/__protected/quizzes/$quizId'
     | '/__protected/notes/'
@@ -232,6 +244,7 @@ export interface RootRouteChildren {
   RegisterRoute: typeof RegisterRoute
   ResetpasswordRoute: typeof ResetpasswordRoute
   SupabaseCallbackRoute: typeof SupabaseCallbackRoute
+  SubscriptionSuccessRoute: typeof SubscriptionSuccessRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -297,6 +310,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/subscription/success': {
+      id: '/subscription/success'
+      path: '/subscription/success'
+      fullPath: '/subscription/success'
+      preLoaderRoute: typeof SubscriptionSuccessRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/__protected/tutor': {
@@ -413,6 +433,7 @@ const rootRouteChildren: RootRouteChildren = {
   RegisterRoute: RegisterRoute,
   ResetpasswordRoute: ResetpasswordRoute,
   SupabaseCallbackRoute: SupabaseCallbackRoute,
+  SubscriptionSuccessRoute: SubscriptionSuccessRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -15,6 +15,9 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { RedisThrottlerGuard } from './common/guards/redis-throttler.guard';
 import { RedisThrottlerStorage } from './common/storage/redis-throttler.storage';
+import { SubscriptionsModule } from './subscriptions/subscriptions.module';
+import { StripeModule } from './stripe/stripe.module';
+import { UsageService } from './usage/usage.service';
 
 @Module({
   imports: [
@@ -55,6 +58,8 @@ import { RedisThrottlerStorage } from './common/storage/redis-throttler.storage'
     NotesModule,
     QuizzesModule,
     WebsocketModule,
+    SubscriptionsModule,
+    StripeModule,
   ],
   controllers: [HealthController],
   providers: [
@@ -62,6 +67,7 @@ import { RedisThrottlerStorage } from './common/storage/redis-throttler.storage'
       provide: APP_GUARD,
       useClass: RedisThrottlerGuard,
     },
+    UsageService,
   ],
 })
 export class AppModule {}

@@ -23,6 +23,17 @@ model User {
   emailVerified Boolean @default(false)
   emailVerificationToken String?
   emailVerificationExpiresAt DateTime?
+  
+   
+  // Subscription fields
+  subscriptionStatus String @default("FREE") // "FREE" or "PRO"
+  stripeCustomerId String? @unique
+  stripeSubscriptionId String? @unique
+  subscriptionCurrentPeriodEnd DateTime?
+  
+  // Usage tracking
+  attemptsUsed Int @default(0) // Track how many attempts user has used
+
   notes     Note[]
   quizzes   Quiz[]
   files     File[]

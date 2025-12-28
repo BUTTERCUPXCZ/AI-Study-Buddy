@@ -4,11 +4,12 @@ import { AiController } from './ai.controller';
 import { DatabaseModule } from '../database/database.module';
 import { NotesModule } from '../notes/notes.module';
 import { QuizzesModule } from '../quizzes/quizzes.module';
+import { UsageService } from 'src/usage/usage.service';
 
 @Module({
   imports: [DatabaseModule, NotesModule, QuizzesModule],
   controllers: [AiController],
-  providers: [AiService],
+  providers: [AiService, UsageService],
   exports: [AiService],
 })
 export class AiModule {}

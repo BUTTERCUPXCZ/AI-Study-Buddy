@@ -16,35 +16,53 @@ import { GenerateNotesDto } from './dto/generate-notes.dto';
 import { GenerateQuizDto } from './dto/generate-quiz.dto';
 import { TutorChatDto, UpdateChatSessionTitleDto } from './dto/tutor-chat.dto';
 import { Throttle } from '../common/decorators/throttle.decorator';
+import { UsageGuard } from 'src/common/guards/usage.guard';
+import { UseGuards } from '@nestjs/common';
+import { UsageService } from 'src/usage/usage.service';
 
 @Controller('ai')
 export class AiController {
-  constructor(private readonly aiService: AiService) {}
+  constructor(
+    private readonly aiService: AiService,
+    private readonly usageService: UsageService,
+  ) {}
 
   // ============ AI GENERATION ENDPOINTS ============
 
   @Post('generate/notes')
   @HttpCode(HttpStatus.CREATED)
   @Throttle(5, 60) // 5 requests per minute for note generation
+  @UseGuards(UsageGuard)
   async generateNotes(@Body() dto: GenerateNotesDto) {
-    return this.aiService.generateNotes(
+    const result = await this.aiService.generateNotes(
       dto.pdfText,
       dto.userId,
       dto.title,
       dto.source,
     );
+
+    // Increment usage for free users
+    await this.usageService.incrementAttempts(dto.userId);
+
+    return result;
   }
 
   @Post('generate/quiz')
   @HttpCode(HttpStatus.CREATED)
+  @UseGuards(UsageGuard)
   @Throttle(5, 60) // 5 requests per minute for quiz generation
   async generateQuiz(@Body() dto: GenerateQuizDto) {
-    return this.aiService.generateQuiz(
+    const result = await this.aiService.generateQuiz(
       dto.studyNotes,
       dto.userId,
       dto.title,
       dto.noteId,
     );
+
+    // Increment usage for free users
+    await this.usageService.incrementAttempts(dto.userId);
+
+    return result;
   }
 
   // ============ TUTOR CHAT ENDPOINTS ============
