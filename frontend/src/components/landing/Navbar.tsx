@@ -31,9 +31,9 @@ const Navbar = memo(function Navbar() {
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="sticky top-0 z-50 w-full  bg-white"
+      className="sticky top-0 z-50 w-full bg-transparent"
     >
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 lg:px-8 relative">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6 lg:px-8 relative bg-transparent">
        
         {/* Logo */}
         <Link to="/" aria-label="AI Study Buddy home" className="flex items-center gap-2">
@@ -89,7 +89,7 @@ const Navbar = memo(function Navbar() {
       {/* Mobile Menu */}
       <div
         id="mobile-menu"
-        className={`fixed inset-0 z-50 bg-white transition-transform duration-300 lg:hidden ${
+        className={`fixed inset-0 z-50 bg-transparent transition-transform duration-300 lg:hidden ${
           isMenuOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >

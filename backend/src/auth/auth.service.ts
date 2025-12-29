@@ -249,7 +249,9 @@ export class AuthService {
         where: { email: supabaseUser.email! },
       });
       if (existingByEmail) {
-        throw new BadRequestException('This email is already registered with a different account. Please use email/password login.');
+        throw new BadRequestException(
+          'This email is already registered with a different account. Please use email/password login.',
+        );
       }
 
       // This is an OAuth user signing in for the first time

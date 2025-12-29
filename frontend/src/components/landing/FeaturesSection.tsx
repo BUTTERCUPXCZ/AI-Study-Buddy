@@ -45,7 +45,7 @@ const FeaturesSection = memo(function FeaturesSection() {
               transition={{ duration: 0.5, delay: index * 0.1 }}
               className="will-change-transform"
             >
-              <Card className="h-full border-none shadow-lg hover:shadow-xl transition-all duration-300 group overflow-hidden rounded-2xl bg-white">
+              <Card className="h-full border-none shadow-sm hover:shadow-xl transition-all duration-300 group overflow-hidden rounded-2xl bg-white">
                 <CardHeader>
                   <div className={`w-14 h-14 rounded-xl ${feature.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}>
                     {feature.icon}
@@ -53,7 +53,7 @@ const FeaturesSection = memo(function FeaturesSection() {
                   <CardTitle className="text-2xl font-bold text-slate-900">{feature.title}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-slate-600 leading-relaxed text-lg">
+                  <p className="text-slate-600 text-sm md:text-base leading-relaxed text-lg">
                     {feature.description}
                   </p>
                 </CardContent>
