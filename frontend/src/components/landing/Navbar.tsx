@@ -31,7 +31,7 @@ const Navbar = memo(function Navbar() {
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="sticky top-0 z-50 w-full bg-transparent"
+      className="sticky top-0 z-50 w-full border-b border-transparent bg-white/50 backdrop-blur-md supports-[backdrop-filter]:bg-white/20"
     >
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6 lg:px-8 relative">
        
