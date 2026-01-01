@@ -45,7 +45,7 @@ const TestimonialsSection = memo(function TestimonialsSection() {
                 {/* Tape effect */}
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-32 h-8 bg-white/40 backdrop-blur-sm rotate-1 shadow-sm border border-white/20"></div>
                 
-                <Quote className="h-10 w-10 text-slate-900/20 mb-6" />
+                <Quote className="h-10 w-10 text-muted-foreground/20 mb-6" />
                 <p className="text-xl mb-8 italic text-slate-800 leading-relaxed">"{t.quote}"</p>
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-slate-900/10 flex items-center justify-center font-bold text-slate-700">

@@ -15,9 +15,9 @@ const CTASection = memo(function CTASection() {
           transition={{ duration: 0.5 }}
           className="will-change-transform"
         >
-          <div className="inline-flex items-center justify-center p-3 bg-blue-50 rounded-full mb-8">
-            <Pencil className="h-6 w-6 text-blue-600 mr-2" />
-            <span className="font-medium text-blue-700">Start your journey today</span>
+          <div className="inline-flex items-center justify-center p-3 bg-primary/10 rounded-full mb-8">
+            <Pencil className="h-6 w-6 text-primary mr-2" />
+            <span className="font-medium text-primary">Start your journey today</span>
           </div>
           
           <h2 className="text-5xl sm:text-6xl font-extrabold mb-8 tracking-tight text-slate-900">

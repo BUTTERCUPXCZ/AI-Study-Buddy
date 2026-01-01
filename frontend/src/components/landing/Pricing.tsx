@@ -83,9 +83,9 @@ const Pricing = memo(function Pricing() {
           transition={{ duration: 0.5 }}
           className="text-center mb-16"
         >
-          <div className="inline-flex items-center justify-center p-3 bg-blue-50 rounded-full mb-6">
-            <Zap className="h-5 w-5 text-blue-600 mr-2" />
-            <span className="font-medium text-blue-700">Simple, Transparent Pricing</span>
+          <div className="inline-flex items-center justify-center p-3 bg-primary/10 rounded-full mb-6">
+            <Zap className="h-5 w-5 text-primary mr-2" />
+            <span className="font-medium text-primary">Simple, Transparent Pricing</span>
           </div>
           <h2 className="text-4xl md:text-5xl font-bold mb-6 text-slate-900">
             Choose Your Plan
@@ -184,11 +184,11 @@ const Pricing = memo(function Pricing() {
                       >
                         {feature.included ? (
                           <div className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center mt-0.5">
-                            <Check className="h-3.5 w-3.5 text-blue-600" />
+                            <Check className="h-3.5 w-3.5 text-primary" />
                           </div>
                         ) : (
                           <div className="flex-shrink-0 w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center mt-0.5">
-                            <X className="h-3.5 w-3.5 text-slate-400" />
+                            <X className="h-3.5 w-3.5 text-muted-foreground" />
                           </div>
                         )}
                         <span

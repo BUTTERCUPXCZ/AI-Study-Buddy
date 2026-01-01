@@ -22,7 +22,7 @@ const HowItWorksSection = memo(function HowItWorksSection() {
   ]
 
   return (
-    <section id="how-it-works" className="py-24 relative overflow-hidden bg-slate-50 text-slate-900">
+    <section id="how-it-works" className="py-24 relative overflow-hidden bg-slate-50 text-slate-900 ">
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="text-center mb-20">
@@ -43,8 +43,8 @@ const HowItWorksSection = memo(function HowItWorksSection() {
               transition={{ duration: 0.5, delay: index * 0.2 }}
               className="relative flex flex-col items-center text-center will-change-transform"
             >
-              <div className="w-24 h-24 rounded-full bg-slate-90 border-2 border-blue-200 backdrop-blur-sm flex items-center justify-center z-10 mb-8 group hover:bg-blue-100 transition-colors duration-300">
-                <div className="text-blue-600 group-hover:scale-110 transition-transform duration-300">
+              <div className="w-24 h-24 rounded-full bg-slate-50 border-2 border-primary/20 backdrop-blur-sm flex items-center justify-center z-10 mb-8 group hover:bg-primary/10 transition-colors duration-300">
+                <div className="text-primary group-hover:scale-110 transition-transform duration-300">
                   {step.icon}
                 </div>
               </div>

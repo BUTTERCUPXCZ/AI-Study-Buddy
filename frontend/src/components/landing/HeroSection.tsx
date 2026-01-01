@@ -2,7 +2,7 @@ import { Link } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { motion } from 'framer-motion'
 import { memo } from 'react'
-
+  
 
 const HeroSection = memo(function HeroSection() {
   return (
