@@ -10,7 +10,7 @@ const USER_CACHE_KEY = 'auth_user_cache'
 const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
 
 interface CachedUser {
-  data: any
+  data: unknown
   timestamp: number
 }
 
@@ -32,7 +32,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }
 
-  const setCachedUser = (userData: any) => {
+  const setCachedUser = (userData: unknown) => {
     try {
       const cache: CachedUser = {
         data: userData,
@@ -53,7 +53,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }
 
   // Initialize user from cache immediately (optimistic loading)
-  const [user, setUser] = useState<any | null>(getCachedUser())
+  const [user, setUser] = useState<unknown | null>(getCachedUser())
   const [loading, setLoading] = useState(!getCachedUser()) // Only show loading if no cache
 
   // On mount, validate session with backend (cookie is sent automatically)
@@ -68,7 +68,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(res.data)
         setCachedUser(res.data) // Cache for next navigation
         queryClient.setQueryData(['auth', 'user'], res.data)
-      } catch (error) {
+      } catch {
         // No valid session
         if (!mounted) return
         setUser(null)
@@ -100,7 +100,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       mounted = false
     }
-  }, [])
+  }, [queryClient])
 
   // Listen to Supabase auth state changes and keep local user in sync
   useEffect(() => {
@@ -147,7 +147,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUser(res.data)
           setCachedUser(res.data)
           queryClient.setQueryData(['auth', 'user'], res.data)
-        } catch (error) {
+        } catch {
           setUser(null)
           clearCachedUser()
           queryClient.setQueryData(['auth', 'user'], null)

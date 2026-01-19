@@ -17,19 +17,12 @@ api.interceptors.response.use(
     const raw = (error.response?.data?.message || error.response?.data || error.message || '').toString()
     const isGeminiLimit = status === 429 || (/gemini/i.test(raw) && /limit|rate limit|too many requests|429|free tier/i.test(raw))
     if (isGeminiLimit) {
-      try {
-        showToast('Gemini free tier limit reached — please try again later.', 'error')
-      } catch {
-        // ignore
-      }
+      showToast('Gemini free tier limit reached — please try again later.', 'error')
     }
 
     if (status === 401) {
       // Redirect to login so the user can re-authenticate
-      try {
-        // use replace to avoid keeping the current (invalid) route in history
-        window.location.replace('/login')
-      } catch {}
+      window.location.replace('/login')
     }
     return Promise.reject(error);
   }

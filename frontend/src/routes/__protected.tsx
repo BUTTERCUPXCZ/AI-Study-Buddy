@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, redirect } from '@tanstack/react-router'
 import { api } from '@/lib/api'
 
 // Cache for auth check to avoid repeated API calls during navigation
-let authCache: { user: any; timestamp: number } | null = null
+let authCache: { user: unknown; timestamp: number } | null = null
 const AUTH_CACHE_DURATION = 30000 // 30 seconds - aggressive caching for smooth navigation
 
 export const Route = createFileRoute('/__protected')({
@@ -51,9 +51,4 @@ export const Route = createFileRoute('/__protected')({
 
 function RouteComponent() {
   return <Outlet />
-}
-
-// Export function to clear auth cache (useful for logout)
-export const clearAuthCache = () => {
-  authCache = null
 }

@@ -2,7 +2,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { type RegisterData, type LoginData } from '../types/auth.ts';
 import authService, { type AuthResponse } from '../services/AuthService';
-import { clearAuthCache } from '@/routes/__protected';
 
 export const useRegister = () => {
   return useMutation<AuthResponse, Error, RegisterData>({
@@ -99,8 +98,6 @@ export const useLogout = () => {
       await authService.logout();
     },
     onSuccess: () => {
-      // Clear the protected route auth cache
-      clearAuthCache();
       // Clear all queries on logout
       queryClient.clear();
     },
