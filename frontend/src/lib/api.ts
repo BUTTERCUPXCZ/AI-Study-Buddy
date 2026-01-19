@@ -22,7 +22,13 @@ api.interceptors.response.use(
 
     if (status === 401) {
       // Redirect to login so the user can re-authenticate
-      window.location.replace('/login')
+      const currentPath = window.location.pathname
+      if (currentPath !== '/login') {
+        try {
+          // use replace to avoid keeping the current (invalid) route in history
+          window.location.replace('/login')
+        } catch {}
+      }
     }
     return Promise.reject(error);
   }
