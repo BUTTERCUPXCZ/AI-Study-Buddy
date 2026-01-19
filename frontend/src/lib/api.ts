@@ -27,7 +27,9 @@ api.interceptors.response.use(
         try {
           // use replace to avoid keeping the current (invalid) route in history
           window.location.replace('/login')
-        } catch {}
+        } catch {
+          // ignore redirect errors
+        }
       }
     }
     return Promise.reject(error);
