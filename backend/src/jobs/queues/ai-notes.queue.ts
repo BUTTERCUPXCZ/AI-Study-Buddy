@@ -64,8 +64,8 @@ export class AiNotesQueue {
           fileName: data.fileName,
           fileId: data.fileId,
           processingMode,
-          dataSize: data.pdfBuffer 
-            ? `${(data.pdfBuffer.length / 1024).toFixed(2)} KB (PDF)` 
+          dataSize: data.pdfBuffer
+            ? `${(data.pdfBuffer.length / 1024).toFixed(2)} KB (PDF)`
             : `${data.extractedText?.length || 0} chars (text)`,
         },
         userId: data.userId,

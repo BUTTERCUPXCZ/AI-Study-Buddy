@@ -28,10 +28,10 @@ export class AuthGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
-    
+
     // Try to get token from cookie first, then fall back to Authorization header
-    let token = request.cookies?.['access_token'];
-    
+    let token = request.cookies?.['access_token'] as string | undefined;
+
     // Fall back to Authorization header for backward compatibility
     if (!token) {
       const authHeader = request.headers.authorization;
@@ -41,13 +41,13 @@ export class AuthGuard implements CanActivate {
     }
 
     // Ensure token exists
-    if (!token || !token.trim()) {
+    if (!token || (typeof token === 'string' && !token.trim())) {
       throw new UnauthorizedException('Authentication required');
     }
 
     try {
       // Verify the token and get user information
-      const user = await this.authService.verifyToken(token);
+      const user = await this.authService.verifyToken(token ?? '');
 
       // Attach user to request object for use in controllers
       request.user = {

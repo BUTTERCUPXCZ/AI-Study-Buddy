@@ -8,7 +8,7 @@ interface RequestWithRawBody extends Request {
 export const RawBody = createParamDecorator(
   (data: unknown, ctx: ExecutionContext): Buffer => {
     const request = ctx.switchToHttp().getRequest<RequestWithRawBody>();
-    
+
     if (request.rawBody) return request.rawBody;
     const body = request.body as unknown;
     if (Buffer.isBuffer(body)) return body;

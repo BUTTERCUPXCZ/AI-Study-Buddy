@@ -72,7 +72,11 @@ export class PdfExtractWorker extends WorkerHost {
       // Step 2: Download PDF as buffer (skip text extraction for faster processing)
       // Gemini AI will directly process the PDF
       await job.updateProgress(30);
-      this.wsGateway.emitJobProgress(job.id!, 30, 'Preparing PDF for AI processing');
+      this.wsGateway.emitJobProgress(
+        job.id!,
+        30,
+        'Preparing PDF for AI processing',
+      );
       this.logger.log(`Downloading PDF buffer for direct AI processing...`);
 
       let pdfBuffer: Buffer;
@@ -151,7 +155,9 @@ export class PdfExtractWorker extends WorkerHost {
         progress: 60,
         message: 'Processing PDF with AI (direct mode)',
       });
-      this.logger.log('Queueing AI notes generation with direct PDF processing...');
+      this.logger.log(
+        'Queueing AI notes generation with direct PDF processing...',
+      );
 
       // Convert buffer to base64 for job queue transport
       const pdfBase64 = pdfBuffer.toString('base64');

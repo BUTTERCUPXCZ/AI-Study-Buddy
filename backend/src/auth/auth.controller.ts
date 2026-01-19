@@ -37,12 +37,12 @@ export class AuthController {
 
   @Get('me')
   async getMe(@Req() request: express.Request) {
-    const token = request.cookies?.['access_token'];
-    return this.authService.verifyToken(token);
+    const token = request.cookies?.['access_token'] as string | undefined;
+    return this.authService.verifyToken(token ?? '');
   }
 
   @Post('logout')
-  async logout(@Res({ passthrough: true }) response: express.Response) {
+  logout(@Res({ passthrough: true }) response: express.Response) {
     // Clear the cookie
     response.clearCookie('access_token', {
       httpOnly: true,
@@ -50,7 +50,7 @@ export class AuthController {
       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       path: '/',
     });
-    
+
     return { message: 'Logged out successfully' };
   }
 

@@ -11,11 +11,10 @@ interface RequestWithUser extends Record<string, unknown> {
 
 @Injectable()
 export class RedisThrottlerGuard extends ThrottlerGuard {
- 
-  protected async getTracker(req: Record<string, unknown>): Promise<string> {
+  protected getTracker(req: Record<string, unknown>): Promise<string> {
     const request = req as RequestWithUser;
     // Use user ID if authenticated, otherwise use IP address
-    return request.user?.id ?? request.ip ?? 'anonymous';
+    return Promise.resolve(request.user?.id ?? request.ip ?? 'anonymous');
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {

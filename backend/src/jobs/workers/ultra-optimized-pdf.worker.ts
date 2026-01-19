@@ -9,12 +9,10 @@ import { NotesService } from '../../notes/notes.service';
 import { JobEventEmitterService } from '../job-event-emitter.service';
 import { JobsWebSocketGateway } from '../../websocket/websocket.gateway';
 import { JobStage, JobStatus } from '../dto/job-event.dto';
-import { PdfParserUtil } from '../utils/pdf-parser.util';
 import { PdfCacheUtil } from '../utils/pdf-cache.util';
 import { ConnectionPoolUtil } from '../utils/connection-pool.util';
 import { WorkerPerformanceUtil } from '../utils/worker-performance.util';
 import { RedisOptimizationUtil } from '../utils/redis-optimization.util';
-import { parsePdfInWorker } from './pdf-parser.thread';
 import Redis from 'ioredis';
 
 export interface OptimizedPdfJobDto {
@@ -204,7 +202,7 @@ export class UltraOptimizedPdfWorker extends WorkerHost {
         message: 'Starting optimized processing',
         timestamp: new Date().toISOString(),
       });
-      
+
       // WebSocket emission for frontend
       this.wsGateway.emitJobUpdate(job.id!, 'processing', {
         fileId,
@@ -226,7 +224,7 @@ export class UltraOptimizedPdfWorker extends WorkerHost {
         message: 'Downloading PDF with connection pooling',
         timestamp: new Date().toISOString(),
       });
-      
+
       // WebSocket emission
       this.wsGateway.emitJobProgress(job.id!, 10, 'Downloading PDF');
 
@@ -265,7 +263,7 @@ export class UltraOptimizedPdfWorker extends WorkerHost {
         message: 'Checking multi-level cache',
         timestamp: new Date().toISOString(),
       });
-      
+
       // WebSocket emission
       this.wsGateway.emitJobProgress(job.id!, 25, 'Checking cache');
 
@@ -314,7 +312,7 @@ export class UltraOptimizedPdfWorker extends WorkerHost {
           message: 'Using cached notes (instant)',
           timestamp: new Date().toISOString(),
         });
-        
+
         // WebSocket emission
         this.wsGateway.emitJobProgress(job.id!, 90, 'Using cached notes');
 
@@ -348,9 +346,9 @@ export class UltraOptimizedPdfWorker extends WorkerHost {
             processingTimeMs: metrics.totalTimeMs,
           },
         });
-        
+
         // WebSocket emission with noteId for redirect (cache hit case)
-        this.wsGateway.emitJobCompleted(job.id!, {
+        void this.wsGateway.emitJobCompleted(job.id!, {
           noteId: note.id,
           userId,
         });
@@ -384,7 +382,7 @@ export class UltraOptimizedPdfWorker extends WorkerHost {
         message: 'Processing PDF directly with AI (fast mode)',
         timestamp: new Date().toISOString(),
       });
-      
+
       // WebSocket emission
       this.wsGateway.emitJobProgress(job.id!, 50, 'Processing with AI');
 
@@ -424,7 +422,7 @@ export class UltraOptimizedPdfWorker extends WorkerHost {
         message: 'Saving notes and caching',
         timestamp: new Date().toISOString(),
       });
-      
+
       // WebSocket emission
       this.wsGateway.emitJobProgress(job.id!, 90, 'Saving notes');
 
@@ -496,9 +494,9 @@ export class UltraOptimizedPdfWorker extends WorkerHost {
           pageCount: 0, // Page count unknown when using direct PDF processing
         },
       });
-      
+
       // WebSocket emission with noteId for redirect
-      this.wsGateway.emitJobCompleted(job.id!, {
+      void this.wsGateway.emitJobCompleted(job.id!, {
         noteId: generatedNotes.noteId,
         userId,
       });

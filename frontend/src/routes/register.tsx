@@ -88,7 +88,7 @@ function RouteComponent() {
 
   return (
     <div className="relative w-full lg:grid lg:min-h-screen lg:grid-cols-2">
-      <Link to="/LandingPage" className="absolute left-4 top-4 z-10 sm:left-6 sm:top-6">
+      <Link to="/landingpage" className="absolute left-4 top-4 z-10 sm:left-6 sm:top-6">
         <Button
           variant="ghost"
           size="sm"

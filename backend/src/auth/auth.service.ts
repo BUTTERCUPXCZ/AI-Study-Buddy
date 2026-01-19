@@ -334,9 +334,19 @@ export class AuthService {
    * @param response - Express response object
    * @param token - Access token to store
    */
-  private setAuthCookie(response: any, token: string) {
-    const isProduction = this.configService.get<string>('NODE_ENV') === 'production';
-    
+  private setAuthCookie(
+    response: {
+      cookie: (
+        name: string,
+        value: string,
+        options: Record<string, unknown>,
+      ) => void;
+    },
+    token: string,
+  ) {
+    const isProduction =
+      this.configService.get<string>('NODE_ENV') === 'production';
+
     response.cookie('access_token', token, {
       httpOnly: true, // Prevent XSS attacks
       secure: isProduction, // Use HTTPS in production

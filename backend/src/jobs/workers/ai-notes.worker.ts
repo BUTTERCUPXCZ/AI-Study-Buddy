@@ -31,7 +31,8 @@ export class AiNotesWorker extends WorkerHost {
 
   async process(job: Job<CreateAiNotesJobDto>): Promise<AiNotesJobResult> {
     const startTime = Date.now();
-    const { pdfBuffer, extractedText, fileName, userId, fileId, mimeType } = job.data;
+    const { pdfBuffer, extractedText, fileName, userId, fileId, mimeType } =
+      job.data;
 
     this.logger.log(
       `Processing AI notes generation job ${job.id} for file: ${fileName}`,
@@ -63,23 +64,31 @@ export class AiNotesWorker extends WorkerHost {
 
       // Step 1: Validate input (10%)
       await job.updateProgress(10);
-      
+
       if (useDirectPdfProcessing) {
         // Validate PDF buffer
         this.wsGateway.emitJobProgress(job.id!, 10, 'Validating PDF data');
         if (!pdfBuffer || pdfBuffer.length === 0) {
           throw new Error('PDF buffer is empty');
         }
-        this.logger.log(`Processing PDF buffer: ${(pdfBuffer.length / 1024).toFixed(2)} KB (base64)`);
+        this.logger.log(
+          `Processing PDF buffer: ${(pdfBuffer.length / 1024).toFixed(2)} KB (base64)`,
+        );
       } else {
         // Validate extracted text (legacy mode)
-        this.wsGateway.emitJobProgress(job.id!, 10, 'Validating extracted text');
+        this.wsGateway.emitJobProgress(
+          job.id!,
+          10,
+          'Validating extracted text',
+        );
         if (!extractedText || extractedText.trim().length < 100) {
           throw new Error(
             'Extracted text is too short to generate meaningful notes',
           );
         }
-        this.logger.log(`Processing ${extractedText.length} characters of text`);
+        this.logger.log(
+          `Processing ${extractedText.length} characters of text`,
+        );
       }
 
       // Step 2: Generate structured notes using Gemini AI (60%)
@@ -90,8 +99,8 @@ export class AiNotesWorker extends WorkerHost {
         userId,
         jobId: job.id!,
         progress: 30,
-        message: useDirectPdfProcessing 
-          ? 'Processing PDF directly with AI (faster mode)' 
+        message: useDirectPdfProcessing
+          ? 'Processing PDF directly with AI (faster mode)'
           : 'Generating notes from text',
       });
       this.logger.log('Calling Gemini AI to generate study notes...');
