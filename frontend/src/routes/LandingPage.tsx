@@ -12,7 +12,7 @@ const Pricing = lazy(() => import('@/components/landing/Pricing'))
 const CTASection = lazy(() => import('@/components/landing/CTASection'))
 const Footer = lazy(() => import('@/components/landing/Footer'))
 
-export const Route = createFileRoute('/LandingPage')({
+export const Route = createFileRoute('/landingpage')({
   component: RouteComponent,
 })
 

@@ -1,57 +1,59 @@
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router'
-import { supabase } from '@/lib/supabaseClient'
+import { api } from '@/lib/api'
+
+// Cache for auth check to avoid repeated API calls during navigation
+let authCache: { user: any; timestamp: number } | null = null
+const AUTH_CACHE_DURATION = 30000 // 30 seconds - aggressive caching for smooth navigation
 
 export const Route = createFileRoute('/__protected')({
   beforeLoad: async ({ location }) => {
-    // Check for backend token first (email/password login)
-    const token = localStorage.getItem('access_token') || localStorage.getItem('token');
-    
-    if (token) {
-      // User is authenticated via backend token
-      return { session: { access_token: token } };
+    // Check if we have a valid cached auth state
+    if (authCache && Date.now() - authCache.timestamp < AUTH_CACHE_DURATION) {
+      return { user: authCache.user }
     }
-    
-    // Fallback to Supabase session check (OAuth login)
+
+    // Check authentication by calling the backend /auth/me endpoint
+    // The HTTP-only cookie will be sent automatically with the request
     try {
-      const {
-        data: { session },
-        error
-      } = await supabase.auth.getSession()
-
-      if (error) {
-        console.error('[Auth] Supabase session error:', error);
-        throw redirect({
-          to: '/login',
-          search: {
-            redirect: location.href,
-          }
-        })
+      const response = await api.get('/auth/me')
+      
+      if (response.data) {
+        // User is authenticated via cookie - cache the result
+        authCache = {
+          user: response.data,
+          timestamp: Date.now()
+        }
+        return { user: response.data }
       }
-
-      if (session && session.access_token) {
-        // Store the Supabase token for future use
-        localStorage.setItem('access_token', session.access_token);
-        return { session }
-      }
+      
+      // No valid user data - clear cache
+      authCache = null
+      throw redirect({
+        to: '/login',
+        search: {
+          redirect: location.href,
+        }
+      })
     } catch (error) {
-      if ((error as { to?: string }).to === '/login') {
-        // This is our redirect, re-throw it
-        throw error;
-      }
-      console.error('[Auth] Error checking session:', error);
+      // Authentication failed - clear cache and redirect to login
+      authCache = null
+      console.error('[Auth] Authentication check failed:', error);
+      throw redirect({
+        to: '/login',
+        search: {
+          redirect: location.href,
+        }
+      })
     }
-
-    // No valid authentication found
-    throw redirect({
-      to: '/login',
-      search: {
-        redirect: location.href,
-      }
-    })
   },
   component: RouteComponent,
 })
 
 function RouteComponent() {
   return <Outlet />
+}
+
+// Export function to clear auth cache (useful for logout)
+export const clearAuthCache = () => {
+  authCache = null
 }

@@ -63,34 +63,31 @@ export class PdfExtractWorker extends WorkerHost {
         message: 'Processing started',
       });
 
-      // Step 1: Download/Load PDF from URL (10%)
+      // Step 1: Download PDF (10%)
       await job.updateProgress(10);
-      await this.jobsService.setJobStage(job.id!, 'extracting');
+      await this.jobsService.setJobStage(job.id!, 'downloading');
       this.wsGateway.emitJobProgress(job.id!, 10, 'Downloading PDF');
       this.logger.log(`Downloading PDF from: ${fileUrl}`);
 
-      // Step 2: Extract text from PDF (50%)
-      await job.updateProgress(50);
-      this.wsGateway.emitJobProgress(job.id!, 50, 'Extracting text');
-      this.logger.log(`Extracting text from PDF...`);
+      // Step 2: Download PDF as buffer (skip text extraction for faster processing)
+      // Gemini AI will directly process the PDF
+      await job.updateProgress(30);
+      this.wsGateway.emitJobProgress(job.id!, 30, 'Preparing PDF for AI processing');
+      this.logger.log(`Downloading PDF buffer for direct AI processing...`);
 
-      let text: string;
-      let pageCount: number;
+      let pdfBuffer: Buffer;
 
       try {
-        // Try extracting from the URL first (signed URL)
-        const result = await PdfParserUtil.extractTextFromUrl(fileUrl);
-        text = result.text;
-        pageCount = result.pageCount;
+        // Try downloading from the URL first (signed URL)
+        pdfBuffer = await PdfParserUtil.downloadPdfFromUrl(fileUrl);
       } catch (urlError) {
         const urlErrorMessage =
           urlError instanceof Error ? urlError.message : 'Unknown error';
         this.logger.warn(
-          `Failed to extract from URL: ${urlErrorMessage}, trying direct Supabase download...`,
+          `Failed to download from URL: ${urlErrorMessage}, trying direct Supabase download...`,
         );
 
         // Fallback: Try downloading directly from Supabase storage
-        // Extract the file path from the URL or use the stored path
         try {
           const supabaseUrl = this.configService.get<string>('SUPABASE_URL');
           const supabaseKey = this.configService.get<string>(
@@ -113,19 +110,15 @@ export class PdfExtractWorker extends WorkerHost {
             `Attempting direct download from Supabase storage: ${filePath}`,
           );
 
-          const buffer = await PdfParserUtil.downloadFromSupabase(
+          pdfBuffer = await PdfParserUtil.downloadFromSupabase(
             supabaseUrl!,
             supabaseKey!,
             'pdfs', // bucket name
             filePath,
           );
 
-          const result = await PdfParserUtil.extractTextFromBuffer(buffer);
-          text = result.text;
-          pageCount = result.pageCount;
-
           this.logger.log(
-            'Successfully extracted text using direct Supabase download',
+            'Successfully downloaded PDF using direct Supabase download',
           );
         } catch (supabaseError) {
           const supabaseErrorMessage =
@@ -134,67 +127,42 @@ export class PdfExtractWorker extends WorkerHost {
               : 'Unknown error';
           this.logger.error(`Fallback also failed: ${supabaseErrorMessage}`);
           throw new Error(
-            `Failed to extract PDF text: ${urlErrorMessage}. Fallback error: ${supabaseErrorMessage}`,
+            `Failed to download PDF: ${urlErrorMessage}. Fallback error: ${supabaseErrorMessage}`,
           );
         }
       }
 
-      if (!text || text.trim().length === 0) {
-        throw new Error('No text could be extracted from the PDF');
+      if (!pdfBuffer || pdfBuffer.length === 0) {
+        throw new Error('Downloaded PDF buffer is empty');
       }
 
       this.logger.log(
-        `Extracted ${text.length} characters from ${pageCount} pages`,
+        `Downloaded PDF: ${(pdfBuffer.length / 1024).toFixed(2)} KB`,
       );
 
-      // Step 3: Clean the extracted text (70%)
-      await job.updateProgress(70);
-      this.wsGateway.emitJobProgress(job.id!, 70, 'Cleaning extracted text');
-      const cleanedText = PdfParserUtil.cleanText(text);
-
-      // Step 4: Save to database (85%)
-      await job.updateProgress(85);
-      this.wsGateway.emitJobProgress(job.id!, 85, 'Saving extracted text');
-      this.logger.log(`Saving extracted text to database...`);
-
-      // Update the File record with extracted text
-      // You may want to add an extractedText field to your File model
-      // For now, we'll store it in a separate table or update the existing one
-
-      // Option 1: Add extractedText field to File model (requires migration)
-      // await this.databaseService.file.update({
-      //   where: { id: fileId },
-      //   data: { extractedText: cleanedText },
-      // });
-
-      // Option 2: Create a Note from the extracted text
-      await this.databaseService.note.create({
-        data: {
-          title: `Extracted from: ${fileName}`,
-          content: cleanedText,
-          source: fileId,
-          userId: userId,
-        },
-      });
-
-      // Step 5: Queue AI Notes Generation (95%)
-      await job.updateProgress(95);
+      // Step 3: Queue AI Notes Generation with PDF buffer (60%)
+      // Skip text extraction - Gemini will directly process the PDF
+      await job.updateProgress(60);
       await this.jobsService.setJobStage(job.id!, 'generating_notes');
       this.wsGateway.emitJobUpdate(job.id!, 'generating_notes', {
         fileId,
         userId,
         jobId: job.id!,
-        progress: 95,
-        message: 'Generating notes',
+        progress: 60,
+        message: 'Processing PDF with AI (direct mode)',
       });
-      this.logger.log('Queueing AI notes generation...');
+      this.logger.log('Queueing AI notes generation with direct PDF processing...');
+
+      // Convert buffer to base64 for job queue transport
+      const pdfBase64 = pdfBuffer.toString('base64');
 
       await this.aiNotesQueue.addAiNotesJob({
-        extractedText: cleanedText,
+        pdfBuffer: pdfBase64, // Pass PDF buffer instead of extracted text
         fileName,
         userId,
         fileId,
         pdfExtractJobId: job.id!,
+        mimeType: 'application/pdf',
       });
 
       // Complete (100%)
@@ -202,7 +170,7 @@ export class PdfExtractWorker extends WorkerHost {
 
       const processingTime = Date.now() - startTime;
       this.logger.log(
-        `PDF extraction completed in ${processingTime}ms for job ${job.id}`,
+        `PDF download completed in ${processingTime}ms for job ${job.id} - AI processing queued`,
       );
 
       // Update job status to completed and stage
@@ -219,8 +187,8 @@ export class PdfExtractWorker extends WorkerHost {
 
       const result: PdfExtractJobResult = {
         fileId,
-        extractedText: cleanedText.substring(0, 500), // Return first 500 chars
-        pageCount,
+        extractedText: '[PDF sent directly to AI for processing]',
+        pageCount: 0, // Unknown without extraction
         fileName,
         processingTime,
       };

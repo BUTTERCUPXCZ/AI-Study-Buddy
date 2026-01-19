@@ -24,4 +24,6 @@ export class UploadPdfResponseDto {
   optimizedJobId?: string;
   ultraOptimizedJobId?: string;
   deduplicated?: boolean;
+  processingMode?: string;
+  estimatedTimeToFirstContent?: string;
 }

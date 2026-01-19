@@ -203,4 +203,40 @@ export class PdfParserUtil {
       throw error;
     }
   }
+
+  /**
+   * Download PDF from URL as buffer (without text extraction)
+   * Used for direct PDF processing by Gemini AI
+   */
+  static async downloadPdfFromUrl(url: string): Promise<Buffer> {
+    try {
+      this.logger.log(`Downloading PDF from URL: ${url.substring(0, 100)}...`);
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'User-Agent': 'TaskFlow-PDF-Extractor/1.0',
+        },
+      });
+
+      if (!response.ok) {
+        this.logger.error(`HTTP ${response.status}: ${response.statusText}`);
+        throw new Error(
+          `Failed to fetch PDF: ${response.status} ${response.statusText}`,
+        );
+      }
+
+      const arrayBuffer = await response.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+
+      this.logger.log(`Downloaded ${buffer.length} bytes`);
+
+      return buffer;
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Error downloading PDF from URL: ${errorMessage}`);
+      throw error;
+    }
+  }
 }

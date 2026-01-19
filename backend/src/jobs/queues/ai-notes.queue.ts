@@ -15,23 +15,27 @@ export class AiNotesQueue {
 
   /**
    * Add an AI notes generation job to the queue
-   * This is called after PDF text extraction is complete
+   * Supports both direct PDF processing (faster) and extracted text (legacy)
    */
   async addAiNotesJob(data: CreateAiNotesJobDto) {
     try {
+      const processingMode = data.pdfBuffer ? 'direct PDF' : 'extracted text';
       this.logger.log(
-        `Adding AI notes generation job for file: ${data.fileName}`,
+        `Adding AI notes generation job for file: ${data.fileName} (mode: ${processingMode})`,
       );
 
       // Add job to BullMQ queue
       const job = await this.aiNotesQueue.add(
         'generate-notes',
         {
+          // Support both modes
+          pdfBuffer: data.pdfBuffer,
           extractedText: data.extractedText,
           fileName: data.fileName,
           userId: data.userId,
           fileId: data.fileId,
           pdfExtractJobId: data.pdfExtractJobId,
+          mimeType: data.mimeType || 'application/pdf',
         },
         {
           attempts: 3, // Retry up to 3 times
@@ -59,7 +63,10 @@ export class AiNotesQueue {
         data: {
           fileName: data.fileName,
           fileId: data.fileId,
-          textLength: data.extractedText.length,
+          processingMode,
+          dataSize: data.pdfBuffer 
+            ? `${(data.pdfBuffer.length / 1024).toFixed(2)} KB (PDF)` 
+            : `${data.extractedText?.length || 0} chars (text)`,
         },
         userId: data.userId,
         opts: job.opts,
@@ -68,6 +75,7 @@ export class AiNotesQueue {
       return {
         jobId: job.id,
         message: 'AI notes generation job queued successfully',
+        processingMode,
       };
     } catch (error) {
       const errorMessage =

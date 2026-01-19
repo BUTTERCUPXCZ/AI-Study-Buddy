@@ -7,6 +7,7 @@ import { JobsService } from '../jobs.service';
 import { AiService } from '../../ai/ai.service';
 import { NotesService } from '../../notes/notes.service';
 import { JobEventEmitterService } from '../job-event-emitter.service';
+import { JobsWebSocketGateway } from '../../websocket/websocket.gateway';
 import { JobStage, JobStatus } from '../dto/job-event.dto';
 import { PdfParserUtil } from '../utils/pdf-parser.util';
 import { PdfCacheUtil } from '../utils/pdf-cache.util';
@@ -53,14 +54,14 @@ export interface OptimizedPdfJobResult {
  * - Resource pooling
  */
 @Processor('pdf-ultra-optimized', {
-  concurrency: 20, // High concurrency for I/O-bound tasks
+  concurrency: 20,
   stalledInterval: 120000,
   maxStalledCount: 1,
   lockDuration: 120000,
   lockRenewTime: 60000,
-  drainDelay: 10, // Fast polling when active
+  drainDelay: 10,
   limiter: {
-    max: 30, // 30 jobs per second
+    max: 30,
     duration: 1000,
   },
   settings: {
@@ -83,6 +84,7 @@ export class UltraOptimizedPdfWorker extends WorkerHost {
     private readonly aiService: AiService,
     private readonly notesService: NotesService,
     private readonly jobEventEmitter: JobEventEmitterService,
+    private readonly wsGateway: JobsWebSocketGateway,
   ) {
     super();
 
@@ -202,6 +204,15 @@ export class UltraOptimizedPdfWorker extends WorkerHost {
         message: 'Starting optimized processing',
         timestamp: new Date().toISOString(),
       });
+      
+      // WebSocket emission for frontend
+      this.wsGateway.emitJobUpdate(job.id!, 'processing', {
+        fileId,
+        userId,
+        jobId: job.id!,
+        progress: 0,
+        message: 'Starting optimized processing',
+      });
 
       // Stage 2: Download PDF with connection pooling
       const downloadTimer = WorkerPerformanceUtil.createTimer();
@@ -215,6 +226,9 @@ export class UltraOptimizedPdfWorker extends WorkerHost {
         message: 'Downloading PDF with connection pooling',
         timestamp: new Date().toISOString(),
       });
+      
+      // WebSocket emission
+      this.wsGateway.emitJobProgress(job.id!, 10, 'Downloading PDF');
 
       const supabaseUrl = this.configService.get<string>('SUPABASE_URL')!;
       const supabaseKey = this.configService.get<string>(
@@ -251,6 +265,9 @@ export class UltraOptimizedPdfWorker extends WorkerHost {
         message: 'Checking multi-level cache',
         timestamp: new Date().toISOString(),
       });
+      
+      // WebSocket emission
+      this.wsGateway.emitJobProgress(job.id!, 25, 'Checking cache');
 
       const pdfHash = PdfCacheUtil.hashPDF(pdfBuffer);
       let cachedNotes: {
@@ -297,6 +314,9 @@ export class UltraOptimizedPdfWorker extends WorkerHost {
           message: 'Using cached notes (instant)',
           timestamp: new Date().toISOString(),
         });
+        
+        // WebSocket emission
+        this.wsGateway.emitJobProgress(job.id!, 90, 'Using cached notes');
 
         // Clone cached note for this user
         const dbTimer = WorkerPerformanceUtil.createTimer();
@@ -328,6 +348,12 @@ export class UltraOptimizedPdfWorker extends WorkerHost {
             processingTimeMs: metrics.totalTimeMs,
           },
         });
+        
+        // WebSocket emission with noteId for redirect (cache hit case)
+        this.wsGateway.emitJobCompleted(job.id!, {
+          noteId: note.id,
+          userId,
+        });
 
         if (this.metricsCollector && 'recordSuccess' in this.metricsCollector) {
           (
@@ -345,25 +371,8 @@ export class UltraOptimizedPdfWorker extends WorkerHost {
         };
       }
 
-      // Stage 4: Extract text with streaming
-      const extractTimer = WorkerPerformanceUtil.createTimer();
-
-      await this.jobEventEmitter.emitProgress({
-        jobId: job.id!,
-        userId,
-        status: JobStatus.ACTIVE,
-        stage: JobStage.EXTRACTING_TEXT,
-        progress: 40,
-        message: 'Extracting text with streaming parser',
-        timestamp: new Date().toISOString(),
-      });
-
-      const { text, pageCount } = await parsePdfInWorker(pdfBuffer);
-      const cleanedText = PdfParserUtil.cleanText(text);
-
-      metrics.textExtractionTimeMs = extractTimer.end('Text extraction');
-
-      // Stage 5: Generate notes with AI (parallel with other operations)
+      // Stage 4: Skip text extraction - use direct PDF processing for speed
+      // Gemini AI can read PDFs directly, eliminating the text extraction step
       const aiTimer = WorkerPerformanceUtil.createTimer();
 
       await this.jobEventEmitter.emitProgress({
@@ -371,31 +380,37 @@ export class UltraOptimizedPdfWorker extends WorkerHost {
         userId,
         status: JobStatus.ACTIVE,
         stage: JobStage.GENERATING_NOTES,
-        progress: 60,
-        message: 'Generating notes with AI',
+        progress: 50,
+        message: 'Processing PDF directly with AI (fast mode)',
         timestamp: new Date().toISOString(),
       });
+      
+      // WebSocket emission
+      this.wsGateway.emitJobProgress(job.id!, 50, 'Processing with AI');
 
-      // Use circuit breaker for AI calls
+      // Use circuit breaker for AI calls with direct PDF processing
       const aiWithCircuitBreaker = WorkerPerformanceUtil.createCircuitBreaker(
         async () => {
-          return await this.aiService.generateStructuredNotes(
-            cleanedText,
+          // Use direct PDF processing - faster, no text extraction needed
+          return await this.aiService.generateNotesFromPDF(
+            pdfBuffer,
             fileName,
             userId,
             fileId,
+            'application/pdf',
           );
         },
         {
           threshold: 5, // Open after 5 failures
-          timeout: 30000, // 30 second timeout
+          timeout: 60000, // 60 second timeout for direct PDF processing
           resetTimeout: 60000, // Try again after 1 minute
         },
       );
 
       const generatedNotes = await aiWithCircuitBreaker();
 
-      metrics.aiProcessingTimeMs = aiTimer.end('AI processing');
+      metrics.aiProcessingTimeMs = aiTimer.end('AI processing (direct PDF)');
+      metrics.textExtractionTimeMs = 0; // No text extraction needed
 
       // Stage 6: Save to database and cache in parallel
       const saveTimer = WorkerPerformanceUtil.createTimer();
@@ -409,6 +424,9 @@ export class UltraOptimizedPdfWorker extends WorkerHost {
         message: 'Saving notes and caching',
         timestamp: new Date().toISOString(),
       });
+      
+      // WebSocket emission
+      this.wsGateway.emitJobProgress(job.id!, 90, 'Saving notes');
 
       // Parallel operations: save to DB and cache (with error handling)
       const parallelOps: Promise<void>[] = [];
@@ -475,8 +493,14 @@ export class UltraOptimizedPdfWorker extends WorkerHost {
           cacheHit: false,
           processingTime: metrics.totalTimeMs,
           processingTimeMs: metrics.totalTimeMs,
-          pageCount,
+          pageCount: 0, // Page count unknown when using direct PDF processing
         },
+      });
+      
+      // WebSocket emission with noteId for redirect
+      this.wsGateway.emitJobCompleted(job.id!, {
+        noteId: generatedNotes.noteId,
+        userId,
       });
 
       if (this.metricsCollector && 'recordSuccess' in this.metricsCollector) {

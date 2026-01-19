@@ -3,24 +3,14 @@ import { showToast } from './toast'
 
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000', // NestJS base URL
-  withCredentials: true, // enable if using cookies
+  withCredentials: true, // Enable sending cookies with requests
 });
 
-api.interceptors.request.use((config) => {
-  // We store the backend access token under `access_token` when logging in.
-  // Keep backward compatibility with any `token` key as well.
-  const token = localStorage.getItem('access_token') || localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-// Add response interceptor to handle token expiration
+// Add response interceptor to handle errors
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // If we get a 401 Unauthorized, the token may be expired
+    // If we get a 401 Unauthorized, the cookie may be expired
     const status = error.response?.status
 
     // Detect Gemini/free-tier rate limit or generic 429
@@ -35,10 +25,11 @@ api.interceptors.response.use(
     }
 
     if (status === 401) {
-      // Clear invalid tokens
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('token');
-      // Don't auto-redirect here - let the route guard handle it
+      // Redirect to login so the user can re-authenticate
+      try {
+        // use replace to avoid keeping the current (invalid) route in history
+        window.location.replace('/login')
+      } catch {}
     }
     return Promise.reject(error);
   }

@@ -1,9 +1,12 @@
 export class CreateAiNotesJobDto {
-  extractedText: string;
+  // Either extractedText OR pdfBuffer should be provided (pdfBuffer preferred for speed)
+  extractedText?: string;
+  pdfBuffer?: string; // Base64 encoded PDF buffer for direct Gemini processing
   fileName: string;
   userId: string;
   fileId: string;
-  pdfExtractJobId: string;
+  pdfExtractJobId?: string; // Optional - not needed for optimized queue
+  mimeType?: string; // Default: 'application/pdf'
 }
 
 export class AiNotesJobResult {

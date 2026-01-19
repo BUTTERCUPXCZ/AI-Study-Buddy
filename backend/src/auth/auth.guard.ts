@@ -28,26 +28,21 @@ export class AuthGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
-    const authHeader = request.headers.authorization;
-
-    // Check if authorization header exists
-    if (!authHeader) {
-      throw new UnauthorizedException('Authorization header is required');
+    
+    // Try to get token from cookie first, then fall back to Authorization header
+    let token = request.cookies?.['access_token'];
+    
+    // Fall back to Authorization header for backward compatibility
+    if (!token) {
+      const authHeader = request.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.slice(7); // 'Bearer '.length === 7
+      }
     }
 
-    // Validate Bearer token format
-    if (!authHeader.startsWith('Bearer ')) {
-      throw new UnauthorizedException(
-        'Invalid authorization header format. Expected: Bearer <token>',
-      );
-    }
-
-    // Extract token from "Bearer <token>"
-    const token = authHeader.slice(7); // 'Bearer '.length === 7
-
-    // Ensure token is not empty
-    if (!token.trim()) {
-      throw new UnauthorizedException('Token is required');
+    // Ensure token exists
+    if (!token || !token.trim()) {
+      throw new UnauthorizedException('Authentication required');
     }
 
     try {

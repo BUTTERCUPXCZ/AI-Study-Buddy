@@ -6,7 +6,10 @@ import {
   Headers,
   Query,
   BadRequestException,
+  Res,
+  Req,
 } from '@nestjs/common';
+import express from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/Register-dto';
 import { LoginDto } from './dto/Login-dto';
@@ -25,14 +28,30 @@ export class AuthController {
 
   @Post('login')
   @Throttle(5, 60) // 5 login attempts per minute per IP
-  login(@Body() createAuthDto: LoginDto) {
-    return this.authService.Login(createAuthDto);
+  async login(
+    @Body() createAuthDto: LoginDto,
+    @Res({ passthrough: true }) response: express.Response,
+  ) {
+    return this.authService.Login(createAuthDto, response);
   }
 
   @Get('me')
-  async getMe(@Headers('authorization') authHeader: string) {
-    const token = authHeader?.split(' ')[1];
+  async getMe(@Req() request: express.Request) {
+    const token = request.cookies?.['access_token'];
     return this.authService.verifyToken(token);
+  }
+
+  @Post('logout')
+  async logout(@Res({ passthrough: true }) response: express.Response) {
+    // Clear the cookie
+    response.clearCookie('access_token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      path: '/',
+    });
+    
+    return { message: 'Logged out successfully' };
   }
 
   /**
@@ -67,12 +86,15 @@ export class AuthController {
    * Body: { access_token: string }
    */
   @Post('oauth/callback')
-  async handleOAuthCallback(@Body('access_token') accessToken: string) {
+  async handleOAuthCallback(
+    @Body('access_token') accessToken: string,
+    @Res({ passthrough: true }) response: express.Response,
+  ) {
     if (!accessToken) {
       throw new BadRequestException('Access token is required');
     }
 
-    return this.authService.handleOAuthCallback(accessToken);
+    return this.authService.handleOAuthCallback(accessToken, response);
   }
 
   /**

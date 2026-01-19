@@ -11,7 +11,7 @@ interface RequestWithUser extends Record<string, unknown> {
 
 @Injectable()
 export class RedisThrottlerGuard extends ThrottlerGuard {
-  // eslint-disable-next-line @typescript-eslint/require-await
+ 
   protected async getTracker(req: Record<string, unknown>): Promise<string> {
     const request = req as RequestWithUser;
     // Use user ID if authenticated, otherwise use IP address

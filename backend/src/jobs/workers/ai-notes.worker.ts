@@ -31,10 +31,16 @@ export class AiNotesWorker extends WorkerHost {
 
   async process(job: Job<CreateAiNotesJobDto>): Promise<AiNotesJobResult> {
     const startTime = Date.now();
-    const { extractedText, fileName, userId, fileId } = job.data;
+    const { pdfBuffer, extractedText, fileName, userId, fileId, mimeType } = job.data;
 
     this.logger.log(
       `Processing AI notes generation job ${job.id} for file: ${fileName}`,
+    );
+
+    // Determine processing mode
+    const useDirectPdfProcessing = !!pdfBuffer;
+    this.logger.log(
+      `Processing mode: ${useDirectPdfProcessing ? 'Direct PDF (faster)' : 'Extracted text'}`,
     );
 
     try {
@@ -55,16 +61,26 @@ export class AiNotesWorker extends WorkerHost {
         message: 'Processing started',
       });
 
-      // Step 1: Validate extracted text (10%)
+      // Step 1: Validate input (10%)
       await job.updateProgress(10);
-      this.wsGateway.emitJobProgress(job.id!, 10, 'Validating extracted text');
-      if (!extractedText || extractedText.trim().length < 100) {
-        throw new Error(
-          'Extracted text is too short to generate meaningful notes',
-        );
+      
+      if (useDirectPdfProcessing) {
+        // Validate PDF buffer
+        this.wsGateway.emitJobProgress(job.id!, 10, 'Validating PDF data');
+        if (!pdfBuffer || pdfBuffer.length === 0) {
+          throw new Error('PDF buffer is empty');
+        }
+        this.logger.log(`Processing PDF buffer: ${(pdfBuffer.length / 1024).toFixed(2)} KB (base64)`);
+      } else {
+        // Validate extracted text (legacy mode)
+        this.wsGateway.emitJobProgress(job.id!, 10, 'Validating extracted text');
+        if (!extractedText || extractedText.trim().length < 100) {
+          throw new Error(
+            'Extracted text is too short to generate meaningful notes',
+          );
+        }
+        this.logger.log(`Processing ${extractedText.length} characters of text`);
       }
-
-      this.logger.log(`Processing ${extractedText.length} characters of text`);
 
       // Step 2: Generate structured notes using Gemini AI (60%)
       await job.updateProgress(30);
@@ -74,16 +90,38 @@ export class AiNotesWorker extends WorkerHost {
         userId,
         jobId: job.id!,
         progress: 30,
-        message: 'Generating notes',
+        message: useDirectPdfProcessing 
+          ? 'Processing PDF directly with AI (faster mode)' 
+          : 'Generating notes from text',
       });
       this.logger.log('Calling Gemini AI to generate study notes...');
 
-      const notesResult = await this.aiService.generateStructuredNotes(
-        extractedText,
-        fileName,
-        userId,
-        fileId,
-      );
+      let notesResult: {
+        noteId: string;
+        title: string;
+        content: string;
+        summary: string;
+      };
+
+      if (useDirectPdfProcessing) {
+        // Use direct PDF processing - faster, no text extraction needed
+        const pdfBufferDecoded = Buffer.from(pdfBuffer, 'base64');
+        notesResult = await this.aiService.generateNotesFromPDF(
+          pdfBufferDecoded,
+          fileName,
+          userId,
+          fileId,
+          mimeType || 'application/pdf',
+        );
+      } else {
+        // Legacy mode: use extracted text
+        notesResult = await this.aiService.generateStructuredNotes(
+          extractedText!,
+          fileName,
+          userId,
+          fileId,
+        );
+      }
 
       await job.updateProgress(70);
       this.wsGateway.emitJobProgress(job.id!, 70, 'Notes generated and saved');

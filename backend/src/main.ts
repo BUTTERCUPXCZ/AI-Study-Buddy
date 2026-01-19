@@ -4,12 +4,16 @@ import helmet from 'helmet';
 import { raw } from 'body-parser';
 import { Logger } from '@nestjs/common';
 import { Request } from 'express';
+import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
   // Enable all Nest log levels so console output appears during development
   const app = await NestFactory.create(AppModule, {
     logger: ['error', 'warn', 'log', 'debug', 'verbose'],
   });
+
+  // Enable cookie parsing
+  app.use(cookieParser());
 
   app.enableCors({
     origin: process.env.FRONTEND_URL,

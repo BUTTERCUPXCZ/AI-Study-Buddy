@@ -12,12 +12,12 @@ const HowItWorksSection = memo(function HowItWorksSection() {
     {
       icon: <Brain className="h-6 w-6" />,
       title: "AI Processing",
-      desc: "Our advanced AI analyzes your content to extract key concepts and structure."
+      desc: "Our advanced AI directly reads and analyzes your PDFs for faster results."
     },
     {
       icon: <BookOpen className="h-6 w-6" />,
       title: "Start Studying",
-      desc: "Access your generated summaries, flashcards, and quizzes immediately."
+      desc: "Access your generated summaries and quizzes immediately."
     }
   ]
 

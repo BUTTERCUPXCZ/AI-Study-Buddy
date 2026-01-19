@@ -33,7 +33,7 @@ import { UsageService } from './usage/usage.service';
           {
             name: 'short',
             ttl: 1000, // 1 second
-            limit: 10, // 10 requests per second
+            limit: 10, // 10 requests per secon
           },
           {
             name: 'medium',

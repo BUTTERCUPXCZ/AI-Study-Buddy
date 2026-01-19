@@ -52,7 +52,7 @@ export class AuthService {
     };
   }
 
-  async handleOAuthCallback(token: string) {
+  async handleOAuthCallback(token: string, response: any) {
     const { data, error } = await this.supabase.auth.getUser(token);
 
     if (error || !data.user) {
@@ -110,6 +110,9 @@ export class AuthService {
         },
       });
     }
+
+    // Set HTTP-only cookie
+    this.setAuthCookie(response, token);
 
     return {
       message: 'OAuth login successful',
@@ -171,7 +174,7 @@ export class AuthService {
       message: 'User registered successfully. Please verify your email.',
     };
   }
-  async Login(loginDto: LoginDto) {
+  async Login(loginDto: LoginDto, response: any) {
     const dbUser = await this.databaseService.user.findUnique({
       where: { email: loginDto.email },
     });
@@ -213,10 +216,12 @@ export class AuthService {
       user_metadata?: { fullname?: string };
     };
 
-    // 4️⃣ Return successful response
+    // Set HTTP-only cookie
+    this.setAuthCookie(response, session.access_token);
+
+    // 4️⃣ Return successful response (without token in body)
     return {
       message: 'Login successful',
-      access_token: session.access_token,
       user: {
         id: dbUser.id, // Use database ID
         email: typedUser.email,
@@ -322,5 +327,22 @@ export class AuthService {
     return {
       message: 'Email verified successfully. You can now log in.',
     };
+  }
+
+  /**
+   * Set HTTP-only cookie with access token
+   * @param response - Express response object
+   * @param token - Access token to store
+   */
+  private setAuthCookie(response: any, token: string) {
+    const isProduction = this.configService.get<string>('NODE_ENV') === 'production';
+    
+    response.cookie('access_token', token, {
+      httpOnly: true, // Prevent XSS attacks
+      secure: isProduction, // Use HTTPS in production
+      sameSite: isProduction ? 'none' : 'lax', // CSRF protection
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      path: '/',
+    });
   }
 }

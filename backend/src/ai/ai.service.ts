@@ -32,7 +32,7 @@ export class AiService {
       throw new Error('GEMINI_API_KEY is not defined in environment variables');
     }
     this.genAI = new GoogleGenerativeAI(apiKey);
-    // Use gemini-1.5-flash which supports file inputs (PDFs, images, etc.)
+    
     this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
   }
 
@@ -171,113 +171,113 @@ export class AiService {
       // Optimized prompt for faster, more structured output with ChatGPT-style formatting
       const prompt = `Generate comprehensive, detailed exam study notes based on the following lecture material. These notes should be thorough enough for exam preparation with practical examples for each major topic.
 
-Requirements:
-- Provide in-depth explanations of all important concepts
-- Include practical, real-world examples for each major topic
-- Organize notes with clear headings, bullet points, and detailed explanations
-- Highlight definitions, key terms, formulas, and worked examples
-- Use tables for structured information (terms, comparisons, formulas)
-- Include step-by-step examples where applicable
-- Make the content exam-ready with sufficient detail
-- ONE blank line between sections
-- NO extra spacing within lists
+            Requirements:
+            - Provide in-depth explanations of all important concepts
+            - Include practical, real-world examples for each major topic
+            - Organize notes with clear headings, bullet points, and detailed explanations
+            - Highlight definitions, key terms, formulas, and worked examples
+            - Use tables for structured information (terms, comparisons, formulas)
+            - Include step-by-step examples where applicable
+            - Make the content exam-ready with sufficient detail
+            - ONE blank line between sections
+            - NO extra spacing within lists
 
-Format:
+            Format:
 
-## 📘 Overview
+            ## 📘 Overview
 
-[Comprehensive summary of the document covering main themes and learning objectives]
+            [Comprehensive summary of the document covering main themes and learning objectives]
 
-## 🎯 Key Concepts
+            ## 🎯 Key Concepts
 
-### Concept 1: [Concept Name]
+            ### Concept 1: [Concept Name]
 
-**Explanation**: [Detailed explanation of the concept]
+            **Explanation**: [Detailed explanation of the concept]
 
-**Example**: [Practical, real-world example demonstrating the concept]
+            **Example**: [Practical, real-world example demonstrating the concept]
 
-### Concept 2: [Concept Name]
+            ### Concept 2: [Concept Name]
 
-**Explanation**: [Detailed explanation of the concept]
+            **Explanation**: [Detailed explanation of the concept]
 
-**Example**: [Practical, real-world example demonstrating the concept]
+            **Example**: [Practical, real-world example demonstrating the concept]
 
-[Continue for all major concepts]
+            [Continue for all major concepts]
 
-## 📝 Detailed Notes
+            ## 📝 Detailed Notes
 
-### Topic 1: [Topic Name]
+            ### Topic 1: [Topic Name]
 
-- **Main Point**: [Detailed explanation with context]
-- **Key Details**:
-  - Detail 1
-  - Detail 2
-  - Detail 3
-- **Example**: [Concrete example illustrating this topic]
+            - **Main Point**: [Detailed explanation with context]
+            - **Key Details**:
+              - Detail 1
+              - Detail 2
+              - Detail 3
+            - **Example**: [Concrete example illustrating this topic]
 
-### Topic 2: [Topic Name]
+            ### Topic 2: [Topic Name]
 
-- **Main Point**: [Detailed explanation with context]
-- **Key Details**:
-  - Detail 1
-  - Detail 2
-  - Detail 3
-- **Example**: [Concrete example illustrating this topic]
+            - **Main Point**: [Detailed explanation with context]
+            - **Key Details**:
+              - Detail 1
+              - Detail 2
+              - Detail 3
+            - **Example**: [Concrete example illustrating this topic]
 
-[Continue for all major topics]
+            [Continue for all major topics]
 
-## 🔑 Key Terms & Definitions
+            ## 🔑 Key Terms & Definitions
 
-| Term | Definition | Example Usage |
-|------|------------|---------------|
-| **Term 1** | Clear, detailed definition | Brief example in context |
-| **Term 2** | Clear, detailed definition | Brief example in context |
+            | Term | Definition | Example Usage |
+            |------|------------|---------------|
+            | **Term 1** | Clear, detailed definition | Brief example in context |
+            | **Term 2** | Clear, detailed definition | Brief example in context |
 
-## 💡 Practical Examples
+            ## 💡 Practical Examples
 
-### Example 1: [Example Title]
+            ### Example 1: [Example Title]
 
-**Scenario**: [Description of the problem or situation]
+            **Scenario**: [Description of the problem or situation]
 
-**Solution**:
-1. Step 1 with explanation
-2. Step 2 with explanation
-3. Step 3 with explanation
+            **Solution**:
+            1. Step 1 with explanation
+            2. Step 2 with explanation
+            3. Step 3 with explanation
 
-**Result**: [Outcome and key takeaway]
+            **Result**: [Outcome and key takeaway]
 
-### Example 2: [Example Title]
+            ### Example 2: [Example Title]
 
-**Scenario**: [Description of the problem or situation]
+            **Scenario**: [Description of the problem or situation]
 
-**Solution**:
-1. Step 1 with explanation
-2. Step 2 with explanation
-3. Step 3 with explanation
+            **Solution**:
+            1. Step 1 with explanation
+            2. Step 2 with explanation
+            3. Step 3 with explanation
 
-**Result**: [Outcome and key takeaway]
+            **Result**: [Outcome and key takeaway]
 
-## 📊 Important Formulas & Methods
+            ## 📊 Important Formulas & Methods
 
-| Formula/Method | Description | When to Use | Example |
-|----------------|-------------|-------------|---------|
-| Formula 1 | What it calculates | Use case | Sample calculation |
-| Formula 2 | What it calculates | Use case | Sample calculation |
+            | Formula/Method | Description | When to Use | Example |
+            |----------------|-------------|-------------|---------|
+            | Formula 1 | What it calculates | Use case | Sample calculation |
+            | Formula 2 | What it calculates | Use case | Sample calculation |
 
-## 🎓 Exam Tips
+            ## 🎓 Exam Tips
 
-- **Key Point 1**: [Important exam-relevant insight]
-- **Key Point 2**: [Important exam-relevant insight]
-- **Common Mistakes**: [Things to watch out for]
-- **Quick Review**: [Essential items to remember]
+            - **Key Point 1**: [Important exam-relevant insight]
+            - **Key Point 2**: [Important exam-relevant insight]
+            - **Common Mistakes**: [Things to watch out for]
+            - **Quick Review**: [Essential items to remember]
 
-## 📚 Summary
+            ## 📚 Summary
 
-[Comprehensive wrap-up covering all major themes, key takeaways, and connections between concepts]
+            [Comprehensive wrap-up covering all major themes, key takeaways, and connections between concepts]
 
-Lecture Material:
+            Lecture Material:
 
-Create detailed exam study notes now following the format exactly. Ensure every major topic has at least one practical example.`;
+            Create detailed exam study notes now following the format exactly. Ensure every major topic has at least one practical example.`;
 
       // Send PDF to Gemini for AI reading and analysis
       this.logger.log('[AI] Sending to Gemini for intelligent analysis...');

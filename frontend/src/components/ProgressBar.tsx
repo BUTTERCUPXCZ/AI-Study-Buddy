@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Loader2, CheckCircle2, XCircle, FileText, Sparkles, Database, WifiOff, Zap } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, FileText, WifiOff, Zap, Upload, Brain, FileCheck, BookOpen } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
@@ -12,63 +12,70 @@ interface ProgressBarProps {
   usingPolling?: boolean;
 }
 
-const getStageInfo = (stage: string) => {
+const getStageInfo = (stage: string, progress: number) => {
   const stageLower = stage.toLowerCase();
   
-  if (stageLower.includes('initial') || stageLower.includes('uploading')) {
+  // Stage 1: Validation (0-10%)
+  if (stageLower.includes('validat') || stageLower.includes('initial') || progress <= 10) {
     return {
-      icon: FileText,
-      label: 'Uploading PDF',
-      description: 'Preparing your document...',
+      icon: Upload,
+      label: 'Validating Document',
+      description: 'Checking your PDF for processing...',
       color: 'text-blue-500',
     };
   }
   
-  if (stageLower.includes('download')) {
+  // Stage 2: AI Processing / Generating Notes (30-70%)
+  if (stageLower.includes('generat') || stageLower.includes('ai') || stageLower.includes('processing pdf') || (progress > 10 && progress <= 70)) {
     return {
-      icon: FileText,
-      label: 'Processing PDF',
-      description: 'Reading your document...',
-      color: 'text-blue-500',
-    };
-  }
-  
-  if (stageLower.includes('cache') || stageLower.includes('extract') || stageLower.includes('text')) {
-    return {
-      icon: FileText,
-      label: 'Analyzing Content',
-      description: 'Extracting text and structure...',
+      icon: Brain,
+      label: 'AI Processing',
+      description: progress < 30 ? 'Preparing for AI analysis...' : 'Generating intelligent study notes...',
       color: 'text-purple-500',
     };
   }
   
-  if (stageLower.includes('generat') || stageLower.includes('ai') || stageLower.includes('notes')) {
+  // Stage 3: Notes Generated & Saved (70-84%)
+  if (stageLower.includes('notes generated') || stageLower.includes('saved') || (progress > 70 && progress < 85)) {
     return {
-      icon: Sparkles,
-      label: 'AI Generating Notes',
-      description: 'Creating comprehensive study notes...',
+      icon: FileCheck,
+      label: 'Notes Ready',
+      description: 'Study notes saved successfully!',
+      color: 'text-emerald-500',
+    };
+  }
+  
+  // Stage 4: Quiz Generation (85-99%)
+  if (stageLower.includes('quiz') || (progress >= 85 && progress < 100)) {
+    return {
+      icon: BookOpen,
+      label: 'Generating Quiz',
+      description: 'Creating practice questions for you...',
       color: 'text-amber-500',
     };
   }
   
-  if (stageLower.includes('sav')) {
-    return {
-      icon: Database,
-      label: 'Saving Notes',
-      description: 'Finalizing your study materials...',
-      color: 'text-green-500',
-    };
-  }
-  
-  if (stageLower.includes('complet')) {
+  // Stage 5: Completed (100%)
+  if (stageLower.includes('complet') || progress === 100) {
     return {
       icon: CheckCircle2,
-      label: 'Completed',
-      description: 'Your notes are ready!',
+      label: 'Complete',
+      description: 'All done! Your study materials are ready.',
       color: 'text-green-500',
     };
   }
   
+  // Cache checking
+  if (stageLower.includes('cache') || stageLower.includes('checking')) {
+    return {
+      icon: Zap,
+      label: 'Checking Cache',
+      description: 'Looking for existing results...',
+      color: 'text-yellow-500',
+    };
+  }
+  
+  // Default
   return {
     icon: LoadingSpinner,
     label: 'Processing',
@@ -86,7 +93,7 @@ export function ProgressBar({
   usingPolling = false 
 }: ProgressBarProps) {
   const [displayProgress, setDisplayProgress] = useState(progress);
-  const stageInfo = getStageInfo(stage);
+  const stageInfo = getStageInfo(stage, progress);
   const Icon = stageInfo.icon;
   
   // Smooth progress animation
@@ -196,67 +203,72 @@ export function ProgressBar({
           
           {/* Stage Timeline */}
           <div className="grid grid-cols-5 gap-2 pt-4">
+            {/* Stage 1: Validation (0-10%) */}
             <div className="flex flex-col items-center gap-2">
               <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
                 displayProgress >= 10 
-                  ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/50' 
+                  ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/50 scale-110' 
                   : 'bg-muted text-muted-foreground'
               }`}>
-                <FileText className="w-5 h-5" />
+                <Upload className="w-5 h-5" />
               </div>
-              <span className={`text-xs font-medium ${displayProgress >= 10 ? 'text-primary' : 'text-muted-foreground'}`}>
-                Upload
+              <span className={`text-xs font-medium ${displayProgress >= 10 ? 'text-blue-600' : 'text-muted-foreground'}`}>
+                Validate
               </span>
             </div>
             
+            {/* Stage 2: AI Processing (30-70%) */}
             <div className="flex flex-col items-center gap-2">
               <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
                 displayProgress >= 30 
-                  ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/50' 
+                  ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/50 scale-110' 
                   : 'bg-muted text-muted-foreground'
               }`}>
-                <FileText className="w-5 h-5" />
+                <Brain className="w-5 h-5" />
               </div>
-              <span className={`text-xs font-medium ${displayProgress >= 30 ? 'text-primary' : 'text-muted-foreground'}`}>
-                Extract
+              <span className={`text-xs font-medium ${displayProgress >= 30 ? 'text-purple-600' : 'text-muted-foreground'}`}>
+                AI Process
               </span>
             </div>
             
+            {/* Stage 3: Notes Saved (70%) */}
             <div className="flex flex-col items-center gap-2">
               <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
-                displayProgress >= 50 
-                  ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/50' 
+                displayProgress >= 70 
+                  ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/50 scale-110' 
                   : 'bg-muted text-muted-foreground'
               }`}>
-                <Sparkles className="w-5 h-5" />
+                <FileCheck className="w-5 h-5" />
               </div>
-              <span className={`text-xs font-medium ${displayProgress >= 50 ? 'text-primary' : 'text-muted-foreground'}`}>
-                Generate
+              <span className={`text-xs font-medium ${displayProgress >= 70 ? 'text-emerald-600' : 'text-muted-foreground'}`}>
+                Notes
               </span>
             </div>
             
+            {/* Stage 4: Quiz Generation (85%) */}
             <div className="flex flex-col items-center gap-2">
               <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
-                displayProgress >= 90 
-                  ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/50' 
+                displayProgress >= 85 
+                  ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/50 scale-110' 
                   : 'bg-muted text-muted-foreground'
               }`}>
-                <Database className="w-5 h-5" />
+                <BookOpen className="w-5 h-5" />
               </div>
-              <span className={`text-xs font-medium ${displayProgress >= 90 ? 'text-primary' : 'text-muted-foreground'}`}>
-                Save
+              <span className={`text-xs font-medium ${displayProgress >= 85 ? 'text-amber-600' : 'text-muted-foreground'}`}>
+                Quiz
               </span>
             </div>
             
+            {/* Stage 5: Complete (100%) */}
             <div className="flex flex-col items-center gap-2">
               <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
                 displayProgress === 100 
-                  ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/50' 
+                  ? 'bg-green-500 text-white shadow-lg shadow-green-500/50 scale-110' 
                   : 'bg-muted text-muted-foreground'
               }`}>
                 <CheckCircle2 className="w-5 h-5" />
               </div>
-              <span className={`text-xs font-medium ${displayProgress === 100 ? 'text-primary' : 'text-muted-foreground'}`}>
+              <span className={`text-xs font-medium ${displayProgress === 100 ? 'text-green-600' : 'text-muted-foreground'}`}>
                 Done
               </span>
             </div>

@@ -9,8 +9,10 @@ export const useQuizzes = (userId: string | undefined) => {
     queryKey: ['quizzes', userId],
     queryFn: () => QuizService.getUserQuizzes(userId!),
     enabled: !!userId,
-    staleTime: 0,
-    refetchOnMount: true,
+    staleTime: 1000 * 60 * 5, // Keep data fresh for 5 minutes
+    gcTime: 1000 * 60 * 10, // Cache for 10 minutes
+    refetchOnMount: false, // Don't refetch if still fresh
+    refetchOnWindowFocus: false, // Don't refetch on focus
   });
 };
 
@@ -22,6 +24,10 @@ export const useQuiz = (quizId: string, userId: string | undefined) => {
     queryKey: ['quiz', quizId, userId],
     queryFn: () => QuizService.getQuiz(quizId, userId!),
     enabled: !!quizId && !!userId,
+    staleTime: 1000 * 60 * 5, // Keep data fresh for 5 minutes
+    gcTime: 1000 * 60 * 10, // Cache for 10 minutes
+    refetchOnMount: false, // Don't refetch if still fresh
+    refetchOnWindowFocus: false, // Don't refetch on focus
   });
 };
 

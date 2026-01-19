@@ -8,7 +8,7 @@ const FeaturesSection = memo(function FeaturesSection() {
     {
       icon: <FileText className="h-8 w-8" />,
       title: "Smart Summaries",
-      description: "Instantly convert lengthy PDFs into concise, structured study notes that highlight key concepts.",
+      description: "Lightning-fast AI converts lengthy PDFs into concise, structured study notes that highlight key concepts.",
       color: "bg-blue-100 text-blue-600"
     },
     {

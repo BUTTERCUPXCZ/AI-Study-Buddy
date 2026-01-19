@@ -8,7 +8,7 @@ import { PdfNotesQueue } from './queues/pdf-notes.queue';
 import { AiNotesQueue } from './queues/ai-notes.queue';
 import { AiQuizQueue } from './queues/ai-quiz.queue';
 import { PdfExtractWorker } from './workers/pdf-extract.worker';
-import { PdfNotesOptimizedWorker } from './workers/pdf-notes-optimized.worker';
+
 import { UltraOptimizedPdfWorker } from './workers/ultra-optimized-pdf.worker';
 import { AiNotesWorker } from './workers/ai-notes.worker';
 import { DatabaseModule } from '../database/database.module';
@@ -166,7 +166,6 @@ import { JobEventEmitterService } from './job-event-emitter.service';
     AiQuizQueue,
     CompletionQueue,
     PdfExtractWorker,
-    PdfNotesOptimizedWorker,
     UltraOptimizedPdfWorker,
     AiNotesWorker,
     CompletionWorker,

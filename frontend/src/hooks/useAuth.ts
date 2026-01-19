@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { type RegisterData, type LoginData } from '../types/auth.ts';
 import authService, { type AuthResponse } from '../services/AuthService';
+import { clearAuthCache } from '@/routes/__protected';
 
 export const useRegister = () => {
   return useMutation<AuthResponse, Error, RegisterData>({
@@ -33,12 +34,12 @@ export const useLogin = () => {
       }
     },
     onSuccess: (data) => {
-      if (data.access_token) {
-        // Use a consistent key name for the stored token
-        localStorage.setItem('access_token', data.access_token);
-        // Invalidate user query to refetch user data
-        queryClient.invalidateQueries({ queryKey: ['auth', 'user'] });
+      // Cookie is set automatically by the backend
+      // Set user data immediately in cache to avoid refetch
+      if (data.user) {
+        queryClient.setQueryData(['auth', 'user'], data.user);
       }
+      queryClient.invalidateQueries({ queryKey: ['auth'] });
     },
   });
 };
@@ -50,9 +51,12 @@ export const useCurrentUser = (enabled = true) => {
   return useQuery({
     queryKey: ['auth', 'user'],
     queryFn: () => authService.getCurrentUser(),
-    enabled: enabled && !!localStorage.getItem('access_token'),
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    enabled: enabled,
+    staleTime: 1000 * 60 * 5, // Keep data fresh for 5 minutes
+    gcTime: 1000 * 60 * 10, // Keep in cache for 10 minutes
     retry: false,
+    refetchOnMount: false, // Don't refetch on every mount
+    refetchOnWindowFocus: false, // Don't refetch on window focus
   });
 };
 
@@ -95,6 +99,8 @@ export const useLogout = () => {
       await authService.logout();
     },
     onSuccess: () => {
+      // Clear the protected route auth cache
+      clearAuthCache();
       // Clear all queries on logout
       queryClient.clear();
     },

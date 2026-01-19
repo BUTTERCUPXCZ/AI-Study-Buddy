@@ -6,68 +6,92 @@ import { supabase } from '@/lib/supabaseClient'
 import { api } from '@/lib/api'
 import { AuthContext } from './AuthContextDefinition'
 
+const USER_CACHE_KEY = 'auth_user_cache'
+const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
+
+interface CachedUser {
+  data: any
+  timestamp: number
+}
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const queryClient = useQueryClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [user, setUser] = useState<any | null>(null)
-  const [loading, setLoading] = useState(true)
 
-  // On mount, validate any existing token stored in localStorage with backend.
-  // If no token is present, fall back to Supabase session check.
+  // Helper functions for sessionStorage caching
+  const getCachedUser = () => {
+    try {
+      const cached = sessionStorage.getItem(USER_CACHE_KEY)
+      if (!cached) return null
+      
+      const parsed: CachedUser = JSON.parse(cached)
+      const isExpired = Date.now() - parsed.timestamp > CACHE_DURATION
+      
+      return isExpired ? null : parsed.data
+    } catch {
+      return null
+    }
+  }
+
+  const setCachedUser = (userData: any) => {
+    try {
+      const cache: CachedUser = {
+        data: userData,
+        timestamp: Date.now()
+      }
+      sessionStorage.setItem(USER_CACHE_KEY, JSON.stringify(cache))
+    } catch {
+      // Ignore cache errors
+    }
+  }
+
+  const clearCachedUser = () => {
+    try {
+      sessionStorage.removeItem(USER_CACHE_KEY)
+    } catch {
+      // Ignore cache errors
+    }
+  }
+
+  // Initialize user from cache immediately (optimistic loading)
+  const [user, setUser] = useState<any | null>(getCachedUser())
+  const [loading, setLoading] = useState(!getCachedUser()) // Only show loading if no cache
+
+  // On mount, validate session with backend (cookie is sent automatically)
   useEffect(() => {
     let mounted = true
 
     const init = async () => {
-      const token = localStorage.getItem('access_token') || localStorage.getItem('token')
-
-      if (token) {
+      try {
+        // Try to get current user - cookie is sent automatically
+        const res = await api.get('/auth/me')
+        if (!mounted) return
+        setUser(res.data)
+        setCachedUser(res.data) // Cache for next navigation
+        queryClient.setQueryData(['auth', 'user'], res.data)
+      } catch (error) {
+        // No valid session
+        if (!mounted) return
+        setUser(null)
+        clearCachedUser()
+        queryClient.setQueryData(['auth', 'user'], null)
+        // Check for Supabase OAuth session
         try {
-          const res = await api.get('/auth/me', { headers: { Authorization: `Bearer ${token}` } })
-          if (!mounted) return
-          // backend returns user info
-          setUser(res.data)
-        } catch {
-          // Token invalid or expired: clear it and ensure unauthenticated state
-          localStorage.removeItem('access_token')
-          localStorage.removeItem('token')
-          if (!mounted) return
-          setUser(null)
-        } finally {
-          if (mounted) {
-            setLoading(false)
+          const { data: { session } } = await supabase.auth.getSession()
+          if (session?.access_token) {
+            // Sync with backend to set cookie
+            const res = await api.post('/auth/oauth/callback', {
+              access_token: session.access_token,
+            })
+            if (!mounted) return
+            setUser(res.data.user)
+            setCachedUser(res.data.user)
+            queryClient.setQueryData(['auth', 'user'], res.data.user)
           }
+        } catch (oauthError) {
+          console.error('OAuth session sync failed:', oauthError)
         }
-      } else {
-        // No local token — try Supabase client session as fallback (for flows that rely on Supabase JS SDK)
-        try {
-          const { data } = await supabase.auth.getSession()
-          if (!mounted) return
-          
-          // If we have a Supabase session, get the backend user data using the Supabase token
-          if (data.session?.access_token) {
-            try {
-              const res = await api.get('/auth/me', { 
-                headers: { Authorization: `Bearer ${data.session.access_token}` } 
-              })
-              if (!mounted) return
-              setUser(res.data)
-              // Store the token for future requests
-              localStorage.setItem('access_token', data.session.access_token)
-            } catch {
-              if (!mounted) return
-              setUser(null)
-            }
-          } else {
-            setUser(null)
-          }
-        } catch {
-          if (!mounted) return
-          setUser(null)
-        } finally {
-          if (mounted) {
-            setLoading(false)
-          }
-        }
+      } finally {
+        if (mounted) setLoading(false)
       }
     }
 
@@ -79,29 +103,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [])
 
   // Listen to Supabase auth state changes and keep local user in sync
-  // NOTE: Only manage Supabase OAuth sessions here, don't interfere with backend email/password tokens
   useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
       queryClient.setQueryData(['auth', 'session'], session?.user ?? null)
       
-      // Only clear tokens if we're explicitly signing out via Supabase
-      // Don't clear tokens just because there's no Supabase session (user might be using email/password)
-      if (_event === 'SIGNED_OUT') {
-        setUser(null)
-        localStorage.removeItem('access_token')
-        localStorage.removeItem('token')
-      } else if (session?.access_token) {
-        // If we have a Supabase session, fetch the backend user data
+      if (session?.access_token) {
         try {
-          const res = await api.get('/auth/me', { 
-            headers: { Authorization: `Bearer ${session.access_token}` } 
+          // Sync OAuth session with backend to set cookie
+          const res = await api.post('/auth/oauth/callback', {
+            access_token: session.access_token,
           })
-          setUser(res.data)
-          localStorage.setItem('access_token', session.access_token)
+          setUser(res.data.user)
+          setCachedUser(res.data.user)
+          queryClient.setQueryData(['auth', 'user'], res.data.user)
         } catch (error) {
-          console.error('Failed to fetch user data:', error)
+          console.error('Failed to sync OAuth state:', error)
           setUser(null)
+          clearCachedUser()
+          queryClient.setQueryData(['auth', 'user'], null)
         }
+      } else if (_event === 'SIGNED_OUT') {
+        // User signed out
+        setUser(null)
+        clearCachedUser()
+        queryClient.setQueryData(['auth', 'user'], null)
+        // Optionally call backend logout endpoint to clear cookie
       }
     })
 
@@ -114,10 +140,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     <AuthContext.Provider value={{
       user,
       loading,
-      refetch: () => {
-        // simplistic refetch: re-run the mount logic by forcing a page load of the provider
-        // For now expose a thin refetch that other components can implement as needed.
-        // Consumers can also call location.reload() as a last resort.
+      refetch: async () => {
+        // Refetch user data from the backend
+        try {
+          const res = await api.get('/auth/me')
+          setUser(res.data)
+          setCachedUser(res.data)
+          queryClient.setQueryData(['auth', 'user'], res.data)
+        } catch (error) {
+          setUser(null)
+          clearCachedUser()
+          queryClient.setQueryData(['auth', 'user'], null)
+        }
       }
     }}>
       {children}

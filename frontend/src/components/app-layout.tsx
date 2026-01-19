@@ -18,12 +18,15 @@ import {
 } from '@/components/ui/dialog'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { subscriptionService } from '@/services/SubscriptionService'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import NotesService from '@/services/NotesService'
+import QuizService from '@/services/QuizService'
 
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const location = useLocation()
   const { user } = useAuth()
+  const queryClient = useQueryClient()
   const [logoutOpen, setLogoutOpen] = useState(false)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -34,6 +37,27 @@ const { data: usageStats } = useQuery({
   queryFn: () => subscriptionService.getSubscriptionStatus(),
   enabled: !!user,
 })
+
+  // Prefetch data on hover for instant navigation
+  const handlePrefetchNotes = () => {
+    if (user?.id) {
+      queryClient.prefetchQuery({
+        queryKey: ['notes', user.id],
+        queryFn: () => NotesService.getUserNotes(user.id),
+        staleTime: 1000 * 60 * 5,
+      })
+    }
+  }
+
+  const handlePrefetchQuizzes = () => {
+    if (user?.id) {
+      queryClient.prefetchQuery({
+        queryKey: ['quizzes', user.id],
+        queryFn: () => QuizService.getUserQuizzes(user.id),
+        staleTime: 1000 * 60 * 5,
+      })
+    }
+  }
   
   
   const navItems = [
@@ -81,11 +105,21 @@ const { data: usageStats } = useQuery({
           {navItems.map((item) => {
             const Icon = item.icon
             const isActive = location.pathname.startsWith(item.to)
+            
+            // Determine prefetch handler
+            let onMouseEnter
+            if (item.to === '/notes') {
+              onMouseEnter = handlePrefetchNotes
+            } else if (item.to === '/quizzes') {
+              onMouseEnter = handlePrefetchQuizzes
+            }
+            
             return (
               <Link 
                 key={item.to}
                 to={item.to} 
                 onClick={() => setIsMobileOpen(false)}
+                onMouseEnter={onMouseEnter}
                 className={`flex items-center gap-3 rounded-md px-3 py-2 transition-colors ${
                   isActive 
                     ? 'bg-blue-50 text-blue-600 font-medium' 

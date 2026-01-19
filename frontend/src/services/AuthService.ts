@@ -3,7 +3,6 @@ import { api } from '../lib/api';
 
 export interface AuthResponse {
   message: string;
-  access_token?: string;
   user?: {
     id: string;
     email: string;
@@ -43,7 +42,7 @@ class AuthService {
    * Login with email/password
    * @param email - User's email address
    * @param password - User's password
-   * @returns Authentication response with token and user data
+   * @returns Authentication response with user data
    * @throws Error if login fails
    */
   async login(email: string, password: string): Promise<AuthResponse> {
@@ -53,10 +52,7 @@ class AuthService {
         password,
       });
       
-      if (response.data.access_token) {
-        localStorage.setItem('access_token', response.data.access_token);
-      }
-      
+      // Cookie is set automatically by the backend
       return response.data;
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
@@ -121,7 +117,7 @@ class AuthService {
   /**
    * Handle OAuth callback after redirect from provider
    * This should be called in your callback route
-   * @returns Authentication response with token and user data
+   * @returns Authentication response with user data
    * @throws Error if callback handling fails
    */
   async handleOAuthCallback(): Promise<AuthResponse> {
@@ -133,14 +129,12 @@ class AuthService {
         throw new Error('No session found');
       }
 
-      // Send access token to backend to sync user data
+      // Send access token to backend to sync user data and set cookie
       const response = await api.post<AuthResponse>('/auth/oauth/callback', {
         access_token: session.access_token,
       });
 
-      // Store token
-      localStorage.setItem('access_token', session.access_token);
-
+      // Cookie is set automatically by the backend
       return response.data;
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
@@ -155,17 +149,8 @@ class AuthService {
    */
   async getCurrentUser() {
     try {
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        throw new Error('No access token found');
-      }
-
-      const response = await api.get('/auth/me', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
+      // Cookie is sent automatically with the request
+      const response = await api.get('/auth/me');
       return response.data;
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
@@ -174,13 +159,15 @@ class AuthService {
   }
 
   /**
-   * Logout user and clear local storage
+   * Logout user and clear session
    * @throws Error if logout fails
    */
   async logout(): Promise<void> {
     try {
+      // Call backend to clear cookie
+      await api.post('/auth/logout');
+      // Also sign out from Supabase
       await supabase.auth.signOut();
-      localStorage.removeItem('access_token');
     } catch (error: unknown) {
       const err = error as { message?: string };
       throw new Error(err.message || 'Logout failed');
@@ -188,17 +175,15 @@ class AuthService {
   }
 
   /**
-   * Check if user is authenticated
+   * Check if user is authenticated by attempting to get current user
    */
-  isAuthenticated(): boolean {
-    return !!localStorage.getItem('access_token');
-  }
-
-  /**
-   * Get stored access token
-   */
-  getAccessToken(): string | null {
-    return localStorage.getItem('access_token');
+  async isAuthenticated(): Promise<boolean> {
+    try {
+      await this.getCurrentUser();
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /**

@@ -8,9 +8,9 @@ export const useNotes = (userId: string | undefined) => {
     enabled: !!userId,
     staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
     gcTime: 1000 * 60 * 10, // Cache for 10 minutes (formerly cacheTime)
-    refetchOnMount: 'always', // Always refetch on mount for fresh data
-    refetchOnWindowFocus: true, // Refetch when window regains focus
-    refetchOnReconnect: true, // Refetch when connection is restored
+    refetchOnMount: false, // Don't refetch if data is still fresh (within staleTime)
+    refetchOnWindowFocus: false, // Don't refetch on focus - reduces unnecessary calls
+    refetchOnReconnect: true, // Still refetch when connection is restored
   });
 };
 
@@ -21,7 +21,8 @@ export const useNote = (noteId: string, userId: string) => {
     enabled: !!noteId && !!userId,
     staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
     gcTime: 1000 * 60 * 10, // Cache for 10 minutes
-    refetchOnWindowFocus: true, // Refetch when window regains focus
+    refetchOnWindowFocus: false, // Don't refetch on focus - data doesn't change often
+    refetchOnMount: false, // Don't refetch if still fresh
   });
 };
 
