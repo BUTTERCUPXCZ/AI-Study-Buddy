@@ -46,6 +46,7 @@ export interface FileData {
 
 export interface StreamCallbacks {
   onMeta?: (meta: { fileId: string; fileName: string }) => void;
+  onStatus?: (status: { stage: string; message: string }) => void;
   onChunk: (accumulated: string) => void;
   onDone: (result: { noteId: string; title: string; fileId: string }) => void;
   onError?: (message: string) => void;
@@ -156,6 +157,12 @@ class UploadService {
               callbacks.onMeta?.({
                 fileId: String(event.fileId ?? ''),
                 fileName: String(event.fileName ?? ''),
+              });
+              break;
+            case 'status':
+              callbacks.onStatus?.({
+                stage: String(event.stage ?? ''),
+                message: String(event.message ?? ''),
               });
               break;
             case 'chunk':

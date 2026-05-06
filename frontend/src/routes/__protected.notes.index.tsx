@@ -273,7 +273,26 @@ import { useAuth } from '@/context/AuthContextDefinition'
                 ? {
                     ...prev,
                     progress: 15,
-                    stage: 'Reading PDF…',
+                    stage: 'PDF accepted by server…',
+                  }
+                : prev,
+            )
+          },
+          onStatus: ({ stage, message }) => {
+            // Backend tells us exactly what it's doing — surface it
+            // verbatim so the user sees real progress, not just a bar.
+            const progressByStage: Record<string, number> = {
+              uploaded: 20,
+              thinking: 28,
+              streaming: 35,
+              saving: 95,
+            }
+            setProcessingJob((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    progress: progressByStage[stage] ?? prev.progress,
+                    stage: message,
                   }
                 : prev,
             )
@@ -286,10 +305,12 @@ import { useAuth } from '@/context/AuthContextDefinition'
                     ...prev,
                     // Coarse progress estimate: cap at 90% until done.
                     progress: Math.min(
-                      30 + Math.floor(accumulated.length / 80),
+                      35 + Math.floor(accumulated.length / 80),
                       90,
                     ),
-                    stage: 'Generating notes…',
+                    stage: prev.stage.startsWith('Generating')
+                      ? prev.stage
+                      : 'Generating notes…',
                   }
                 : prev,
             )

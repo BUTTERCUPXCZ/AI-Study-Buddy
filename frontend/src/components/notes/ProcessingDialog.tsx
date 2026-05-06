@@ -85,20 +85,29 @@ const ProcessingDialog = memo(({
           {processingJob ? (
             showStream ? (
               <div className="p-6 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-semibold">{processingJob.fileName}</p>
-                    <p className="text-xs text-muted-foreground">Generating notes…</p>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p
+                      className="text-sm font-semibold truncate"
+                      title={processingJob.fileName}
+                    >
+                      {processingJob.fileName}
+                    </p>
+                    {/* Live backend stage — surfaces what server is
+                        doing (uploaded → thinking → streaming → saving). */}
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {processingJob.stage || 'Generating notes…'}
+                    </p>
                   </div>
-                  {isConnected ? (
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700">
-                      Live
-                    </span>
-                  ) : (
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
-                      Polling
-                    </span>
-                  )}
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${
+                      isConnected
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-amber-100 text-amber-700'
+                    }`}
+                  >
+                    {isConnected ? 'Live' : 'Polling'}
+                  </span>
                 </div>
                 <div
                   ref={streamRef}

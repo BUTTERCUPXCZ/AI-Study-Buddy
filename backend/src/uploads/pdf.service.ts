@@ -291,13 +291,36 @@ export class PdfService {
       fileName: fileRecord.name,
     });
 
+    // Surface stage messages so the user sees what the backend is
+    // doing (matches the lines that show up in server logs).
+    writeEvent({
+      type: 'status',
+      stage: 'uploaded',
+      message: `Uploaded ${(file.size / 1024).toFixed(0)} KB. Contacting Gemini…`,
+    });
+
     try {
+      writeEvent({
+        type: 'status',
+        stage: 'thinking',
+        message: 'Gemini is reading your PDF…',
+      });
+
+      let firstChunkSeen = false;
       const result = await this.aiService.generateNotesFromPDFStream(
         file.buffer,
         createPdfDto.fileName,
         userId,
         fileRecord.id,
         (_chunk, accumulated) => {
+          if (!firstChunkSeen) {
+            firstChunkSeen = true;
+            writeEvent({
+              type: 'status',
+              stage: 'streaming',
+              message: 'Generating notes…',
+            });
+          }
           // Send accumulated text on every chunk — frontend renders the
           // whole buffer each tick (cheap for <50KB notes) and never
           // has to handle out-of-order or missing chunks.
@@ -305,6 +328,12 @@ export class PdfService {
         },
         'application/pdf',
       );
+
+      writeEvent({
+        type: 'status',
+        stage: 'saving',
+        message: 'Saving your notes…',
+      });
 
       writeEvent({
         type: 'done',
