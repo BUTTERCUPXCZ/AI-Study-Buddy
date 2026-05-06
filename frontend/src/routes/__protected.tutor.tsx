@@ -62,7 +62,7 @@ function RouteComponent() {
     setLoadingSessionId(clickedSessionId)
     
     try {
-      const sessionData = await TutorService.getChatSession(clickedSessionId, user.id)
+      const sessionData = await TutorService.getChatSession(clickedSessionId)
       
       // Convert session messages to our Message interface
       const loadedMessages: Message[] = sessionData.messages.map((msg, idx) => ({
@@ -236,7 +236,6 @@ function RouteComponent() {
     try {
       await TutorService.sendMessageStream(
         inputValue,
-        user.id,
         (chunk: StreamChunk) => {
           if (chunk.type === 'session' && chunk.sessionId) {
             setSessionId(chunk.sessionId)

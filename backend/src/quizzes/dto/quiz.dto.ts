@@ -11,10 +11,6 @@ import {
 export class CreateQuizDto {
   @IsString()
   @IsNotEmpty()
-  userId: string;
-
-  @IsString()
-  @IsNotEmpty()
   title: string;
 
   @IsArray()

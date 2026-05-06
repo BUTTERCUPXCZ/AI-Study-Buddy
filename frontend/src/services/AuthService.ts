@@ -90,8 +90,16 @@ class AuthService {
     mode: 'login' | 'register' = 'login'
   ): Promise<void> {
     try {
-      localStorage.setItem('oauth_mode', mode);
-      
+      // CSRF / login-fixation defence is handled by Supabase's PKCE +
+      // its own server-side state value. Adding our own `state` query
+      // param would override the one Supabase issues — that's exactly
+      // what produced `bad_oauth_state` on every callback.
+      //
+      // We keep `oauth_mode` in sessionStorage so the callback page can
+      // tell whether the flow was kicked off from /login or /register
+      // (used for UX copy only, no security role).
+      sessionStorage.setItem('oauth_mode', mode);
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
@@ -99,15 +107,13 @@ class AuthService {
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
-          }
-        }
+          },
+        },
       });
 
       if (error) {
         throw new Error(error.message);
       }
-
-      // The redirect will happen automatically
     } catch (error: unknown) {
       const err = error as { message?: string };
       throw new Error(err.message || 'OAuth sign-in failed');
@@ -122,10 +128,39 @@ class AuthService {
    */
   async handleOAuthCallback(): Promise<AuthResponse> {
     try {
-      // Get session from Supabase
-      const { data: { session }, error } = await supabase.auth.getSession();
-      
-      if (error || !session) {
+      // PKCE flow: Supabase puts a `?code=…` on the redirect URL. The
+      // SDK's auto-detection (`detectSessionInUrl: true`) tries to
+      // exchange it asynchronously, which races our route handler. We
+      // do the exchange explicitly so this function deterministically
+      // owns the work — once it returns, the session is real.
+      const url = new URL(window.location.href);
+      const code = url.searchParams.get('code');
+      if (code) {
+        try {
+          await supabase.auth.exchangeCodeForSession(code);
+        } catch {
+          // The SDK may have already exchanged it (auto-detection
+          // raced and won). Falling through to getSession() picks up
+          // that session.
+        }
+      }
+
+      // Belt-and-braces: poll briefly in case the exchange above
+      // resolved but Supabase hasn't yet flushed the session into
+      // storage. Up to 8 s — generous for slow disks.
+      let session: { access_token: string } | null = null;
+      const startedAt = Date.now();
+      while (!session && Date.now() - startedAt < 8000) {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) throw new Error(error.message);
+        if (data.session) {
+          session = data.session;
+          break;
+        }
+        await new Promise((r) => setTimeout(r, 150));
+      }
+
+      if (!session) {
         throw new Error('No session found');
       }
 
@@ -139,6 +174,82 @@ class AuthService {
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
       throw new Error(err.response?.data?.message || 'OAuth callback handling failed');
+    }
+  }
+
+  /**
+   * Email-link verification callback. Supabase's email-confirm link
+   * lands the browser on `/supabaseCallback` with an access_token in
+   * the URL hash. This method reads the resulting Supabase session and
+   * forwards the token to the backend, which flips the local
+   * `User.emailVerified` flag. The temporary Supabase session is then
+   * signed out so the user lands on `/login` with a clean slate — they
+   * still need to enter their password to actually sign in.
+   */
+  async handleEmailVerificationCallback(): Promise<{ message: string }> {
+    try {
+      // Supabase email-confirm links land on /supabaseCallback with the
+      // tokens in the URL hash. The SDK's `detectSessionInUrl` exchanges
+      // them asynchronously — racing the React effect that calls us.
+      // Mirror handleOAuthCallback: do the exchange explicitly when the
+      // hash is still there, then poll briefly so the session is
+      // guaranteed-flushed before we forward the token to the backend.
+      const hash = window.location.hash.startsWith('#')
+        ? window.location.hash.substring(1)
+        : '';
+      if (hash) {
+        const hashParams = new URLSearchParams(hash);
+        const accessToken = hashParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token');
+        if (accessToken && refreshToken) {
+          try {
+            await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            });
+          } catch {
+            // SDK may have already consumed the hash via
+            // detectSessionInUrl. Fall through to the poll below.
+          }
+        }
+      }
+
+      // Belt-and-braces: poll up to 8 s for getSession() to return a
+      // session. Same tuning as handleOAuthCallback — generous for slow
+      // disks and storage events.
+      let session: { access_token: string } | null = null;
+      const startedAt = Date.now();
+      while (!session && Date.now() - startedAt < 8000) {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) throw new Error(error.message);
+        if (data.session) {
+          session = data.session;
+          break;
+        }
+        await new Promise((r) => setTimeout(r, 150));
+      }
+
+      if (!session) {
+        throw new Error('Email verification session never materialized');
+      }
+
+      const response = await api.post<{ message: string }>(
+        '/auth/verify-email/callback',
+        { access_token: session.access_token },
+      );
+      // One-shot — drop the Supabase session so the user has to actually
+      // log in afterwards.
+      try {
+        await supabase.auth.signOut();
+      } catch {
+        // Best-effort; the cookie is already gone if Supabase complains.
+      }
+      return response.data;
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } }; message?: string };
+      throw new Error(
+        err.response?.data?.message || err.message || 'Email verification failed',
+      );
     }
   }
 
@@ -164,13 +275,25 @@ class AuthService {
    */
   async logout(): Promise<void> {
     try {
-      // Call backend to clear cookie
+      // Order matters: clear the backend cookie first so the session is
+      // invalid even if the browser later replays Supabase tokens.
       await api.post('/auth/logout');
-      // Also sign out from Supabase
       await supabase.auth.signOut();
     } catch (error: unknown) {
       const err = error as { message?: string };
       throw new Error(err.message || 'Logout failed');
+    } finally {
+      // Always purge any client-side traces, even if a network call failed.
+      try {
+        sessionStorage.removeItem('oauth_state');
+        sessionStorage.removeItem('oauth_mode');
+        sessionStorage.removeItem('auth_user_cache');
+        // Supabase persists its session in localStorage under this key.
+        // Defense-in-depth: drop it here too in case signOut() couldn't.
+        localStorage.removeItem('supabase-auth');
+      } catch {
+        // sessionStorage/localStorage may be disabled; nothing to do.
+      }
     }
   }
 
@@ -187,17 +310,33 @@ class AuthService {
   }
 
   /**
-   * Get OAuth mode from storage
+   * Get OAuth mode from storage (sessionStorage so it doesn't survive
+   * past the browser tab; closes an account-mode-confusion vector).
    */
   getOAuthMode(): 'login' | 'register' {
-    return (localStorage.getItem('oauth_mode') as 'login' | 'register') || 'login';
+    return (sessionStorage.getItem('oauth_mode') as 'login' | 'register') || 'login';
+  }
+
+  clearOAuthMode(): void {
+    sessionStorage.removeItem('oauth_mode');
   }
 
   /**
-   * Clear OAuth mode from storage
+   * Legacy CSRF check for the OAuth callback. Now a no-op: Supabase's
+   * PKCE + its own server-side state value already prevent CSRF /
+   * login-fixation on the OAuth flow, and the previous implementation
+   * was actively harmful — it wrote a custom `state` query param that
+   * overrode Supabase's, producing `bad_oauth_state` on every callback.
+   *
+   * Kept as a function so callers don't need a coordinated change. It
+   * always returns true and only cleans up any stale `oauth_state` key
+   * left behind by older builds. Returns the `_returnedState` argument
+   * unread so callers don't have to remove it.
    */
-  clearOAuthMode(): void {
-    localStorage.removeItem('oauth_mode');
+  verifyAndClearOAuthState(_returnedState: string | null): boolean {
+    void _returnedState;
+    sessionStorage.removeItem('oauth_state');
+    return true;
   }
 
   /**

@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react'
-import { useState } from 'react'
-import { Link, useLocation } from '@tanstack/react-router'
+import { useState, useCallback } from 'react'
+import { Link, useLocation, useNavigate } from '@tanstack/react-router'
 import { useAuth } from '@/context/AuthContextDefinition'
 
 import { Separator } from '@/components/ui/separator'
-import { FileText, Brain, GraduationCap, Library, LogOut, Menu } from 'lucide-react'
+import { FileText, Brain, GraduationCap, Library, LogOut, Menu, Shield } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { authService } from '@/services/AuthService'
@@ -25,6 +25,7 @@ import QuizService from '@/services/QuizService'
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const location = useLocation()
+  const navigate = useNavigate()
   const { user } = useAuth()
   const queryClient = useQueryClient()
   const [logoutOpen, setLogoutOpen] = useState(false)
@@ -38,42 +39,47 @@ const { data: usageStats } = useQuery({
   enabled: !!user,
 })
 
-  // Prefetch data on hover for instant navigation
-  const handlePrefetchNotes = () => {
+  const handlePrefetchNotes = useCallback(() => {
     if (user?.id) {
       queryClient.prefetchQuery({
         queryKey: ['notes', user.id],
-        queryFn: () => NotesService.getUserNotes(user.id),
+        queryFn: () => NotesService.getUserNotes(),
         staleTime: 1000 * 60 * 5,
       })
     }
-  }
+  }, [user?.id, queryClient])
 
-  const handlePrefetchQuizzes = () => {
+  const handlePrefetchQuizzes = useCallback(() => {
     if (user?.id) {
       queryClient.prefetchQuery({
         queryKey: ['quizzes', user.id],
-        queryFn: () => QuizService.getUserQuizzes(user.id),
+        queryFn: () => QuizService.getUserQuizzes(),
         staleTime: 1000 * 60 * 5,
       })
     }
-  }
+  }, [user?.id, queryClient])
   
   
+  const userRole = (user as { role?: string } | null)?.role
+  const isStaff =
+    userRole === 'SUPPORT' || userRole === 'ADMIN' || userRole === 'SUPER_ADMIN'
+
   const navItems = [
     { to: '/notes', label: 'Study Notes', icon: FileText },
     { to: '/quizzes', label: 'Quizzes', icon: Brain },
     { to: '/tutor', label: 'AI Tutor', icon: GraduationCap },
     { to: '/library', label: 'Library', icon: Library },
+    ...(isStaff
+      ? [{ to: '/admin', label: 'Admin', icon: Shield } as const]
+      : []),
   ]
 
   const currentRoute = navItems.find(item => location.pathname.startsWith(item.to))
   const pageTitle = currentRoute?.label || 'Dashboard'
 
-   const handleUpgrade = async () => {
+   const handleUpgrade = useCallback(async () => {
     if (!user) {
-      // Redirect to login/register
-      window.location.href = '/register'
+      navigate({ to: '/register' })
       return
     }
 
@@ -86,7 +92,7 @@ const { data: usageStats } = useQuery({
     } finally {
       setLoading(false)
     }
-  }
+  }, [user, navigate])
 
   // Check if user is on Pro plan (use fresh data from query if available)
   const isProUser = usageStats?.plan === 'PRO' || user?.subscriptionStatus === 'PRO' || user?.plan === 'pro' || user?.subscriptionStatus === 'pro'
@@ -268,9 +274,9 @@ const { data: usageStats } = useQuery({
                 } catch {
                   // ignore
                 }
-                localStorage.removeItem('access_token')
-                localStorage.removeItem('token')
-                window.location.href = '/login'
+                queryClient.clear()
+                sessionStorage.removeItem('auth_user_cache')
+                navigate({ to: '/login' })
               }}
             >
               Logout

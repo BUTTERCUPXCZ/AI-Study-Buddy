@@ -102,32 +102,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [queryClient])
 
-  // Listen to Supabase auth state changes and keep local user in sync
+  // Listen to Supabase auth state changes and keep local user in sync.
+  //
+  // Important: this listener does NOT post to /auth/oauth/callback.
+  // The /supabaseCallback route owns that exchange — having two paths
+  // race to POST the same access_token caused intermittent failures
+  // where the listener's POST would error after the route's already
+  // succeeded, then `setUser(null)` would wipe the freshly-set user.
+  //
+  // The listener now only mirrors session-presence into the Query
+  // cache and clears local state on explicit sign-out.
   useEffect(() => {
-    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       queryClient.setQueryData(['auth', 'session'], session?.user ?? null)
-      
-      if (session?.access_token) {
-        try {
-          // Sync OAuth session with backend to set cookie
-          const res = await api.post('/auth/oauth/callback', {
-            access_token: session.access_token,
-          })
-          setUser(res.data.user)
-          setCachedUser(res.data.user)
-          queryClient.setQueryData(['auth', 'user'], res.data.user)
-        } catch (error) {
-          console.error('Failed to sync OAuth state:', error)
-          setUser(null)
-          clearCachedUser()
-          queryClient.setQueryData(['auth', 'user'], null)
-        }
-      } else if (_event === 'SIGNED_OUT') {
-        // User signed out
+
+      if (event === 'SIGNED_OUT') {
         setUser(null)
         clearCachedUser()
         queryClient.setQueryData(['auth', 'user'], null)
-        // Optionally call backend logout endpoint to clear cookie
       }
     })
 
@@ -141,16 +133,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       user,
       loading,
       refetch: async () => {
-        // Refetch user data from the backend
+        // Refetch user data from the backend. Returns the fresh user
+        // (or null) so callers can route on role without waiting for
+        // React state to flush.
         try {
           const res = await api.get('/auth/me')
           setUser(res.data)
           setCachedUser(res.data)
           queryClient.setQueryData(['auth', 'user'], res.data)
+          return res.data
         } catch {
           setUser(null)
           clearCachedUser()
           queryClient.setQueryData(['auth', 'user'], null)
+          return null
         }
       }
     }}>

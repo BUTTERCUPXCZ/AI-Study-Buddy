@@ -9,6 +9,7 @@ import {
   HttpCode,
   HttpStatus,
   Res,
+  UseGuards,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { AiService } from './ai.service';
@@ -17,11 +18,13 @@ import { GenerateQuizDto } from './dto/generate-quiz.dto';
 import { TutorChatDto, UpdateChatSessionTitleDto } from './dto/tutor-chat.dto';
 import { Throttle } from '../common/decorators/throttle.decorator';
 import { UsageGuard } from 'src/common/guards/usage.guard';
-import { UseGuards } from '@nestjs/common';
 import { UsageService } from 'src/usage/usage.service';
 import { AuthGuard } from 'src/auth/auth.guard';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { EmailVerifiedGuard } from 'src/auth/guards/email-verified.guard';
 
 @Controller('ai')
+@UseGuards(AuthGuard, EmailVerifiedGuard)
 export class AiController {
   constructor(
     private readonly aiService: AiService,
@@ -32,36 +35,40 @@ export class AiController {
 
   @Post('generate/notes')
   @HttpCode(HttpStatus.CREATED)
-  @Throttle(5, 60) // 5 requests per minute for note generation
-  @UseGuards(AuthGuard, UsageGuard)
-  async generateNotes(@Body() dto: GenerateNotesDto) {
+  @Throttle(5, 60)
+  @UseGuards(UsageGuard)
+  async generateNotes(
+    @CurrentUser('id') userId: string,
+    @Body() dto: GenerateNotesDto,
+  ) {
     const result = await this.aiService.generateNotes(
       dto.pdfText,
-      dto.userId,
+      userId,
       dto.title,
       dto.source,
     );
 
-    // Increment usage for free users
-    await this.usageService.incrementAttempts(dto.userId);
+    await this.usageService.incrementAttempts(userId);
 
     return result;
   }
 
   @Post('generate/quiz')
   @HttpCode(HttpStatus.CREATED)
-  @UseGuards(AuthGuard, UsageGuard)
-  @Throttle(5, 60) // 5 requests per minute for quiz generation
-  async generateQuiz(@Body() dto: GenerateQuizDto) {
+  @UseGuards(UsageGuard)
+  @Throttle(5, 60)
+  async generateQuiz(
+    @CurrentUser('id') userId: string,
+    @Body() dto: GenerateQuizDto,
+  ) {
     const result = await this.aiService.generateQuiz(
       dto.studyNotes,
-      dto.userId,
+      userId,
       dto.title,
       dto.noteId,
     );
 
-    // Increment usage for free users
-    await this.usageService.incrementAttempts(dto.userId);
+    await this.usageService.incrementAttempts(userId);
 
     return result;
   }
@@ -70,29 +77,35 @@ export class AiController {
 
   @Post('tutor/chat')
   @HttpCode(HttpStatus.CREATED)
-  @Throttle(20, 60) // 20 requests per minute for chat
-  async tutorChat(@Body() dto: TutorChatDto) {
+  @Throttle(20, 60)
+  async tutorChat(
+    @CurrentUser('id') userId: string,
+    @Body() dto: TutorChatDto,
+  ) {
     return this.aiService.tutorChat(
       dto.userQuestion,
-      dto.userId,
+      userId,
       dto.sessionId,
       dto.noteId,
     );
   }
 
   @Post('tutor/chat/stream')
-  @Throttle(20, 60) // 20 requests per minute for streaming chat
-  async tutorChatStream(@Body() dto: TutorChatDto, @Res() res: Response) {
-    // Set headers for SSE
+  @Throttle(20, 60)
+  async tutorChatStream(
+    @CurrentUser('id') userId: string,
+    @Body() dto: TutorChatDto,
+    @Res() res: Response,
+  ) {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
-    res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
+    res.setHeader('X-Accel-Buffering', 'no');
 
     try {
       await this.aiService.tutorChatStream(
         dto.userQuestion,
-        dto.userId,
+        userId,
         res,
         dto.sessionId,
         dto.noteId,
@@ -105,33 +118,35 @@ export class AiController {
     }
   }
 
-  @Get('tutor/sessions/user/:userId')
-  async getUserChatSessions(@Param('userId') userId: string): Promise<unknown> {
+  @Get('tutor/sessions')
+  async getUserChatSessions(
+    @CurrentUser('id') userId: string,
+  ): Promise<unknown> {
     return this.aiService.getUserChatSessions(userId);
   }
 
-  @Get('tutor/sessions/:sessionId/user/:userId')
+  @Get('tutor/sessions/:sessionId')
   async getChatSession(
+    @CurrentUser('id') userId: string,
     @Param('sessionId') sessionId: string,
-    @Param('userId') userId: string,
   ): Promise<unknown> {
     return this.aiService.getChatSession(sessionId, userId);
   }
 
-  @Put('tutor/sessions/:sessionId/user/:userId/title')
+  @Put('tutor/sessions/:sessionId/title')
   async updateChatSessionTitle(
+    @CurrentUser('id') userId: string,
     @Param('sessionId') sessionId: string,
-    @Param('userId') userId: string,
     @Body() dto: UpdateChatSessionTitleDto,
   ): Promise<unknown> {
     return this.aiService.updateChatSessionTitle(sessionId, userId, dto.title);
   }
 
-  @Delete('tutor/sessions/:sessionId/user/:userId')
+  @Delete('tutor/sessions/:sessionId')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteChatSession(
+    @CurrentUser('id') userId: string,
     @Param('sessionId') sessionId: string,
-    @Param('userId') userId: string,
   ) {
     await this.aiService.deleteChatSession(sessionId, userId);
   }

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { ConfigService } from '@nestjs/config';
@@ -22,9 +22,18 @@ export interface CreatePdfUltraOptimizedJobDto {
  * - Circuit breakers
  */
 @Injectable()
-export class PdfUltraOptimizedQueue {
+export class PdfUltraOptimizedQueue implements OnModuleInit {
   private readonly logger = new Logger(PdfUltraOptimizedQueue.name);
   private redis: Redis;
+
+  /** waiting + delayed depth — used by upload backpressure check. */
+  async getPendingDepth(): Promise<number> {
+    const [waiting, delayed] = await Promise.all([
+      this.pdfQueue.getWaitingCount(),
+      this.pdfQueue.getDelayedCount(),
+    ]);
+    return waiting + delayed;
+  }
 
   constructor(
     @InjectQueue('pdf-ultra-optimized')
@@ -59,6 +68,26 @@ export class PdfUltraOptimizedQueue {
     this.redis.on('error', (err) => {
       this.logger.error(`Redis error: ${err.message}`);
     });
+  }
+
+  /**
+   * Eagerly connect the dedup-cache Redis client on boot. Without this
+   * the client stays idle (lazyConnect=true) and PdfCacheUtil prints a
+   * "Redis not ready" warning on every upload while silently disabling
+   * deduplication. Failures are logged and swallowed — the upload path
+   * has its own fallback when Redis is unhealthy.
+   */
+  async onModuleInit() {
+    try {
+      await this.redis.connect();
+      this.logger.log('Dedup-cache Redis connected');
+    } catch (err) {
+      this.logger.warn(
+        `Dedup-cache Redis connect failed (will fall back per-call): ${
+          err instanceof Error ? err.message : 'unknown'
+        }`,
+      );
+    }
   }
 
   /**

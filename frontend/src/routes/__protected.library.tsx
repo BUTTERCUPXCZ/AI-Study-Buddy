@@ -6,6 +6,9 @@ import AppLayout from '@/components/app-layout'
 import { useAuth } from '@/context/AuthContextDefinition'
 import { useUserFiles, useDeleteFile } from '@/hooks/useUpload'
 import { useState, useMemo, useCallback, useEffect, lazy, Suspense } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import NotesService from '@/services/NotesService'
+import QuizService from '@/services/QuizService'
 import {
   Pagination,
   PaginationContent,
@@ -32,7 +35,25 @@ function RouteComponent() {
   const { user } = useAuth()
   const { data: files = [], isLoading } = useUserFiles(user?.id || '')
   const { mutate: deleteFile, isPending: isDeleting } = useDeleteFile()
-  
+  const queryClient = useQueryClient()
+
+  // Prefetch sibling lists. The user almost certainly clicks Notes /
+  // Quizzes from the library — by warming the cache here, navigation
+  // becomes a no-op render instead of a spinner.
+  useEffect(() => {
+    if (!user?.id) return
+    queryClient.prefetchQuery({
+      queryKey: ['notes', user.id],
+      queryFn: () => NotesService.getUserNotes(),
+      staleTime: 1000 * 60 * 5,
+    })
+    queryClient.prefetchQuery({
+      queryKey: ['quizzes', user.id],
+      queryFn: () => QuizService.getUserQuizzes(),
+      staleTime: 1000 * 60 * 5,
+    })
+  }, [user?.id, queryClient])
+
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState<SortOption>('date-desc')
   const [fileToDelete, setFileToDelete] = useState<{ id: string; name: string } | null>(null)

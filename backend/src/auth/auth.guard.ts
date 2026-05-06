@@ -15,6 +15,7 @@ interface AuthenticatedRequest extends Request {
     id: string;
     email?: string;
     fullname: string;
+    role?: import('@prisma/client').UserRole;
   };
 }
 
@@ -54,6 +55,7 @@ export class AuthGuard implements CanActivate {
         id: user.id,
         email: user.email,
         fullname: user.fullname,
+        role: (user as { role?: import('@prisma/client').UserRole }).role,
       };
 
       return true;

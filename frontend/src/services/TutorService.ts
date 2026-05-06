@@ -34,7 +34,6 @@ class TutorService {
    */
   async sendMessageStream(
     userQuestion: string,
-    userId: string,
     onChunk: (chunk: StreamChunk) => void,
     sessionId?: string,
     noteId?: string,
@@ -45,9 +44,9 @@ class TutorService {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({
           userQuestion,
-          userId,
           sessionId,
           noteId,
         }),
@@ -68,15 +67,14 @@ class TutorService {
 
       while (true) {
         const { done, value } = await reader.read();
-        
+
         if (done) {
           break;
         }
 
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
-        
-        // Keep the last incomplete line in buffer
+
         buffer = lines.pop() || '';
 
         for (const line of lines) {
@@ -98,11 +96,11 @@ class TutorService {
   }
 
   /**
-   * Get all chat sessions for a user
+   * Get all chat sessions for the current user
    */
-  async getUserChatSessions(userId: string): Promise<ChatSession[]> {
+  async getUserChatSessions(): Promise<ChatSession[]> {
     try {
-      const response = await api.get(`/ai/tutor/sessions/user/${userId}`);
+      const response = await api.get(`/ai/tutor/sessions`);
       return response.data;
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
@@ -113,9 +111,9 @@ class TutorService {
   /**
    * Get a specific chat session
    */
-  async getChatSession(sessionId: string, userId: string): Promise<ChatSession> {
+  async getChatSession(sessionId: string): Promise<ChatSession> {
     try {
-      const response = await api.get(`/ai/tutor/sessions/${sessionId}/user/${userId}`);
+      const response = await api.get(`/ai/tutor/sessions/${sessionId}`);
       return response.data;
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
@@ -128,12 +126,11 @@ class TutorService {
    */
   async updateChatSessionTitle(
     sessionId: string,
-    userId: string,
     title: string,
   ): Promise<ChatSession> {
     try {
       const response = await api.put(
-        `/ai/tutor/sessions/${sessionId}/user/${userId}/title`,
+        `/ai/tutor/sessions/${sessionId}/title`,
         { title },
       );
       return response.data;
@@ -146,9 +143,9 @@ class TutorService {
   /**
    * Delete a chat session
    */
-  async deleteChatSession(sessionId: string, userId: string): Promise<void> {
+  async deleteChatSession(sessionId: string): Promise<void> {
     try {
-      await api.delete(`/ai/tutor/sessions/${sessionId}/user/${userId}`);
+      await api.delete(`/ai/tutor/sessions/${sessionId}`);
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
       throw new Error(err.response?.data?.message || 'Failed to delete chat session');

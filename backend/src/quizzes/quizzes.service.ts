@@ -48,6 +48,35 @@ export class QuizzesService {
   }
 
   /**
+   * Cursor-paginated quiz listing. See NotesService.getUserNotesPaginated
+   * for rationale — index range scan instead of OFFSET.
+   */
+  async getUserQuizzesPaginated(
+    userId: string,
+    options: { cursor?: string; limit?: number } = {},
+  ): Promise<{ items: unknown[]; nextCursor: string | null }> {
+    const limit = Math.max(1, Math.min(options.limit ?? 20, 100));
+    const items = await this.databaseService.quiz.findMany({
+      where: { userId },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: limit + 1,
+      include: {
+        note: { select: { id: true, title: true } },
+      },
+      ...(options.cursor && {
+        cursor: { id: options.cursor },
+        skip: 1,
+      }),
+    });
+    const hasMore = items.length > limit;
+    const page = hasMore ? items.slice(0, limit) : items;
+    return {
+      items: page,
+      nextCursor: hasMore ? page[page.length - 1].id : null,
+    };
+  }
+
+  /**
    * Get a specific quiz by ID
    */
   async getQuizById(quizId: string, userId: string): Promise<unknown> {

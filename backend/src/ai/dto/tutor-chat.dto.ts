@@ -6,10 +6,6 @@ export class TutorChatDto {
   userQuestion: string;
 
   @IsString()
-  @IsNotEmpty()
-  userId: string;
-
-  @IsString()
   @IsOptional()
   sessionId?: string;
 

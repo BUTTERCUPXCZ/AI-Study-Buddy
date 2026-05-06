@@ -13,18 +13,25 @@ import { Route as SupabaseCallbackRouteImport } from './routes/supabaseCallback'
 import { Route as ResetpasswordRouteImport } from './routes/resetpassword'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as LoginRouteImport } from './routes/login'
-import { Route as LandingpageRouteImport } from './routes/landingpage'
 import { Route as ForgotpasswordRouteImport } from './routes/forgotpassword'
 import { Route as EmailVerifyRouteImport } from './routes/emailVerify'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as _protectedRouteImport } from './routes/__protected'
+import { Route as LandingPageRouteImport } from './routes/LandingPage'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as SubscriptionSuccessRouteImport } from './routes/subscription.success'
+import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as AdminServerRouteImport } from './routes/admin.server'
+import { Route as AdminPaymentsRouteImport } from './routes/admin.payments'
+import { Route as AdminAuditRouteImport } from './routes/admin.audit'
 import { Route as _protectedTutorRouteImport } from './routes/__protected.tutor'
 import { Route as _protectedQuizzesRouteImport } from './routes/__protected.quizzes'
 import { Route as _protectedNotesRouteImport } from './routes/__protected.notes'
 import { Route as _protectedLibraryRouteImport } from './routes/__protected.library'
 import { Route as _protectedQuizzesIndexRouteImport } from './routes/__protected.quizzes.index'
 import { Route as _protectedNotesIndexRouteImport } from './routes/__protected.notes.index'
+import { Route as AdminUsersUserIdRouteImport } from './routes/admin.users.$userId'
 import { Route as _protectedQuizzesQuizIdRouteImport } from './routes/__protected.quizzes.$quizId'
 import { Route as _protectedNotesNoteIdRouteImport } from './routes/__protected.notes.$noteId'
 
@@ -48,11 +55,6 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LandingpageRoute = LandingpageRouteImport.update({
-  id: '/landingpage',
-  path: '/landingpage',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ForgotpasswordRoute = ForgotpasswordRouteImport.update({
   id: '/forgotpassword',
   path: '/forgotpassword',
@@ -63,8 +65,18 @@ const EmailVerifyRoute = EmailVerifyRouteImport.update({
   path: '/emailVerify',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const _protectedRoute = _protectedRouteImport.update({
   id: '/__protected',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LandingPageRoute = LandingPageRouteImport.update({
+  id: '/LandingPage',
+  path: '/LandingPage',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -72,10 +84,35 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
+} as any)
 const SubscriptionSuccessRoute = SubscriptionSuccessRouteImport.update({
   id: '/subscription/success',
   path: '/subscription/success',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminServerRoute = AdminServerRouteImport.update({
+  id: '/server',
+  path: '/server',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminPaymentsRoute = AdminPaymentsRouteImport.update({
+  id: '/payments',
+  path: '/payments',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAuditRoute = AdminAuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
+  getParentRoute: () => AdminRoute,
 } as any)
 const _protectedTutorRoute = _protectedTutorRouteImport.update({
   id: '/tutor',
@@ -107,6 +144,11 @@ const _protectedNotesIndexRoute = _protectedNotesIndexRouteImport.update({
   path: '/',
   getParentRoute: () => _protectedNotesRoute,
 } as any)
+const AdminUsersUserIdRoute = AdminUsersUserIdRouteImport.update({
+  id: '/$userId',
+  path: '/$userId',
+  getParentRoute: () => AdminUsersRoute,
+} as any)
 const _protectedQuizzesQuizIdRoute = _protectedQuizzesQuizIdRouteImport.update({
   id: '/$quizId',
   path: '/$quizId',
@@ -120,9 +162,10 @@ const _protectedNotesNoteIdRoute = _protectedNotesNoteIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/LandingPage': typeof LandingPageRoute
+  '/admin': typeof AdminRouteWithChildren
   '/emailVerify': typeof EmailVerifyRoute
   '/forgotpassword': typeof ForgotpasswordRoute
-  '/landingpage': typeof LandingpageRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/resetpassword': typeof ResetpasswordRoute
@@ -131,36 +174,49 @@ export interface FileRoutesByFullPath {
   '/notes': typeof _protectedNotesRouteWithChildren
   '/quizzes': typeof _protectedQuizzesRouteWithChildren
   '/tutor': typeof _protectedTutorRoute
+  '/admin/audit': typeof AdminAuditRoute
+  '/admin/payments': typeof AdminPaymentsRoute
+  '/admin/server': typeof AdminServerRoute
+  '/admin/users': typeof AdminUsersRouteWithChildren
   '/subscription/success': typeof SubscriptionSuccessRoute
+  '/admin/': typeof AdminIndexRoute
   '/notes/$noteId': typeof _protectedNotesNoteIdRoute
   '/quizzes/$quizId': typeof _protectedQuizzesQuizIdRoute
+  '/admin/users/$userId': typeof AdminUsersUserIdRoute
   '/notes/': typeof _protectedNotesIndexRoute
   '/quizzes/': typeof _protectedQuizzesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/LandingPage': typeof LandingPageRoute
   '/emailVerify': typeof EmailVerifyRoute
   '/forgotpassword': typeof ForgotpasswordRoute
-  '/landingpage': typeof LandingpageRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/resetpassword': typeof ResetpasswordRoute
   '/supabaseCallback': typeof SupabaseCallbackRoute
   '/library': typeof _protectedLibraryRoute
   '/tutor': typeof _protectedTutorRoute
+  '/admin/audit': typeof AdminAuditRoute
+  '/admin/payments': typeof AdminPaymentsRoute
+  '/admin/server': typeof AdminServerRoute
+  '/admin/users': typeof AdminUsersRouteWithChildren
   '/subscription/success': typeof SubscriptionSuccessRoute
+  '/admin': typeof AdminIndexRoute
   '/notes/$noteId': typeof _protectedNotesNoteIdRoute
   '/quizzes/$quizId': typeof _protectedQuizzesQuizIdRoute
+  '/admin/users/$userId': typeof AdminUsersUserIdRoute
   '/notes': typeof _protectedNotesIndexRoute
   '/quizzes': typeof _protectedQuizzesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/LandingPage': typeof LandingPageRoute
   '/__protected': typeof _protectedRouteWithChildren
+  '/admin': typeof AdminRouteWithChildren
   '/emailVerify': typeof EmailVerifyRoute
   '/forgotpassword': typeof ForgotpasswordRoute
-  '/landingpage': typeof LandingpageRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/resetpassword': typeof ResetpasswordRoute
@@ -169,9 +225,15 @@ export interface FileRoutesById {
   '/__protected/notes': typeof _protectedNotesRouteWithChildren
   '/__protected/quizzes': typeof _protectedQuizzesRouteWithChildren
   '/__protected/tutor': typeof _protectedTutorRoute
+  '/admin/audit': typeof AdminAuditRoute
+  '/admin/payments': typeof AdminPaymentsRoute
+  '/admin/server': typeof AdminServerRoute
+  '/admin/users': typeof AdminUsersRouteWithChildren
   '/subscription/success': typeof SubscriptionSuccessRoute
+  '/admin/': typeof AdminIndexRoute
   '/__protected/notes/$noteId': typeof _protectedNotesNoteIdRoute
   '/__protected/quizzes/$quizId': typeof _protectedQuizzesQuizIdRoute
+  '/admin/users/$userId': typeof AdminUsersUserIdRoute
   '/__protected/notes/': typeof _protectedNotesIndexRoute
   '/__protected/quizzes/': typeof _protectedQuizzesIndexRoute
 }
@@ -179,9 +241,10 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/LandingPage'
+    | '/admin'
     | '/emailVerify'
     | '/forgotpassword'
-    | '/landingpage'
     | '/login'
     | '/register'
     | '/resetpassword'
@@ -190,35 +253,48 @@ export interface FileRouteTypes {
     | '/notes'
     | '/quizzes'
     | '/tutor'
+    | '/admin/audit'
+    | '/admin/payments'
+    | '/admin/server'
+    | '/admin/users'
     | '/subscription/success'
+    | '/admin/'
     | '/notes/$noteId'
     | '/quizzes/$quizId'
+    | '/admin/users/$userId'
     | '/notes/'
     | '/quizzes/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/LandingPage'
     | '/emailVerify'
     | '/forgotpassword'
-    | '/landingpage'
     | '/login'
     | '/register'
     | '/resetpassword'
     | '/supabaseCallback'
     | '/library'
     | '/tutor'
+    | '/admin/audit'
+    | '/admin/payments'
+    | '/admin/server'
+    | '/admin/users'
     | '/subscription/success'
+    | '/admin'
     | '/notes/$noteId'
     | '/quizzes/$quizId'
+    | '/admin/users/$userId'
     | '/notes'
     | '/quizzes'
   id:
     | '__root__'
     | '/'
+    | '/LandingPage'
     | '/__protected'
+    | '/admin'
     | '/emailVerify'
     | '/forgotpassword'
-    | '/landingpage'
     | '/login'
     | '/register'
     | '/resetpassword'
@@ -227,19 +303,26 @@ export interface FileRouteTypes {
     | '/__protected/notes'
     | '/__protected/quizzes'
     | '/__protected/tutor'
+    | '/admin/audit'
+    | '/admin/payments'
+    | '/admin/server'
+    | '/admin/users'
     | '/subscription/success'
+    | '/admin/'
     | '/__protected/notes/$noteId'
     | '/__protected/quizzes/$quizId'
+    | '/admin/users/$userId'
     | '/__protected/notes/'
     | '/__protected/quizzes/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  LandingPageRoute: typeof LandingPageRoute
   _protectedRoute: typeof _protectedRouteWithChildren
+  AdminRoute: typeof AdminRouteWithChildren
   EmailVerifyRoute: typeof EmailVerifyRoute
   ForgotpasswordRoute: typeof ForgotpasswordRoute
-  LandingpageRoute: typeof LandingpageRoute
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
   ResetpasswordRoute: typeof ResetpasswordRoute
@@ -277,13 +360,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/landingpage': {
-      id: '/landingpage'
-      path: '/landingpage'
-      fullPath: '/landingpage'
-      preLoaderRoute: typeof LandingpageRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/forgotpassword': {
       id: '/forgotpassword'
       path: '/forgotpassword'
@@ -298,11 +374,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EmailVerifyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/__protected': {
       id: '/__protected'
       path: ''
       fullPath: ''
       preLoaderRoute: typeof _protectedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/LandingPage': {
+      id: '/LandingPage'
+      path: '/LandingPage'
+      fullPath: '/LandingPage'
+      preLoaderRoute: typeof LandingPageRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -312,12 +402,47 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/subscription/success': {
       id: '/subscription/success'
       path: '/subscription/success'
       fullPath: '/subscription/success'
       preLoaderRoute: typeof SubscriptionSuccessRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/server': {
+      id: '/admin/server'
+      path: '/server'
+      fullPath: '/admin/server'
+      preLoaderRoute: typeof AdminServerRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/payments': {
+      id: '/admin/payments'
+      path: '/payments'
+      fullPath: '/admin/payments'
+      preLoaderRoute: typeof AdminPaymentsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/audit': {
+      id: '/admin/audit'
+      path: '/audit'
+      fullPath: '/admin/audit'
+      preLoaderRoute: typeof AdminAuditRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/__protected/tutor': {
       id: '/__protected/tutor'
@@ -360,6 +485,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/notes/'
       preLoaderRoute: typeof _protectedNotesIndexRouteImport
       parentRoute: typeof _protectedNotesRoute
+    }
+    '/admin/users/$userId': {
+      id: '/admin/users/$userId'
+      path: '/$userId'
+      fullPath: '/admin/users/$userId'
+      preLoaderRoute: typeof AdminUsersUserIdRouteImport
+      parentRoute: typeof AdminUsersRoute
     }
     '/__protected/quizzes/$quizId': {
       id: '/__protected/quizzes/$quizId'
@@ -423,12 +555,43 @@ const _protectedRouteWithChildren = _protectedRoute._addFileChildren(
   _protectedRouteChildren,
 )
 
+interface AdminUsersRouteChildren {
+  AdminUsersUserIdRoute: typeof AdminUsersUserIdRoute
+}
+
+const AdminUsersRouteChildren: AdminUsersRouteChildren = {
+  AdminUsersUserIdRoute: AdminUsersUserIdRoute,
+}
+
+const AdminUsersRouteWithChildren = AdminUsersRoute._addFileChildren(
+  AdminUsersRouteChildren,
+)
+
+interface AdminRouteChildren {
+  AdminAuditRoute: typeof AdminAuditRoute
+  AdminPaymentsRoute: typeof AdminPaymentsRoute
+  AdminServerRoute: typeof AdminServerRoute
+  AdminUsersRoute: typeof AdminUsersRouteWithChildren
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminAuditRoute: AdminAuditRoute,
+  AdminPaymentsRoute: AdminPaymentsRoute,
+  AdminServerRoute: AdminServerRoute,
+  AdminUsersRoute: AdminUsersRouteWithChildren,
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  LandingPageRoute: LandingPageRoute,
   _protectedRoute: _protectedRouteWithChildren,
+  AdminRoute: AdminRouteWithChildren,
   EmailVerifyRoute: EmailVerifyRoute,
   ForgotpasswordRoute: ForgotpasswordRoute,
-  LandingpageRoute: LandingpageRoute,
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
   ResetpasswordRoute: ResetpasswordRoute,

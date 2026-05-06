@@ -6,55 +6,75 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   HttpCode,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
 import { QuizzesService } from './quizzes.service';
 import { CreateQuizDto, UpdateQuizScoreDto } from './dto/quiz.dto';
 import { Quiz } from '@prisma/client';
+import { AuthGuard } from '../auth/auth.guard';
+import { EmailVerifiedGuard } from '../auth/guards/email-verified.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Controller('quizzes')
+@UseGuards(AuthGuard, EmailVerifiedGuard)
 export class QuizzesController {
   constructor(private readonly quizzesService: QuizzesService) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async createQuiz(@Body() dto: CreateQuizDto): Promise<Quiz> {
+  async createQuiz(
+    @CurrentUser('id') userId: string,
+    @Body() dto: CreateQuizDto,
+  ): Promise<Quiz> {
     return this.quizzesService.createQuiz(
-      dto.userId,
+      userId,
       dto.title,
       dto.questions,
       dto.noteId,
     );
   }
 
-  @Get('user/:userId')
-  async getUserQuizzes(@Param('userId') userId: string): Promise<unknown> {
-    return this.quizzesService.getUserQuizzes(userId);
+  @Get()
+  async getUserQuizzes(
+    @CurrentUser('id') userId: string,
+    @Query('cursor') cursor?: string,
+    @Query('limit') limit?: string,
+  ): Promise<unknown> {
+    if (!cursor && !limit) {
+      return this.quizzesService.getUserQuizzes(userId);
+    }
+    const parsedLimit = limit ? Number(limit) : 20;
+    return this.quizzesService.getUserQuizzesPaginated(userId, {
+      cursor,
+      limit: Number.isFinite(parsedLimit) ? parsedLimit : 20,
+    });
   }
 
-  @Get(':quizId/user/:userId')
+  @Get(':quizId')
   async getQuizById(
+    @CurrentUser('id') userId: string,
     @Param('quizId') quizId: string,
-    @Param('userId') userId: string,
   ): Promise<unknown> {
     return this.quizzesService.getQuizById(quizId, userId);
   }
 
-  @Put(':quizId/user/:userId/score')
+  @Put(':quizId/score')
   async updateQuizScore(
+    @CurrentUser('id') userId: string,
     @Param('quizId') quizId: string,
-    @Param('userId') userId: string,
     @Body() dto: UpdateQuizScoreDto,
   ): Promise<unknown> {
     return this.quizzesService.updateQuizScore(quizId, userId, dto.score);
   }
 
-  @Delete(':quizId/user/:userId')
+  @Delete(':quizId')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteQuiz(
+    @CurrentUser('id') userId: string,
     @Param('quizId') quizId: string,
-    @Param('userId') userId: string,
   ) {
     await this.quizzesService.deleteQuiz(quizId, userId);
   }

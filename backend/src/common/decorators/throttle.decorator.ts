@@ -3,8 +3,9 @@ import { SetMetadata } from '@nestjs/common';
 export const THROTTLE_KEY = 'throttle';
 
 export interface ThrottleOptions {
-  limit: number;
-  ttl: number;
+  limit?: number;
+  ttl?: number;
+  skip?: boolean;
   skipIf?: (context: any) => boolean;
 }
 

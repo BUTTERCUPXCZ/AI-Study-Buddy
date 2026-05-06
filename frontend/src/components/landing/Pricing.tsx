@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Link } from '@tanstack/react-router'
+import { Link, useNavigate } from '@tanstack/react-router'
 import { Check, X, Zap } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { memo, useState } from 'react'
@@ -12,12 +12,12 @@ import { useAuth } from '@/context/AuthContextDefinition'
 const Pricing = memo(function Pricing() {
 
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
 
   const handleUpgrade = async () => {
     if (!user) {
-      // Redirect to login/register
-      window.location.href = '/register'
+      navigate({ to: '/register' })
       return
     }
 

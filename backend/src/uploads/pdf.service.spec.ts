@@ -4,6 +4,7 @@ import { DatabaseService } from '../database/database.service';
 import { ConfigService } from '@nestjs/config';
 import { PdfNotesQueue } from '../jobs/queues/pdf-notes.queue';
 import { PdfUltraOptimizedQueue } from '../jobs/queues/pdf-ultra-optimized.queue';
+import { AiService } from '../ai/ai.service';
 
 describe('PdfService', () => {
   let service: PdfService;
@@ -36,6 +37,10 @@ describe('PdfService', () => {
       add: jest.fn(),
     };
 
+    const mockAiService = {
+      generateNotesFromPDFStream: jest.fn(),
+    } as unknown as AiService;
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PdfService,
@@ -46,6 +51,7 @@ describe('PdfService', () => {
           provide: PdfUltraOptimizedQueue,
           useValue: mockPdfUltraOptimizedQueue,
         },
+        { provide: AiService, useValue: mockAiService },
       ],
     }).compile();
 

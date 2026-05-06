@@ -40,14 +40,12 @@ class QuizService {
    */
   async generateQuizFromNote(
     noteId: string,
-    userId: string,
     noteTitle: string,
     noteContent: string
   ): Promise<GenerateQuizFromNoteResponse> {
     try {
       const response = await api.post('/ai/generate/quiz', {
         studyNotes: noteContent,
-        userId,
         title: `Quiz: ${noteTitle}`,
         noteId,
       });
@@ -61,11 +59,11 @@ class QuizService {
   }
 
   /**
-   * Get all quizzes for a user
+   * Get all quizzes for the current user
    */
-  async getUserQuizzes(userId: string): Promise<Quiz[]> {
+  async getUserQuizzes(): Promise<Quiz[]> {
     try {
-      const response = await api.get(`/quizzes/user/${userId}`);
+      const response = await api.get(`/quizzes`);
       return response.data;
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
@@ -78,9 +76,9 @@ class QuizService {
   /**
    * Get a specific quiz by ID
    */
-  async getQuiz(quizId: string, userId: string): Promise<Quiz> {
+  async getQuiz(quizId: string): Promise<Quiz> {
     try {
-      const response = await api.get(`/quizzes/${quizId}/user/${userId}`);
+      const response = await api.get(`/quizzes/${quizId}`);
       return response.data;
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
@@ -95,11 +93,10 @@ class QuizService {
    */
   async updateQuizScore(
     quizId: string,
-    userId: string,
     score: number
   ): Promise<Quiz> {
     try {
-      const response = await api.put(`/quizzes/${quizId}/user/${userId}/score`, {
+      const response = await api.put(`/quizzes/${quizId}/score`, {
         score,
       });
       return response.data;
@@ -114,9 +111,9 @@ class QuizService {
   /**
    * Delete a quiz
    */
-  async deleteQuiz(quizId: string, userId: string): Promise<void> {
+  async deleteQuiz(quizId: string): Promise<void> {
     try {
-      await api.delete(`/quizzes/${quizId}/user/${userId}`);
+      await api.delete(`/quizzes/${quizId}`);
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
       throw new Error(

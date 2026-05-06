@@ -4,6 +4,18 @@ import { RedisService } from '../redis/redis.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Note } from '@prisma/client';
 
+// Trim list responses to this many characters of content. The card UI
+// only displays the first ~150 chars as an excerpt, so 500 is enough for
+// the line-clamp + a small buffer. Fetching a full note is one extra
+// `GET /notes/:id` call away when the client genuinely needs it
+// (download, edit, view).
+const LIST_EXCERPT_CHARS = 500;
+
+function trimNoteForList<T extends Pick<Note, 'content'>>(note: T): T {
+  if (note.content.length <= LIST_EXCERPT_CHARS) return note;
+  return { ...note, content: note.content.slice(0, LIST_EXCERPT_CHARS) };
+}
+
 @Injectable()
 export class NotesService {
   private readonly logger = new Logger(NotesService.name);
@@ -41,6 +53,38 @@ export class NotesService {
   }
 
   /**
+   * Cursor-paginated notes listing. Returns at most `limit` notes ordered
+   * by createdAt DESC. `nextCursor` is the id of the last item — pass it
+   * back as `cursor` for the next page. Returns `nextCursor: null` when
+   * there are no more rows.
+   *
+   * Cursor pagination beats OFFSET because the DB never has to count and
+   * skip — it does an index range scan from the cursor row, which stays
+   * O(limit) regardless of how deep the user has scrolled.
+   */
+  async getUserNotesPaginated(
+    userId: string,
+    options: { cursor?: string; limit?: number } = {},
+  ): Promise<{ items: Note[]; nextCursor: string | null }> {
+    const limit = Math.max(1, Math.min(options.limit ?? 20, 100));
+    const items = await this.databaseService.note.findMany({
+      where: { userId },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: limit + 1,
+      ...(options.cursor && {
+        cursor: { id: options.cursor },
+        skip: 1,
+      }),
+    });
+    const hasMore = items.length > limit;
+    const page = hasMore ? items.slice(0, limit) : items;
+    return {
+      items: page.map((n) => trimNoteForList(n)),
+      nextCursor: hasMore ? page[page.length - 1].id : null,
+    };
+  }
+
+  /**
    * Get all notes for a user
    */
   async getUserNotes(userId: string): Promise<unknown> {
@@ -65,11 +109,13 @@ export class NotesService {
       where: { userId },
       orderBy: { createdAt: 'desc' },
     });
+    const trimmed = notes.map((n) => trimNoteForList(n));
 
-    // Cache the result
-    await this.redisService.set(cacheKey, JSON.stringify(notes), 3600); // Cache for 1 hour
+    // Cache the trimmed result. The full content is still available
+    // via getNoteById; the cache holds only the small list payload.
+    await this.redisService.set(cacheKey, JSON.stringify(trimmed), 3600);
 
-    return notes;
+    return trimmed;
   }
 
   /**

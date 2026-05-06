@@ -10,14 +10,34 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { Logger } from '@nestjs/common';
+// `cookie` ships without TS types; declare the small surface we use here
+// rather than pulling in @types/cookie just for parse().
+import { parse as parseCookieRaw } from 'cookie';
+const parseCookie = parseCookieRaw as (
+  raw: string,
+) => Record<string, string | undefined>;
 import { RedisService } from '../redis/redis.service';
+import { AuthService } from '../auth/auth.service';
+import { DatabaseService } from '../database/database.service';
+
+interface AuthenticatedSocketData {
+  userId?: string;
+}
+
+// S9 — WebSocket abuse limits.
+const WS_MAX_BUFFER_BYTES = 64 * 1024; // 64 KB — bigger than any legit job payload
+const WS_RATE_LIMIT_PER_SEC = 30; // messages/second per connection
+const WS_MAX_CONNS_PER_USER = 5; // sockets per user
 
 @WSGateway({
   cors: {
-    origin: '*', // Configure this based on your frontend URL
+    // Restrict to the configured frontend; never wildcard with credentials.
+    origin: process.env.FRONTEND_URL,
     credentials: true,
   },
-  namespace: '/jobs', // Namespace for job updates
+  namespace: '/jobs',
+  // S9 — cap a single WS frame so an abuser can't OOM the worker.
+  maxHttpBufferSize: WS_MAX_BUFFER_BYTES,
 })
 export class JobsWebSocketGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
@@ -26,20 +46,115 @@ export class JobsWebSocketGateway
   server: Server;
 
   private logger: Logger = new Logger('JobsWebSocketGateway');
-  private readonly JOB_UPDATES_CHANNEL = 'job-updates';
 
-  constructor(private readonly redisService: RedisService) {}
+  constructor(
+    private readonly redisService: RedisService,
+    private readonly authService: AuthService,
+    private readonly databaseService: DatabaseService,
+  ) {}
 
   afterInit() {
     this.logger.log('WebSocket Gateway initialized');
+
+    // Authenticate every socket using the access_token cookie sent during
+    // the handshake. This runs before handleConnection. Reject the
+    // handshake if no valid token is present.
+    this.server.use((socket, next) => {
+      const authenticate = async (): Promise<void> => {
+        const rawCookie = socket.handshake.headers?.cookie ?? '';
+        const parsed = parseCookie(rawCookie);
+        const token = parsed['access_token'];
+        if (!token) {
+          throw new Error('Authentication required');
+        }
+        const user = await this.authService.verifyToken(token);
+        if (!user?.id) {
+          throw new Error('Invalid token');
+        }
+        const data = socket.data as AuthenticatedSocketData;
+        data.userId = user.id;
+
+        // S9 — concurrent-connection cap per user. Refuse the handshake
+        // when this user already has WS_MAX_CONNS_PER_USER live sockets.
+        // The set is cleaned on disconnect; in the worst case stale entries
+        // are removed by the 1-day TTL we apply on add.
+        try {
+          const setKey = `ws:conns:${user.id}`;
+          await this.redisService.sadd(setKey, socket.id);
+          await this.redisService.expire(setKey, 24 * 60 * 60);
+          const members = await this.redisService.smembers(setKey);
+          if (members.length > WS_MAX_CONNS_PER_USER) {
+            await this.redisService.srem(setKey, socket.id);
+            throw new Error('Too many concurrent sessions');
+          }
+        } catch (err) {
+          if (
+            err instanceof Error &&
+            err.message === 'Too many concurrent sessions'
+          ) {
+            throw err;
+          }
+          // Redis blip — fail-open so legitimate users aren't blocked by
+          // a transient outage. Logged so the spike is visible.
+          this.logger.warn(
+            `WS conn-cap probe failed (allowing): ${
+              err instanceof Error ? err.message : 'unknown'
+            }`,
+          );
+        }
+      };
+
+      authenticate()
+        .then(() => next())
+        .catch((err: unknown) => {
+          this.logger.warn(
+            `WS auth failed: ${err instanceof Error ? err.message : 'unknown'}`,
+          );
+          next(new Error('Authentication failed'));
+        });
+    });
   }
 
   handleConnection(client: Socket) {
-    this.logger.log(`Client connected: ${client.id}`);
-    // Store client connection info in Redis
+    const data = client.data as AuthenticatedSocketData;
+    const userId = data.userId;
+    this.logger.log(`Client connected: ${client.id} (user ${userId ?? '?'})`);
+
+    // Auto-join the client to its own user-room. The server is the only
+    // source of truth for which user this socket belongs to.
+    if (userId) {
+      void client.join(`user:${userId}`);
+    }
+
+    // S9 — per-connection rate limit. Each inbound packet increments a
+    // 1-second Redis counter; when it crosses WS_RATE_LIMIT_PER_SEC we
+    // disconnect the offending socket. Real users sit at <1 msg/sec so
+    // this only catches automation.
+    if (userId) {
+      client.use((_packet, next) => {
+        const key = `ws:msg:${userId}:${client.id}`;
+        this.redisService
+          .incr(key)
+          .then(async (count) => {
+            if (count === 1) {
+              await this.redisService.expire(key, 1);
+            }
+            if (count > WS_RATE_LIMIT_PER_SEC) {
+              this.logger.warn(
+                `WS rate limit exceeded for user ${userId} on ${client.id} (${count} msg/sec)`,
+              );
+              client.disconnect(true);
+              return;
+            }
+            next();
+          })
+          .catch(() => next());
+      });
+    }
+
     this.storeClientConnection(client.id, {
       connectedAt: new Date().toISOString(),
-      address: client.handshake.address,
+      userId,
     }).catch((err) =>
       this.logger.error(
         `Failed to store client connection: ${(err as Error).message}`,
@@ -49,81 +164,91 @@ export class JobsWebSocketGateway
 
   async handleDisconnect(client: Socket) {
     this.logger.log(`Client disconnected: ${client.id}`);
-    // Remove client connection info from Redis
     await this.removeClientConnection(client.id);
+    // S9 — release this socket's slot in the per-user concurrent-connection
+    // set so the user can reconnect cleanly.
+    const data = client.data as AuthenticatedSocketData;
+    if (data.userId) {
+      try {
+        await this.redisService.srem(`ws:conns:${data.userId}`, client.id);
+      } catch {
+        /* best-effort */
+      }
+    }
   }
 
   /**
-   * Subscribe a client to job updates
+   * Subscribe a client to job updates. The client may pass `jobId` only;
+   * any client-supplied `userId` is ignored and the server uses the
+   * authenticated user from the cookie.
    */
   @SubscribeMessage('subscribe:jobs')
   async handleSubscribeToJobs(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { userId?: string; jobId?: string },
+    @MessageBody() data: { jobId?: string } | undefined,
   ) {
-    const room = data.jobId
-      ? `job:${data.jobId}`
-      : data.userId
-        ? `user:${data.userId}`
-        : 'all-jobs';
-    void client.join(room);
-    this.logger.log(`Client ${client.id} subscribed to ${room}`);
-
-    // Store subscription in Redis
-    void this.redisService
-      .sadd(`subscriptions:${client.id}`, room)
-      .catch((err) =>
-        this.logger.error(
-          `Failed to store subscription: ${(err as Error).message}`,
-        ),
-      );
-
-    // If subscribing to a specific job, send cached progress immediately
-    if (data.jobId) {
-      const cachedProgress: Record<string, unknown> | null =
-        await this.getJobProgress(data.jobId);
-      if (cachedProgress) {
-        this.logger.log(
-          `Sending cached progress for job ${data.jobId} to client ${client.id}`,
-        );
-        client.emit('job:progress', cachedProgress);
-      }
+    const sd = client.data as AuthenticatedSocketData;
+    const userId = sd.userId;
+    if (!userId) {
+      return { success: false, message: 'Not authenticated' };
     }
 
-    return { success: true, room, message: 'Subscribed to job updates' };
+    // For job-specific subscriptions, verify the user owns the job
+    // before joining the room.
+    if (data?.jobId) {
+      const owned = await this.userOwnsJob(userId, data.jobId);
+      if (!owned) {
+        this.logger.warn(
+          `User ${userId} attempted to subscribe to non-owned job ${data.jobId}`,
+        );
+        return { success: false, message: 'Forbidden' };
+      }
+      const room = `job:${data.jobId}`;
+      void client.join(room);
+
+      void this.redisService
+        .sadd(`subscriptions:${client.id}`, room)
+        .catch((err) =>
+          this.logger.error(
+            `Failed to store subscription: ${(err as Error).message}`,
+          ),
+        );
+
+      const cachedProgress = await this.getJobProgress(data.jobId);
+      if (cachedProgress) {
+        client.emit('job:progress', cachedProgress);
+      }
+      return { success: true, room, message: 'Subscribed to job updates' };
+    }
+
+    // Otherwise the user-room is already joined on connect; nothing to do.
+    return {
+      success: true,
+      room: `user:${userId}`,
+      message: 'Already subscribed to user updates',
+    };
   }
 
-  /**
-   * Unsubscribe from job updates
-   */
   @SubscribeMessage('unsubscribe:jobs')
   handleUnsubscribeFromJobs(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { userId?: string; jobId?: string },
+    @MessageBody() data: { jobId?: string } | undefined,
   ) {
-    const room = data.jobId
-      ? `job:${data.jobId}`
-      : data.userId
-        ? `user:${data.userId}`
-        : 'all-jobs';
-    void client.leave(room);
-    this.logger.log(`Client ${client.id} unsubscribed from ${room}`);
-
-    // Remove subscription from Redis
-    void this.redisService
-      .srem(`subscriptions:${client.id}`, room)
-      .catch((err) =>
-        this.logger.error(
-          `Failed to remove subscription: ${(err as Error).message}`,
-        ),
-      );
-
-    return { success: true, room, message: 'Unsubscribed from job updates' };
+    if (data?.jobId) {
+      const room = `job:${data.jobId}`;
+      void client.leave(room);
+      void this.redisService
+        .srem(`subscriptions:${client.id}`, room)
+        .catch((err) =>
+          this.logger.error(
+            `Failed to remove subscription: ${(err as Error).message}`,
+          ),
+        );
+      return { success: true, room };
+    }
+    return { success: true };
   }
 
-  /**
-   * Emit job status update to subscribed clients
-   */
   emitJobUpdate(
     jobId: string,
     status: string,
@@ -147,57 +272,32 @@ export class JobsWebSocketGateway
       timestamp: new Date().toISOString(),
     };
 
-    // Cache the progress in Redis for late subscribers
     void this.cacheJobProgress(jobId, updateData);
 
-    // Emit to both user room and job-specific room
     this.server.to(userRoom).emit('job:progress', updateData);
     this.server.to(jobRoom).emit('job:progress', updateData);
-
-    this.logger.log(
-      `Job update emitted for job ${jobId} to ${userRoom} and ${jobRoom}`,
-    );
   }
 
-  /**
-   * Emit job completion
-   */
-  async emitJobCompleted(jobId: string, result: any) {
+  async emitJobCompleted(jobId: string, result: unknown) {
     const payload = {
       jobId,
       status: 'completed',
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       result,
       timestamp: new Date().toISOString(),
     };
 
     await this.storeJobUpdate(jobId, payload);
 
-    // Emit to job-specific room
     this.server.to(`job:${jobId}`).emit('job:completed', payload);
-    this.logger.log(`Emitted job:completed to job:${jobId}`);
 
-    // Emit to user room if userId is provided
     if (result && typeof result === 'object' && 'userId' in result) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      const userId = result.userId as string;
-      this.server.to(`user:${userId}`).emit('job:completed', payload);
-      this.logger.log(`Emitted job:completed to user:${userId}`);
-    } else {
-      this.logger.warn(
-        `No userId found in result for job ${jobId}, only job room notified`,
-      );
+      const userId = (result as { userId?: string }).userId;
+      if (userId) {
+        this.server.to(`user:${userId}`).emit('job:completed', payload);
+      }
     }
-
-    // Emit to all jobs room as fallback
-    this.server.to('all-jobs').emit('job:completed', payload);
-
-    this.logger.log(`Job completed notification sent for job ${jobId}`);
   }
 
-  /**
-   * Emit job error
-   */
   async emitJobError(jobId: string, error: any) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     const payload = {
@@ -209,25 +309,16 @@ export class JobsWebSocketGateway
 
     await this.storeJobUpdate(jobId, payload);
 
-    // Emit to job-specific room
     this.server.to(`job:${jobId}`).emit('job:error', payload);
 
-    // Emit to user room if userId is provided in error
-
     if (error && typeof error === 'object' && 'userId' in error) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      this.server.to(`user:${error.userId}`).emit('job:error', payload);
+      const userId = (error as { userId?: string }).userId;
+      if (userId) {
+        this.server.to(`user:${userId}`).emit('job:error', payload);
+      }
     }
-
-    // Emit to all jobs room
-    this.server.to('all-jobs').emit('job:error', payload);
-
-    this.logger.error(`Job error notification sent for job ${jobId}`, error);
   }
 
-  /**
-   * Emit job progress update
-   */
   emitJobProgress(
     jobId: string,
     progress: number,
@@ -242,26 +333,57 @@ export class JobsWebSocketGateway
       timestamp: new Date().toISOString(),
     };
 
-    // Cache the progress in Redis for late subscribers (TTL: 10 minutes)
     void this.cacheJobProgress(jobId, payload);
 
-    // Emit to job-specific room
     this.server.to(`job:${jobId}`).emit('job:progress', payload);
 
-    // Also emit to user room if userId is provided
     if (userId) {
       this.server.to(`user:${userId}`).emit('job:progress', payload);
-      this.logger.log(
-        `Job progress update for job ${jobId}: ${progress}% (rooms: job:${jobId}, user:${userId})`,
-      );
-    } else {
-      this.logger.log(
-        `Job progress update for job ${jobId}: ${progress}% (room: job:${jobId})`,
-      );
     }
   }
 
-  // Redis helper methods
+  /**
+   * Streams a partial AI-generated content chunk to the user. Used by
+   * the notes worker so the UI can render text as it generates
+   * (ChatGPT-style typing). Not cached — these arrive at high
+   * frequency and are transient by design.
+   */
+  emitJobNotesChunk(
+    jobId: string,
+    chunk: string,
+    accumulated: string,
+    userId?: string,
+  ) {
+    const payload = {
+      jobId,
+      chunk,
+      accumulated,
+      timestamp: new Date().toISOString(),
+    };
+
+    this.server.to(`job:${jobId}`).emit('job:notes:chunk', payload);
+
+    if (userId) {
+      this.server.to(`user:${userId}`).emit('job:notes:chunk', payload);
+    }
+  }
+
+  // ---------- Helpers ----------
+
+  private async userOwnsJob(userId: string, jobId: string): Promise<boolean> {
+    try {
+      const job = await this.databaseService.job.findUnique({
+        where: { jobId },
+        select: { userId: true },
+      });
+      if (!job) return false;
+      // If the job has no userId attached (legacy rows), permit access; new
+      // rows always have a userId, so this is a one-way migration.
+      return !job.userId || job.userId === userId;
+    } catch {
+      return false;
+    }
+  }
 
   private async storeClientConnection(clientId: string, data: any) {
     try {
@@ -270,7 +392,7 @@ export class JobsWebSocketGateway
         'connection',
         JSON.stringify(data),
       );
-      await this.redisService.expire(`client:${clientId}`, 3600); // 1 hour expiry
+      await this.redisService.expire(`client:${clientId}`, 3600);
     } catch (error) {
       this.logger.error(
         `Failed to store client connection: ${(error as Error).message}`,
@@ -295,9 +417,7 @@ export class JobsWebSocketGateway
     try {
       const key = `job-history:${jobId}`;
       await this.redisService.lpush(key, JSON.stringify(payload));
-      // Keep only last 100 updates
       await this.redisService.ltrim(key, 0, 99);
-      // Set expiry to 24 hours
       await this.redisService.expire(key, 86400);
     } catch (error) {
       this.logger.error(
@@ -306,31 +426,23 @@ export class JobsWebSocketGateway
     }
   }
 
-  /**
-   * Get job history from Redis
-   */
   async getJobHistory(jobId: string, limit: number = 10) {
     try {
       const key = `job-history:${jobId}`;
       const history = await this.redisService.lrange(key, 0, limit - 1);
-
       return history.map((item) => JSON.parse(item) as unknown);
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(`Failed to get job history: ${errorMessage}`);
+      this.logger.error(
+        `Failed to get job history: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
       return [];
     }
   }
 
-  /**
-   * Cache the latest job progress in Redis
-   */
   private async cacheJobProgress(jobId: string, payload: any) {
     try {
       const key = `job-progress:${jobId}`;
-      await this.redisService.set(key, JSON.stringify(payload), 600); // 10 min TTL
-      this.logger.debug(`Cached progress for job ${jobId}`);
+      await this.redisService.set(key, JSON.stringify(payload), 600);
     } catch (error) {
       this.logger.error(
         `Failed to cache job progress: ${(error as Error).message}`,
@@ -338,9 +450,6 @@ export class JobsWebSocketGateway
     }
   }
 
-  /**
-   * Get cached job progress from Redis
-   */
   private async getJobProgress(
     jobId: string,
   ): Promise<Record<string, unknown> | null> {
@@ -351,27 +460,16 @@ export class JobsWebSocketGateway
         return JSON.parse(cached) as Record<string, unknown>;
       }
       return null;
-    } catch (error) {
-      this.logger.error(
-        `Failed to get cached job progress: ${(error as Error).message}`,
-      );
+    } catch {
       return null;
     }
   }
 
-  /**
-   * Broadcast message to all connected clients
-   */
   broadcastToAll(event: string, data: any) {
     this.server.emit(event, data);
-    this.logger.log(`Broadcast message: ${event}`);
   }
 
-  /**
-   * Send message to specific user
-   */
   emitToUser(userId: string, event: string, data: any) {
     this.server.to(`user:${userId}`).emit(event, data);
-    this.logger.log(`Message sent to user ${userId}: ${event}`);
   }
 }

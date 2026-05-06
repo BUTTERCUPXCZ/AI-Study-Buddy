@@ -13,6 +13,7 @@ import NotesService from '@/services/NotesService'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { sanitizeMarkdown, REACT_MARKDOWN_DISALLOWED } from '@/lib/sanitizeMarkdown'
 
 export const Route = createFileRoute('/__protected/notes/$noteId')({
   component: RouteComponent,
@@ -33,7 +34,7 @@ function RouteComponent() {
     if (user?.id) {
       queryClient.prefetchQuery({
         queryKey: ['notes', user.id],
-        queryFn: () => NotesService.getUserNotes(user.id),
+        queryFn: () => NotesService.getUserNotes(),
         staleTime: 1000 * 60 * 5, // 5 minutes
       })
     }
@@ -150,8 +151,10 @@ function RouteComponent() {
       {/* Content - ChatGPT Style */}
       <div className="bg-background rounded-lg mb-6">
         <div className="prose prose-slate dark:prose-invert max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-h1:text-3xl prose-h1:mt-8 prose-h1:mb-4 prose-h2:text-2xl prose-h2:mt-8 prose-h2:mb-4 prose-h3:text-xl prose-h3:mt-6 prose-h3:mb-3 prose-p:text-base prose-p:leading-7 prose-p:mb-4 prose-li:my-1 prose-ul:my-4 prose-ol:my-4 prose-strong:font-semibold prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-code:before:content-[''] prose-code:after:content-[''] prose-pre:bg-muted prose-pre:border prose-pre:rounded-lg prose-pre:p-4 prose-pre:overflow-x-auto">
-          <ReactMarkdown 
+          <ReactMarkdown
             remarkPlugins={[remarkGfm]}
+            disallowedElements={REACT_MARKDOWN_DISALLOWED}
+            unwrapDisallowed
             components={{
               h1: ({...props}) => <h1 className="text-3xl font-bold mt-8 mb-4 first:mt-0" {...props} />,
               h2: ({...props}) => <h2 className="text-2xl font-bold mt-8 mb-4 first:mt-0" {...props} />,
@@ -185,7 +188,7 @@ function RouteComponent() {
               td: ({...props}) => <td className="px-4 py-2 text-sm" {...props} />,
             }}
           >
-            {note.content}
+            {sanitizeMarkdown(note.content)}
           </ReactMarkdown>
         </div>
       </div>

@@ -1,54 +1,63 @@
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router'
-import { api } from '@/lib/api'
+import { authService } from '@/services/AuthService'
+import DashboardSkeleton from '@/components/layout/DashboardSkeleton'
+import webSocketService from '@/services/WebSocketService'
+import { useEffect } from 'react'
 
-// Cache for auth check to avoid repeated API calls during navigation
-let authCache: { user: unknown; timestamp: number } | null = null
-const AUTH_CACHE_DURATION = 30000 // 30 seconds - aggressive caching for smooth navigation
+const AUTH_CACHE_KEY = 'auth_user_cache'
+const CACHE_DURATION = 5 * 60 * 1000
+
+function getCachedUser(): unknown | null {
+  try {
+    const cached = sessionStorage.getItem(AUTH_CACHE_KEY)
+    if (!cached) return null
+    const parsed = JSON.parse(cached)
+    if (Date.now() - parsed.timestamp > CACHE_DURATION) return null
+    return parsed.data
+  } catch {
+    return null
+  }
+}
 
 export const Route = createFileRoute('/__protected')({
   beforeLoad: async ({ location }) => {
-    // Check if we have a valid cached auth state
-    if (authCache && Date.now() - authCache.timestamp < AUTH_CACHE_DURATION) {
-      return { user: authCache.user }
+    const cached = getCachedUser()
+    if (cached) {
+      return { user: cached }
     }
 
-    // Check authentication by calling the backend /auth/me endpoint
-    // The HTTP-only cookie will be sent automatically with the request
     try {
-      const response = await api.get('/auth/me')
-      
-      if (response.data) {
-        // User is authenticated via cookie - cache the result
-        authCache = {
-          user: response.data,
-          timestamp: Date.now()
-        }
-        return { user: response.data }
+      const user = await authService.getCurrentUser()
+      if (!user) {
+        throw redirect({
+          to: '/login',
+          search: { redirect: location.href },
+        })
       }
-      
-      // No valid user data - clear cache
-      authCache = null
+      return { user }
+    } catch {
       throw redirect({
         to: '/login',
-        search: {
-          redirect: location.href,
-        }
-      })
-    } catch (error) {
-      // Authentication failed - clear cache and redirect to login
-      authCache = null
-      console.error('[Auth] Authentication check failed:', error);
-      throw redirect({
-        to: '/login',
-        search: {
-          redirect: location.href,
-        }
+        search: { redirect: location.href },
       })
     }
   },
   component: RouteComponent,
+  // Renders instantly while beforeLoad's network call to /auth/me is in
+  // flight — the user sees structure immediately instead of a blank page.
+  pendingComponent: DashboardSkeleton,
+  // Enforce the skeleton fallback even on fast networks where TanStack
+  // Router would otherwise blink straight to the route.
+  pendingMs: 0,
 })
 
 function RouteComponent() {
+  // One-time WS connect at the protected layer. All children become
+  // pure subscribers via useJobWebSocket → no per-page handshake cost.
+  useEffect(() => {
+    if (!webSocketService.isConnected()) {
+      webSocketService.connect()
+    }
+  }, [])
   return <Outlet />
 }

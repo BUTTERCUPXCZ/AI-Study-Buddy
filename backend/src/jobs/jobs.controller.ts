@@ -1,8 +1,20 @@
-import { Controller, Get, Param, Query, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  Query,
+  UseGuards,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { JobsService } from './jobs.service';
 import { PdfUltraOptimizedQueue } from './queues/pdf-ultra-optimized.queue';
+import { AuthGuard } from '../auth/auth.guard';
+import { EmailVerifiedGuard } from '../auth/guards/email-verified.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Controller('jobs')
+@UseGuards(AuthGuard, EmailVerifiedGuard)
 export class JobsController {
   constructor(
     private readonly jobsService: JobsService,
@@ -10,12 +22,21 @@ export class JobsController {
   ) {}
 
   /**
-   * Get a specific job by jobId
-   * GET /jobs/:jobId
+   * Get a specific job by jobId — must be owned by the requesting user
    */
   @Get(':jobId')
-  async getJob(@Param('jobId') jobId: string) {
+  async getJob(
+    @CurrentUser('id') userId: string,
+    @Param('jobId') jobId: string,
+  ) {
     const job = await this.jobsService.getJob(jobId);
+    if (!job) {
+      throw new NotFoundException('Job not found');
+    }
+    const ownerId = (job as { userId?: string | null }).userId;
+    if (ownerId && ownerId !== userId) {
+      throw new ForbiddenException('Not your job');
+    }
     return {
       success: true,
       job,
@@ -23,12 +44,11 @@ export class JobsController {
   }
 
   /**
-   * Get jobs for a specific user
-   * GET /jobs/user/:userId
+   * Get jobs for the current user
    */
-  @Get('user/:userId')
+  @Get('user/me')
   async getUserJobs(
-    @Param('userId') userId: string,
+    @CurrentUser('id') userId: string,
     @Query('limit') limit?: string,
   ) {
     const jobs = await this.jobsService.getUserJobs(
@@ -43,61 +63,21 @@ export class JobsController {
   }
 
   /**
-   * Get jobs for a specific queue
-   * GET /jobs/queue/:queueName
-   */
-  @Get('queue/:queueName')
-  async getQueueJobs(
-    @Param('queueName') queueName: string,
-    @Query('limit') limit?: string,
-  ) {
-    const jobs = await this.jobsService.getQueueJobs(
-      queueName,
-      limit ? parseInt(limit, 10) : 50,
-    );
-    return {
-      success: true,
-      count: jobs.length,
-      jobs,
-    };
-  }
-
-  /**
-   * Clean up old completed jobs
-   * DELETE /jobs/cleanup
-   */
-  @Delete('cleanup')
-  async cleanupJobs(@Query('days') days?: string) {
-    const result = await this.jobsService.cleanupOldJobs(
-      days ? parseInt(days, 10) : 7,
-    );
-    return {
-      success: true,
-      message: `Cleaned up ${result.count} old jobs`,
-      count: result.count,
-    };
-  }
-
-  /**
-   * Get ultra-optimized queue metrics
-   * GET /jobs/ultra-optimized/metrics
-   */
-  @Get('ultra-optimized/metrics')
-  async getUltraOptimizedMetrics() {
-    const metrics = await this.ultraOptimizedQueue.getQueueMetrics();
-    return {
-      success: true,
-      metrics,
-    };
-  }
-
-  /**
-   * Get ultra-optimized job status
-   * GET /jobs/ultra-optimized/:jobId
+   * Get ultra-optimized job status — must be owned by the requesting user
    */
   @Get('ultra-optimized/:jobId')
-  async getUltraOptimizedJob(@Param('jobId') jobId: string) {
+  async getUltraOptimizedJob(
+    @CurrentUser('id') userId: string,
+    @Param('jobId') jobId: string,
+  ) {
     const job = await this.ultraOptimizedQueue.getJobStatus(jobId);
+    if (!job) {
+      throw new NotFoundException('Job not found');
+    }
+    const ownerId = (job as { userId?: string | null }).userId;
+    if (ownerId && ownerId !== userId) {
+      throw new ForbiddenException('Not your job');
+    }
     return {
       success: true,
       job,

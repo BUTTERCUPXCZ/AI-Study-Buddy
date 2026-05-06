@@ -24,10 +24,19 @@ services:
         value: production
       - key: PORT
         value: 3000
+      # DATABASE_URL must point at the POOLED connection (PgBouncer in
+      # transaction mode). Append ?pgbouncer=true&connection_limit=10 so
+      # Prisma disables prepared statements (PgBouncer breaks them in
+      # transaction mode) and caps each instance's pool size. With N web
+      # instances + M workers, total connections = (N+M) * 10. Keep this
+      # well under the Postgres tier's max_connections.
       - key: DATABASE_URL
         fromDatabase:
           name: ai-study-buddy-db
           property: connectionString
+      # DIRECT_URL is the raw, non-pooled connection. Prisma uses it only
+      # for migrations (which need session-level features PgBouncer
+      # transaction mode doesn't expose).
       - key: DIRECT_URL
         fromDatabase:
           name: ai-study-buddy-db

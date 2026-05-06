@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Label } from '@/components/ui/label'
-import { ArrowLeft, CheckCircle2, XCircle, Award, RotateCcw } from 'lucide-react'
+import { ArrowLeft, ArrowRight, CheckCircle2, XCircle, Award, RotateCcw } from 'lucide-react'
 import AppLayout from '@/components/app-layout'
 import { useAuth } from '@/context/AuthContextDefinition'
 import { useQuiz, useUpdateQuizScore } from '@/hooks/useQuiz'
@@ -60,36 +60,30 @@ function RouteComponent() {
   const handleAnswerChange = (questionIndex: number, answer: string) => {
     if (showResults || showFeedback) return
     
-    // Save the answer
-    const newAnswers = {
-      ...userAnswers,
+    setUserAnswers(prev => ({
+      ...prev,
       [questionIndex]: answer,
-    }
-    setUserAnswers(newAnswers)
+    }))
     
-    // Show feedback immediately
     setShowFeedback(true)
+  }
+
+  const handleNext = () => {
+    setShowFeedback(false)
     
-    // After 2 seconds, move to next question or submit
-    setTimeout(() => {
-      setShowFeedback(false)
-      
-      if (questionIndex < questions.length - 1) {
-        // Move to next question
-        setCurrentQuestionIndex(questionIndex + 1)
-      } else {
-        // All questions answered, auto-submit
-        handleAutoSubmit(newAnswers)
-      }
-    }, 2000)
+    if (currentQuestionIndex < questions.length - 1) {
+      setCurrentQuestionIndex(prev => prev + 1)
+    } else {
+      handleSubmit()
+    }
   }
   
-  const handleAutoSubmit = async (finalAnswers = userAnswers) => {
+  const handleSubmit = async () => {
     setIsSubmitting(true)
     
     let correctCount = 0
     questions.forEach((question, index) => {
-      if (finalAnswers[index] === question.correctAnswer) {
+      if (userAnswers[index] === question.correctAnswer) {
         correctCount++
       }
     })
@@ -104,7 +98,6 @@ function RouteComponent() {
       })
       
       setShowResults(true)
-      // Scroll to top to show results
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch (error) {
       console.error('Error saving score:', error)
@@ -273,6 +266,21 @@ function RouteComponent() {
                           {isCorrect ? '✓ Correct!' : 'ℹ Explanation:'}
                         </p>
                         <p className="text-sm">{question.explanation}</p>
+                      </div>
+                    )}
+
+                    {showQuestionFeedback && userAnswer && (
+                      <div className="flex justify-end pt-2">
+                        <Button
+                          onClick={handleNext}
+                          className="gap-2"
+                        >
+                          {currentQuestionIndex < questions.length - 1 ? (
+                            <>Next Question <ArrowRight className="h-4 w-4" /></>
+                          ) : (
+                            'See Results'
+                          )}
+                        </Button>
                       </div>
                     )}
                   </CardContent>

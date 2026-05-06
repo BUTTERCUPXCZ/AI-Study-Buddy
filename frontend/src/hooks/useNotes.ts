@@ -1,28 +1,30 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import NotesService from '@/services/NotesService';
 
+// userId is kept in the query key for cache scoping; the service call
+// derives userId server-side from the auth cookie.
 export const useNotes = (userId: string | undefined) => {
   return useQuery({
     queryKey: ['notes', userId],
-    queryFn: () => NotesService.getUserNotes(userId!),
+    queryFn: () => NotesService.getUserNotes(),
     enabled: !!userId,
-    staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
-    gcTime: 1000 * 60 * 10, // Cache for 10 minutes (formerly cacheTime)
-    refetchOnMount: false, // Don't refetch if data is still fresh (within staleTime)
-    refetchOnWindowFocus: false, // Don't refetch on focus - reduces unnecessary calls
-    refetchOnReconnect: true, // Still refetch when connection is restored
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 10,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 };
 
 export const useNote = (noteId: string, userId: string) => {
   return useQuery({
     queryKey: ['note', noteId, userId],
-    queryFn: () => NotesService.getNote(noteId, userId),
+    queryFn: () => NotesService.getNote(noteId),
     enabled: !!noteId && !!userId,
-    staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
-    gcTime: 1000 * 60 * 10, // Cache for 10 minutes
-    refetchOnWindowFocus: false, // Don't refetch on focus - data doesn't change often
-    refetchOnMount: false, // Don't refetch if still fresh
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 10,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 };
 
@@ -31,17 +33,13 @@ export const useDeleteNote = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ noteId, userId }: { noteId: string; userId: string }) =>
-      NotesService.deleteNote(noteId, userId),
-    // Optimistic update for delete
+    mutationFn: ({ noteId }: { noteId: string; userId: string }) =>
+      NotesService.deleteNote(noteId),
     onMutate: async ({ noteId, userId }) => {
-      // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['notes', userId] });
 
-      // Snapshot the previous value
       const previousNotes = queryClient.getQueryData(['notes', userId]);
 
-      // Optimistically remove the note
       queryClient.setQueryData(['notes', userId], (old: { id: string }[]) =>
         old ? old.filter(note => note.id !== noteId) : []
       );
@@ -49,15 +47,12 @@ export const useDeleteNote = () => {
       return { previousNotes };
     },
     onError: (_, variables, context) => {
-      // If the mutation fails, roll back
       if (context?.previousNotes) {
         queryClient.setQueryData(['notes', variables.userId], context.previousNotes);
       }
     },
     onSuccess: (_, variables) => {
-      // Invalidate to ensure consistency
       queryClient.invalidateQueries({ queryKey: ['notes', variables.userId] });
-      // Remove the individual note from cache
       queryClient.removeQueries({ queryKey: ['note', variables.noteId, variables.userId] });
     },
   });

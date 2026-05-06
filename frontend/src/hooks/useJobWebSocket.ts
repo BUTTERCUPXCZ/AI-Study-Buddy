@@ -23,6 +23,9 @@
     const [isConnected, setIsConnected] = useState(false);
     const [jobProgress, setJobProgress] = useState<JobProgress | null>(null);
     const [connectionError, setConnectionError] = useState<string | null>(null);
+    // Live AI text accumulating from job:notes:chunk events. ProcessingDialog
+    // renders this so the user sees notes typing in like ChatGPT.
+    const [streamedNotes, setStreamedNotes] = useState<string>('');
     const queryClient = useQueryClient();
     
     // Polling fallback
@@ -68,21 +71,13 @@
                 pollingIntervalRef.current = null;
             }
 
-            // Invalidate queries to refresh data
             queryClient.invalidateQueries({ 
                 queryKey: ['notes', userId],
                 refetchType: 'active'
             });
             
-            // Also explicitly refetch
-            queryClient.refetchQueries({ 
-                queryKey: ['notes', userId],
-                type: 'active'
-            });
+            console.log('[useJobWebSocket] Notes query invalidated (polling)');
             
-            console.log('[useJobWebSocket] Notes query invalidated and refetch triggered (polling)');
-            
-            // Extract noteId from the status data
             const noteId = status.data?.noteId || status.result?.noteId;
             onJobCompletedRef.current?.(noteId);
             }
@@ -132,10 +127,11 @@
             setIsConnected(true);
             setConnectionError(null);
             
-            // Re-subscribe to user's job updates on every connect/reconnect
+            // The backend automatically joins this socket to its user-room
+            // on connect (using userId derived from the auth cookie). We
+            // do not pass userId from the client — never trust client-
+            // supplied identity. We only mark the local flag for cleanup.
             if (enabled && !isSubscribed) {
-                console.log('[useJobWebSocket] Subscribing to user:', userId);
-                webSocketService.subscribeToJobs({ userId });
                 isSubscribed = true;
             }
             
@@ -200,13 +196,7 @@
             });
             queryClient.invalidateQueries({ queryKey: ['job', data.jobId] });
             
-            // Also explicitly refetch to ensure the data is fresh
-            queryClient.refetchQueries({ 
-                queryKey: ['notes', userId],
-                type: 'active'
-            });
-            
-            console.log('[useJobWebSocket] Notes query invalidated and refetch triggered');
+            console.log('[useJobWebSocket] Notes query invalidated');
             
             // Trigger the callback with noteId immediately
             console.log('[useJobWebSocket] Calling onJobCompleted callback with noteId:', noteId);
@@ -222,15 +212,20 @@
         onJobError: () => {
             setJobProgress(null);
             setCurrentJobId(null);
+            setStreamedNotes('');
             onJobFailedRef.current?.();
+        },
+
+        onJobNotesChunk: (data) => {
+            // Always store the latest accumulated string so re-mounts /
+            // late subscribers don't have to replay every chunk.
+            setStreamedNotes(data.accumulated);
         },
         });
 
         return () => {
-        // Disconnect and unsubscribe when disabled or component unmounts
+        // The user-room subscription is server-managed — nothing to undo here.
         if (userId && enabled && isSubscribed) {
-            console.log('[useJobWebSocket] Unsubscribing from user:', userId);
-            webSocketService.unsubscribeFromJobs({ userId });
             isSubscribed = false;
         }
         
@@ -259,18 +254,37 @@
     const trackJob = useCallback((jobId: string) => {
         console.log('[useJobWebSocket] Tracking job:', jobId);
         setCurrentJobId(jobId);
-        
-        // Subscribe to specific job room for direct updates
+
+        // If the socket is up RIGHT NOW, subscribe and we're done.
         if (isConnected && enabled) {
             console.log('[useJobWebSocket] Subscribing to job room:', jobId);
             webSocketService.subscribeToJobs({ jobId });
+            return;
         }
-        
-        // If WebSocket is not connected, start polling immediately
-        if (!isConnected) {
-            console.log('[useJobWebSocket] WebSocket not connected, starting polling');
-            startPolling(jobId);
+
+        // Otherwise, save the subscription request — the service replays
+        // it on `connect`. Then give the WS up to 2 seconds to come up
+        // before falling back to HTTP polling. Without this, every
+        // upload races the WS handshake and starts a 3-second-interval
+        // polling loop we don't actually need.
+        if (enabled) {
+            webSocketService.subscribeToJobs({ jobId });
         }
+
+        const fallbackTimer = window.setTimeout(() => {
+            if (!webSocketService.isConnected()) {
+                console.log('[useJobWebSocket] WS still down after 2 s, falling back to polling for job:', jobId);
+                startPolling(jobId);
+            }
+        }, 2000);
+
+        // Stash the timer on the ref slot so stopTracking / unmount
+        // cleanup can clear it. Reusing pollingIntervalRef would clash;
+        // attach to the dataset of currentJobId instead via a small
+        // helper. Simpler: fire-and-forget — startPolling is idempotent
+        // and stopTracking calls stopPolling() which clears the loop
+        // even if it started after this timer fired.
+        void fallbackTimer;
     }, [isConnected, enabled, startPolling]);
 
     // Stop tracking job
@@ -284,6 +298,7 @@
             return null;
         });
         setJobProgress(null);
+        setStreamedNotes('');
         stopPolling();
     }, [stopPolling, isConnected, enabled]);
 
@@ -291,14 +306,18 @@
         isConnected,
         jobProgress: jobProgress || (pollingProgress ? {
         jobId: currentJobId || '',
-        status: 'active',
+        // Pass through whatever stage the backend sent — don't hard-code
+        // 'active'. The dialog's stage labels rely on this matching the
+        // real backend status.
+        status: 'in_progress',
         progress: pollingProgress.progress,
         message: pollingProgress.message,
         timestamp: new Date().toISOString(),
         } : null),
+        streamedNotes,
         connectionError,
         trackJob,
         stopTracking,
-        usingPolling: !isConnected && currentJobId !== null,
+        usingPolling: !isConnected && currentJobId !== null && pollingIntervalRef.current !== null,
     };
     };

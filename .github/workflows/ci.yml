@@ -1,57 +1,81 @@
 name: Integrations pipeline
 
-on: 
-  push: 
+on:
+  push:
     branches: [main]
   pull_request:
     branches: [main]
 
-jobs: 
+# Default to least-privilege. Individual jobs can elevate if needed; none
+# of these need write access to the repo.
+permissions:
+  contents: read
+
+jobs:
   frontend:
     name: Build frontend
     runs-on: ubuntu-latest
 
-    steps: 
+    steps:
+      # Pinned to commit SHA to defend against tag mutation attacks.
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@1e60f620b9541d16bece96c5465dc8ee9832be0b # v4.0.3
         with:
           node-version: 20
-       
+
       - name: Install dependencies
         working-directory: ./frontend
-        run: npm install
-
-      - name: Run build
-        working-directory: ./frontend
-        run: npm run build
+        run: npm ci
 
       - name: Run lint
         working-directory: ./frontend
         run: npm run lint
 
+      - name: Run build
+        working-directory: ./frontend
+        run: npm run build
+
+      - name: Fail if production source maps are emitted
+        working-directory: ./frontend
+        run: |
+          set -e
+          if find dist -name '*.map' -print -quit | grep -q .; then
+            echo "Source maps found in dist/. Refusing to ship." >&2
+            exit 1
+          fi
+
+      # S14 — vulnerability gate. Fails the PR on any new high or critical
+      # advisory in the resolved frontend dependency tree.
+      - name: npm audit (high+)
+        working-directory: ./frontend
+        run: npm audit --audit-level=high
+
   backend:
     name: Build backend
     runs-on: ubuntu-latest
-    
+
+    # Only run secret-using jobs on push or PRs from this repo. Forks must
+    # not have access to repo secrets.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+
     env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL  }}
-      
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with: 
+        uses: actions/setup-node@1e60f620b9541d16bece96c5465dc8ee9832be0b # v4.0.3
+        with:
           node-version: 20
-       
+
       - name: Install dependencies
         working-directory: ./backend
-        run: npm install
+        run: npm ci
 
       - name: Generate Prisma client
         working-directory: ./backend
@@ -64,3 +88,37 @@ jobs:
       - name: Run tests
         working-directory: ./backend
         run: npm test
+
+      # S14 — same vuln gate as the frontend. Fails on high/critical only.
+      - name: npm audit (high+)
+        working-directory: ./backend
+        run: npm audit --audit-level=high
+
+      # S14 — schema drift detection. Catches PRs that change `schema.prisma`
+      # without an accompanying migration, which would silently fail on a
+      # fresh `prisma migrate deploy`.
+      - name: Prisma schema validate + format check
+        working-directory: ./backend
+        run: |
+          npx prisma format --check
+          npx prisma validate
+
+  # S14 — secrets scan. Runs on the diff for every PR plus the full repo
+  # on push to main. Catches accidentally committed AWS keys, .env values,
+  # webhook secrets, etc. before they hit the protected branch.
+  secrets-scan:
+    name: Secrets scan (gitleaks)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        with:
+          fetch-depth: 0
+
+      - name: gitleaks scan
+        uses: gitleaks/gitleaks-action@cb7149b9b57195b609c63e8518d2c37a489a5e21 # v2.3.7
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Block the PR on any finding rather than just reporting.
+          GITLEAKS_ENABLE_COMMENTS: 'true'

@@ -1,16 +1,17 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
-import { ArrowLeft, Eye, EyeOff } from 'lucide-react'
+import { ArrowLeft, Clock, Eye, EyeOff } from 'lucide-react'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import type { UseFormRegisterReturn } from 'react-hook-form'
-import { useRegister } from '@/hooks/useAuth'
+import { useRegister, RateLimitError } from '@/hooks/useAuth'
 import { authService } from '@/services/AuthService'
+import { useRateLimit } from '@/hooks/useRateLimit'
  
 
 export const Route = createFileRoute('/register')({
@@ -20,6 +21,8 @@ export const Route = createFileRoute('/register')({
 function RouteComponent() {
   const [oauthLoading, setOauthLoading] = useState(false)
   const [oauthError, setOauthError] = useState<string>('')
+  const navigate = useNavigate()
+  const { isRateLimited, retryAfter, startCooldown } = useRateLimit()
   
   const registerSchema = z
     .object({
@@ -53,18 +56,25 @@ function RouteComponent() {
     if (isSuccess && data) {
       const email = watch('email')
       const timer = setTimeout(() => {
-        window.location.href = `/emailVerify?email=${encodeURIComponent(email)}`
-      }, 2000) // Show success message for 2 seconds
+        navigate({ to: '/emailVerify', search: { email } })
+      }, 2000)
 
       return () => clearTimeout(timer)
     }
-  }, [isSuccess, data, watch])
+  }, [isSuccess, data, watch, navigate])
 
   const onSubmit = (formData: RegisterFormData) => {
+    if (isRateLimited) return
     mutate({
       Fullname: formData.fullname,
       email: formData.email,
       password: formData.password,
+    }, {
+      onError: (err) => {
+        if (err instanceof RateLimitError) {
+          startCooldown(err.retryAfter)
+        }
+      }
     })
   }
 
@@ -88,7 +98,7 @@ function RouteComponent() {
 
   return (
     <div className="relative w-full lg:grid lg:min-h-screen lg:grid-cols-2">
-      <Link to="/landingpage" className="absolute left-4 top-4 z-10 sm:left-6 sm:top-6">
+      <Link to="/LandingPage" className="absolute left-4 top-4 z-10 sm:left-6 sm:top-6">
         <Button
           variant="ghost"
           size="sm"
@@ -185,7 +195,18 @@ function RouteComponent() {
             </div>
 
             {/* Server messages */}
-            {error && <p className="text-sm text-destructive text-center mt-2">{error.message}</p>}
+            {error && !isRateLimited && <p className="text-sm text-destructive text-center mt-2">{error.message}</p>}
+            {isRateLimited && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mt-2">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-amber-600" />
+                  <p className="text-sm text-amber-700 font-medium">Too many attempts</p>
+                </div>
+                <p className="text-sm text-amber-600 mt-1">
+                  Please wait <span className="font-bold">{retryAfter}</span> seconds before trying again.
+                </p>
+              </div>
+            )}
             {isSuccess && data && (
               <div className="bg-green-50 border border-green-200 rounded-lg p-4 mt-4">
                 <p className="text-sm font-medium text-green-700">Registration successful!</p>
@@ -195,8 +216,8 @@ function RouteComponent() {
               </div>
             )}
 
-            <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md hover:shadow-lg transition-all" size="lg" type="submit" disabled={isPending}>
-              {isPending ? 'Creating…' : 'Create Account'}
+            <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md hover:shadow-lg transition-all" size="lg" type="submit" disabled={isPending || isRateLimited}>
+              {isPending ? 'Creating…' : isRateLimited ? `Wait ${retryAfter}s` : 'Create Account'}
             </Button>
 
             <p className="text-xs text-center text-slate-500">
