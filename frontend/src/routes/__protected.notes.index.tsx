@@ -12,6 +12,8 @@ import { useAuth } from '@/context/AuthContextDefinition'
   import { downloadNotePdf } from '@/lib/pdfUtils'
   import NotesService from '@/services/NotesService'
   import UploadService from '@/services/UploadService'
+  import { friendlyUploadError } from '@/lib/uploadErrors'
+  import { showToast } from '@/lib/toast'
   import NoteCard from '@/components/notes/NoteCard'
 
   // Lazy load heavy interactive components
@@ -315,11 +317,13 @@ import { useAuth } from '@/context/AuthContextDefinition'
             }, 600)
           },
           onError: (message) => {
+            const friendly = friendlyUploadError(message)
+            showToast(`${friendly.title} — ${friendly.hint}`, 'error')
             setProcessingJob({
               jobId: '',
               fileName: file.name,
               progress: 0,
-              stage: message,
+              stage: friendly.title,
               status: 'failed',
             })
             setTimeout(() => {
@@ -328,18 +332,20 @@ import { useAuth } from '@/context/AuthContextDefinition'
               setStreamingPreview('')
               setSelectedFiles([])
               setValidationError('')
-            }, 3000)
+            }, 2500)
           },
         })
       } catch (error: unknown) {
-        console.error('Failed to generate notes:', error)
-        const errorMessage =
+        const rawMessage =
           (error as { message?: string }).message || 'Unknown error'
+        const friendly = friendlyUploadError(rawMessage)
+        console.error('Failed to generate notes:', error)
+        showToast(`${friendly.title} — ${friendly.hint}`, 'error')
         setProcessingJob({
           jobId: '',
           fileName: file.name,
           progress: 0,
-          stage: errorMessage,
+          stage: friendly.title,
           status: 'failed',
         })
         setTimeout(() => {
@@ -349,7 +355,7 @@ import { useAuth } from '@/context/AuthContextDefinition'
           stopTracking()
           setSelectedFiles([])
           setValidationError('')
-        }, 3000)
+        }, 2500)
       }
     }
 
