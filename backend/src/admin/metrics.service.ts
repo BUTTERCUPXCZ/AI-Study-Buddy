@@ -67,7 +67,7 @@ export class AdminMetricsService {
       'pdf-extract': this.pdfExtract,
       'ai-notes': this.aiNotes,
       'ai-quiz': this.aiQuiz,
-      'completion': this.completion,
+      completion: this.completion,
       'pdf-ultra-optimized': this.pdfUltra,
     };
     const out: Record<string, unknown> = {};

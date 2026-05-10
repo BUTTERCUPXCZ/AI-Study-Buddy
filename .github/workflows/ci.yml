@@ -96,12 +96,9 @@ jobs:
 
       # S14 — schema drift detection. Catches PRs that change `schema.prisma`
       # without an accompanying migration, which would silently fail on a
-      # fresh `prisma migrate deploy`.
+      # fresh `prisma migrate deploy`.\
       - name: Prisma schema validate + format check
         working-directory: ./backend
-        env:
-          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
-          DIRECT_URL: postgresql://ci:ci@localhost:5432/ci
         run: |
           npx prisma format --check
           npx prisma validate

@@ -43,10 +43,9 @@ export class RolesGuard implements CanActivate {
   ) {}
 
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
-    const requiredRoles = this.reflector.getAllAndOverride<UserRole[] | undefined>(
-      ROLES_KEY,
-      [ctx.getHandler(), ctx.getClass()],
-    );
+    const requiredRoles = this.reflector.getAllAndOverride<
+      UserRole[] | undefined
+    >(ROLES_KEY, [ctx.getHandler(), ctx.getClass()]);
     const requiredPerms = this.reflector.getAllAndOverride<
       Permission[] | undefined
     >(PERMISSIONS_KEY, [ctx.getHandler(), ctx.getClass()]);
@@ -90,7 +89,9 @@ export class RolesGuard implements CanActivate {
           data: { role: UserRole.ADMIN },
         });
         effectiveRole = UserRole.ADMIN;
-        this.logger.log(`Auto-promoted ${dbUser.email} to ADMIN via ADMIN_EMAILS`);
+        this.logger.log(
+          `Auto-promoted ${dbUser.email} to ADMIN via ADMIN_EMAILS`,
+        );
       } catch (err) {
         this.logger.warn(
           `ADMIN_EMAILS auto-promotion failed for ${dbUser.email}: ${
