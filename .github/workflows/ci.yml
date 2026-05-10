@@ -99,6 +99,8 @@ jobs:
       # fresh `prisma migrate deploy`.
       - name: Prisma schema validate + format check
         working-directory: ./backend
+        env:
+          DIRECT_URL: ${{ secrets.DATABASE_URL }}
         run: |
           npx prisma format --check
           npx prisma validate
