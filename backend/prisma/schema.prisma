@@ -14,6 +14,13 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+enum UserRole {
+  USER
+  SUPPORT
+  ADMIN
+  SUPER_ADMIN
+}
+
 model User {
   id        String   @id @default(cuid())
   Fullname  String
@@ -21,14 +28,21 @@ model User {
   supabaseId String   @unique
   password  String
   emailVerified Boolean @default(false)
-  
-   
+
+  // RBAC — single role per user. Permissions map from role server-side
+  // in `backend/src/auth/rbac.ts`. USER is the default for every new
+  // signup.
+  role      UserRole @default(USER)
+  // Bumped by AuditService.record on login / oauth_login. Powers the
+  // admin "active in last X days" query without scanning AuditLog.
+  lastLoginAt DateTime?
+
   // Subscription fields
   subscriptionStatus String @default("FREE") // "FREE" or "PRO"
   stripeCustomerId String? @unique
   stripeSubscriptionId String? @unique
   subscriptionCurrentPeriodEnd DateTime?
-  
+
   // Usage tracking
   attemptsUsed Int @default(0) // Track how many attempts user has used
 
@@ -38,7 +52,9 @@ model User {
   uploads   Upload[]
   jobs      Job[]
   chatSessions ChatSession[]
-  
+
+  @@index([role])
+  @@index([lastLoginAt])
 }
 
 model Note {
@@ -73,6 +89,10 @@ model Quiz {
   @@index([userId])
   @@index([noteId])
   @@index([userId, createdAt])
+  // GIN index on the JSON column lives in a manual migration
+  // (20260505_add_quiz_questions_gin_index). Prisma can't model
+  // expression / functional indexes natively, so the schema notes its
+  // existence here to keep the docs honest.
 }
 
 model ChatSession {
@@ -139,6 +159,34 @@ enum JobStatus {
   failed
   delayed
   paused
+}
+
+// Audit log for security-sensitive actions. Used for non-repudiation:
+// every entry records who did what, when, and from where.
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String   // e.g. 'login', 'logout', 'login_failed', 'oauth_login', 'file_delete', 'subscription_change'
+  target    String?  // optional: id of resource acted upon
+  ip        String?
+  userAgent String?
+  meta      Json?    // optional structured detail; never log secrets/PII payloads
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+// Stripe webhook idempotency. Stripe may deliver the same event more
+// than once; we record event.id here on first processing and refuse
+// duplicates.
+model StripeEvent {
+  id          String   @id // event.id from Stripe
+  type        String
+  processedAt DateTime @default(now())
+
+  @@index([type])
 }
 
 // Jobs table to store metadata about BullMQ jobs. The authoritative job state

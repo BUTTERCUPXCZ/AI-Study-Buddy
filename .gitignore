@@ -1,0 +1,56 @@
+# Environment files — NEVER commit
+.env
+.env.local
+.env.development
+.env.production
+.env.*.local
+*.env
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+coverage/
+.next/
+.nuxt/
+.cache/
+*.tsbuildinfo
+
+# Logs / runtime
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pid
+*.pid
+*.seed
+*.pid.lock
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Archives that should never enter the repo (e.g. stripe-cli.zip)
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.7z
+
+# Secrets misc
+*.pem
+*.key
+secrets/
+
+# Local test artifacts (PDFs / files used to exercise upload validation)
+evil.pdf
+big.pdf
+fake.pdf

@@ -1,10 +1,19 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service';
+import { RedisService } from '../redis/redis.service';
 import { Job, JobStatus } from '@prisma/client';
+
+const JOB_STATUS_CACHE_TTL_S = 2;
+const JOB_STATUS_CACHE_PREFIX = 'cache:job:status:';
 
 @Injectable()
 export class JobsService {
-  constructor(private readonly databaseService: DatabaseService) {}
+  private readonly logger = new Logger(JobsService.name);
+
+  constructor(
+    private readonly databaseService: DatabaseService,
+    private readonly redisService: RedisService,
+  ) {}
 
   /**
    * Create a job record in the database
@@ -67,12 +76,41 @@ export class JobsService {
   }
 
   /**
-   * Get job by jobId
+   * Get job by jobId. Cached in Redis for 2 s so the frontend's
+   * 3-second polling fallback doesn't hammer Postgres with one
+   * findUnique per poll. WebSocket push is the primary path; this
+   * cache makes the fallback cheap when it does fire.
    */
   async getJob(jobId: string): Promise<Job | null> {
+    const cacheKey = `${JOB_STATUS_CACHE_PREFIX}${jobId}`;
+    try {
+      const cached = await this.redisService.getCache<Job>(cacheKey);
+      if (cached) return cached;
+    } catch (err) {
+      // Redis blip → fall through to DB. Don't fail-closed on a cache miss.
+      this.logger.warn(
+        `Redis getCache miss for ${cacheKey}: ${
+          err instanceof Error ? err.message : 'unknown'
+        }`,
+      );
+    }
+
     const result = await this.databaseService.job.findUnique({
       where: { jobId },
     });
+
+    if (result) {
+      try {
+        await this.redisService.setCache(
+          cacheKey,
+          result,
+          JOB_STATUS_CACHE_TTL_S,
+        );
+      } catch {
+        // Best-effort cache write — don't block the response.
+      }
+    }
+
     return result;
   }
 

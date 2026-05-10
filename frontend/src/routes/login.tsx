@@ -1,16 +1,20 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
-import { ArrowLeft, Eye, EyeOff } from 'lucide-react'
+import { ArrowLeft, Clock, Eye, EyeOff } from 'lucide-react'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import type { UseFormRegisterReturn } from 'react-hook-form'
-import { useLogin, useOAuthSignIn } from '@/hooks/useAuth'
+import { useLogin, useOAuthSignIn, RateLimitError } from '@/hooks/useAuth'
 import { Spinner } from '@/components/ui/spinner'
+import { useQueryClient } from '@tanstack/react-query'
+import { useRateLimit } from '@/hooks/useRateLimit'
+import { useAuth } from '@/context/AuthContextDefinition'
+import { postLoginPath } from '@/lib/postLoginPath'
 
 
 const loginSchema = z.object({
@@ -26,6 +30,10 @@ export const Route = createFileRoute('/login')({
 
 function RouteComponent() {
   const [oauthError, setOauthError] = useState<string>('')
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const { refetch: refetchAuth } = useAuth()
+  const { isRateLimited, retryAfter, startCooldown } = useRateLimit()
   
   const {
     register,
@@ -40,11 +48,23 @@ function RouteComponent() {
   const { mutate: oauthSignIn, isPending: isOAuthLoading } = useOAuthSignIn()
 
   async function onSubmit(data: LoginFormData) {
+    if (isRateLimited) return
     loginMutate(data, {
-      onSuccess: () => {
-        // Use window.location to trigger a full page reload
-        // This ensures AuthContext reinitializes with the new token
-        window.location.href = '/notes'
+      onSuccess: async () => {
+        await queryClient.invalidateQueries({ queryKey: ['auth'] })
+        // AuthContext owns its own user state (separate from React
+        // Query cache), so sync it here before navigating. Without
+        // this, the sidebar shows the placeholder "Student" and
+        // useNotes runs with userId=undefined → empty list — until
+        // the user manually refreshes.
+        const fresh = await refetchAuth()
+        const search = new URLSearchParams(window.location.search)
+        navigate({ to: postLoginPath(fresh, search.get('redirect')) })
+      },
+      onError: (err) => {
+        if (err instanceof RateLimitError) {
+          startCooldown(err.retryAfter)
+        }
       }
     })
   }
@@ -65,7 +85,7 @@ function RouteComponent() {
 
   return (
     <div className="relative w-full lg:grid lg:min-h-screen lg:grid-cols-2">
-      <Link to="/landingpage" className="absolute left-4 top-4 z-10 sm:left-6 sm:top-6">
+      <Link to="/LandingPage" className="absolute left-4 top-4 z-10 sm:left-6 sm:top-6">
         <Button
           variant="ghost"
           size="sm"
@@ -169,7 +189,7 @@ function RouteComponent() {
             </div>
 
             {/* Login error message */}
-            {loginError && (
+            {loginError && !isRateLimited && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                 <p className="text-sm text-red-700 font-medium">Login failed</p>
                 <p className="text-sm text-red-600 mt-1">{loginError.message}</p>
@@ -187,12 +207,30 @@ function RouteComponent() {
               </div>
             )}
 
+            {/* Rate limit message */}
+            {isRateLimited && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-amber-600" />
+                  <p className="text-sm text-amber-700 font-medium">Too many attempts</p>
+                </div>
+                <p className="text-sm text-amber-600 mt-1">
+                  Please wait <span className="font-bold">{retryAfter}</span> seconds before trying again.
+                </p>
+              </div>
+            )}
+
             {/* Sign In Button */}
-            <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md hover:shadow-lg transition-all" size="lg" type="submit" disabled={isSubmitting || isPending}>
+            <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md hover:shadow-lg transition-all" size="lg" type="submit" disabled={isSubmitting || isPending || isRateLimited}>
               {isSubmitting || isPending ? (
                 <span className="flex items-center gap-2">
                   <Spinner className="h-4 w-4" />
                   Signing in…
+                </span>
+              ) : isRateLimited ? (
+                <span className="flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  Wait {retryAfter}s
                 </span>
               ) : (
                 'Sign In'

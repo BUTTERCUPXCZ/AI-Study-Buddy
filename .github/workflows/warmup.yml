@@ -1,0 +1,30 @@
+name: Warmup ping
+
+# Free-tier Render dynos sleep after ~15 min of inactivity. Without
+# this cron, the first user request after idle takes 5-10 s for the
+# container to spin up. We pre-warm every 10 min so an active period
+# always starts on a hot instance.
+#
+# Setup: in repo Settings → Variables, set RENDER_HEALTH_URL to
+# https://<your-render-host>/health/live. Without that variable the
+# job is a no-op.
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    if: ${{ vars.RENDER_HEALTH_URL != '' }}
+    steps:
+      - name: Hit health endpoint
+        env:
+          URL: ${{ vars.RENDER_HEALTH_URL }}
+        run: |
+          set -e
+          curl -fsS -m 30 "$URL" -o /dev/null -w 'HTTP %{http_code} in %{time_total}s\n'

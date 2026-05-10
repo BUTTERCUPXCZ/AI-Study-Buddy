@@ -316,15 +316,17 @@ export class UltraOptimizedPdfWorker extends WorkerHost {
         // WebSocket emission
         this.wsGateway.emitJobProgress(job.id!, 90, 'Using cached notes');
 
-        // Clone cached note for this user
+        // Clone cached note for this user. Route through NotesService
+        // (instead of a raw Prisma create) so the `note.created` event
+        // fires → NotesCacheListener invalidates the user's notes-list
+        // cache. Without this the user sees a stale "No study notes
+        // yet" until they hard-refresh.
         const dbTimer = WorkerPerformanceUtil.createTimer();
-        const note = await this.databaseService.note.create({
-          data: {
-            title: cachedNotes.title,
-            content: cachedNotes.content,
-            userId,
-          },
-        });
+        const note = await this.notesService.createNote(
+          userId,
+          cachedNotes.title,
+          cachedNotes.content,
+        );
         metrics.dbWriteTimeMs = dbTimer.end('DB write');
 
         metrics.totalTimeMs = Date.now() - startTime;
@@ -386,21 +388,45 @@ export class UltraOptimizedPdfWorker extends WorkerHost {
       // WebSocket emission
       this.wsGateway.emitJobProgress(job.id!, 50, 'Processing with AI');
 
-      // Use circuit breaker for AI calls with direct PDF processing
+      // Use circuit breaker for AI calls with direct PDF processing.
+      // Switched to the streaming variant so each Gemini chunk lands on
+      // the WebSocket as it generates — gives the UI a ChatGPT-style
+      // typing effect instead of a frozen progress bar for ~10 s.
       const aiWithCircuitBreaker = WorkerPerformanceUtil.createCircuitBreaker(
         async () => {
-          // Use direct PDF processing - faster, no text extraction needed
-          return await this.aiService.generateNotesFromPDF(
+          let chunkCount = 0;
+          return await this.aiService.generateNotesFromPDFStream(
             pdfBuffer,
             fileName,
             userId,
             fileId,
+            (chunk, accumulated) => {
+              chunkCount++;
+              this.wsGateway.emitJobNotesChunk(
+                job.id!,
+                chunk,
+                accumulated,
+                userId,
+              );
+              // Coarse progress nudge every 8 chunks: 50 → 88 capped, so
+              // the bar still moves for clients that aren't rendering
+              // chunks (older builds, polling fallback).
+              if (chunkCount % 8 === 0) {
+                const bumped = Math.min(50 + chunkCount * 2, 88);
+                this.wsGateway.emitJobProgress(
+                  job.id!,
+                  bumped,
+                  'Streaming notes',
+                  userId,
+                );
+              }
+            },
             'application/pdf',
           );
         },
         {
           threshold: 5, // Open after 5 failures
-          timeout: 60000, // 60 second timeout for direct PDF processing
+          timeout: 120000, // 120 s for streaming (longer-tailed than blocking)
           resetTimeout: 60000, // Try again after 1 minute
         },
       );

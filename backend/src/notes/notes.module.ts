@@ -5,9 +5,15 @@ import { DatabaseModule } from '../database/database.module';
 import { RedisModule } from '../redis/redis.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { NotesCacheListener } from './NotesCacheListener.service';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
-  imports: [DatabaseModule, RedisModule, EventEmitterModule.forRoot()],
+  imports: [
+    DatabaseModule,
+    RedisModule,
+    EventEmitterModule.forRoot(),
+    AuthModule,
+  ],
   controllers: [NotesController],
   providers: [NotesService, NotesCacheListener],
   exports: [NotesService],

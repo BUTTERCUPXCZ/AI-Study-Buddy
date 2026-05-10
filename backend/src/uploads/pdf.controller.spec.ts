@@ -5,6 +5,9 @@ import { DatabaseService } from '../database/database.service';
 import { ConfigService } from '@nestjs/config';
 import { PdfNotesQueue } from '../jobs/queues/pdf-notes.queue';
 import { PdfUltraOptimizedQueue } from '../jobs/queues/pdf-ultra-optimized.queue';
+import { AuthGuard } from '../auth/auth.guard';
+import { EmailVerifiedGuard } from '../auth/guards/email-verified.guard';
+import { AiService } from '../ai/ai.service';
 
 describe('PdfController', () => {
   let controller: PdfController;
@@ -27,13 +30,11 @@ describe('PdfController', () => {
       },
     } as unknown as ConfigService;
 
-    const mockPdfNotesQueue = {
-      add: jest.fn(),
-    };
-
-    const mockPdfUltraOptimizedQueue = {
-      add: jest.fn(),
-    };
+    const mockPdfNotesQueue = { add: jest.fn() };
+    const mockPdfUltraOptimizedQueue = { add: jest.fn() };
+    const mockAiService = {
+      generateNotesFromPDFStream: jest.fn(),
+    } as unknown as AiService;
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [PdfController],
@@ -46,8 +47,14 @@ describe('PdfController', () => {
           provide: PdfUltraOptimizedQueue,
           useValue: mockPdfUltraOptimizedQueue,
         },
+        { provide: AiService, useValue: mockAiService },
       ],
-    }).compile();
+    })
+      .overrideGuard(AuthGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(EmailVerifiedGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     controller = module.get<PdfController>(PdfController);
   });

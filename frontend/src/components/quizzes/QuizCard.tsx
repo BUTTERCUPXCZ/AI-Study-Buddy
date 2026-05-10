@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -24,6 +25,7 @@ const formatDate = (dateString: string) => {
 }
 
 const QuizCard = memo(({ quiz, onDelete }: QuizCardProps) => {
+  const navigate = useNavigate()
   const questions = Array.isArray(quiz.questions) ? quiz.questions : []
   const questionCount = questions.length
 
@@ -63,7 +65,7 @@ const QuizCard = memo(({ quiz, onDelete }: QuizCardProps) => {
             <Button 
               className="flex-1 gap-1.5 shadow-sm hover:shadow-md transition-all" 
               size="sm"
-              onClick={() => window.location.href = `/quizzes/${quiz.id}`}
+              onClick={() => navigate({ to: '/quizzes/$quizId', params: { quizId: quiz.id } })}
             >
               <Play className="h-3.5 w-3.5" />
               {quiz.score !== null && quiz.score !== undefined ? 'Retake' : 'Start'}

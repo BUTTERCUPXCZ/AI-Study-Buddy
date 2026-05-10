@@ -50,7 +50,11 @@ export class SubscriptionsService {
       priceId,
       userId,
       successUrl: `${baseUrl}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancelUrl: `${baseUrl}/`,
+      // Send the user back to their authenticated landing page (the
+      // library) when they click "← back" inside Stripe Checkout. The
+      // previous "/" sent them to the marketing homepage which is
+      // confusing for an already-logged-in user.
+      cancelUrl: `${baseUrl}/library`,
     };
 
     const session = await this.stripeService.createCheckoutSession(checkoutDto);

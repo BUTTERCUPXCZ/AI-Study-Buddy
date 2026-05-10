@@ -5,21 +5,26 @@ import {
   HttpCode,
   HttpStatus,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SubscriptionsService } from './subscriptions.service';
 import { StripeService } from '../stripe/stripe.service';
 import { DatabaseService } from '../database/database.service';
 import { RawBody } from '../common/decorators/raw-body.decorator';
+import { AuditService } from '../common/services/audit.service';
 import Stripe from 'stripe';
 
 @Controller('webhooks/stripe')
 export class WebhookController {
+  private readonly logger = new Logger(WebhookController.name);
+
   constructor(
     private readonly subscriptionsService: SubscriptionsService,
     private readonly stripeService: StripeService,
     private readonly configService: ConfigService,
     private readonly databaseService: DatabaseService,
+    private readonly auditService: AuditService,
   ) {}
 
   @Post()
@@ -35,20 +40,63 @@ export class WebhookController {
     let event: Stripe.Event;
 
     try {
-      // Verify webhook signature
       event = this.stripeService.constructWebhookEvent(
         rawBody,
         signature,
         webhookSecret,
       );
-      console.log('Stripe webhook received:', event.type);
-      console.log('Event payload:', JSON.stringify(event.data.object, null, 2));
+      this.logger.debug(
+        `Stripe webhook received: ${event.type} (id ${event.id})`,
+      );
     } catch (err) {
-      console.error('Webhook signature verification failed:', err);
+      this.logger.warn(
+        `Webhook signature verification failed: ${(err as Error).message}`,
+      );
       throw new BadRequestException(`Webhook Error: ${(err as Error).message}`);
     }
 
-    // Handle different event types
+    // S8 — replay window. Stripe signatures stay valid forever for the
+    // body that signed them. An attacker who captures one event header +
+    // body pair could replay it months later. event.created is the unix
+    // timestamp Stripe stamped at construction time; reject anything
+    // older than 5 minutes (with 30 s leeway for clock skew). The
+    // `StripeEvent.id` unique constraint catches exact replays of events
+    // we've already processed; this catches replays of events we haven't
+    // seen yet because they happened long ago.
+    const REPLAY_WINDOW_S = 5 * 60;
+    const CLOCK_SKEW_S = 30;
+    const nowS = Math.floor(Date.now() / 1000);
+    if (
+      event.created &&
+      nowS - event.created > REPLAY_WINDOW_S + CLOCK_SKEW_S
+    ) {
+      const ageS = nowS - event.created;
+      this.logger.warn(
+        `Stripe webhook rejected as too old: id=${event.id} age=${ageS}s`,
+      );
+      this.auditService.record({
+        action: 'webhook_replay_rejected',
+        target: event.id,
+        meta: { type: event.type, ageS },
+      });
+      throw new BadRequestException('Webhook too old');
+    }
+
+    // Idempotency: refuse duplicate event.id. Stripe may retry the same
+    // event multiple times; processing it twice would double-credit
+    // subscription state.
+    try {
+      await this.databaseService.stripeEvent.create({
+        data: { id: event.id, type: event.type },
+      });
+    } catch (err) {
+      // Most common cause is unique-constraint violation on duplicate id.
+      this.logger.debug(
+        `Duplicate Stripe event ${event.id} ignored (${(err as Error).message})`,
+      );
+      return { received: true, duplicate: true };
+    }
+
     type CheckoutSessionEvent = Stripe.Event & {
       type: 'checkout.session.completed';
       data: { object: Stripe.Checkout.Session };
@@ -63,44 +111,42 @@ export class WebhookController {
     switch (event.type) {
       case 'checkout.session.completed': {
         if (!isCheckoutSessionEvent(event)) break;
-        const session = event.data.object; // now correctly typed as Stripe.Checkout.Session
+        const session = event.data.object;
         const userId = session.client_reference_id || session.metadata?.userId;
         const subscriptionId = session.subscription as string | undefined;
         const customerId = session.customer as string | undefined;
 
         if (userId && subscriptionId) {
-          // call your service to mark subscription active
           await this.subscriptionsService.handleSubscriptionCreated(
             customerId ?? '',
             subscriptionId,
             userId,
           );
+          await this.auditService.record({
+            action: 'subscription_checkout_completed',
+            userId,
+            target: subscriptionId,
+            meta: { stripeEventId: event.id },
+          });
         } else {
-          console.warn(
-            'Missing userId or subscriptionId on checkout.session.completed',
-            { userId, subscriptionId, customerId, session },
+          this.logger.warn(
+            `Missing userId or subscriptionId on checkout.session.completed (event ${event.id})`,
           );
         }
         break;
       }
 
       case 'customer.subscription.created': {
-        console.log('Received customer.subscription.created event');
         const subscription = event.data.object;
         const customerId = subscription.customer as string;
 
-        // Find user by Stripe customer ID
         const user = await this.databaseService.user.findFirst({
           where: { stripeCustomerId: customerId },
         });
 
         if (user) {
-          console.log(
-            `Updating subscription status for user ${user.id} to ${subscription.status === 'active' ? 'PRO' : 'FREE'}`,
-          );
           const status = subscription.status === 'active' ? 'PRO' : 'FREE';
 
-          // Safely compute period end timestamp from first item in items.data
           const periodEndTimestamp =
             subscription.items?.data?.[0]?.current_period_end;
 
@@ -120,30 +166,36 @@ export class WebhookController {
               subscriptionCurrentPeriodEnd: status === 'PRO' ? periodEnd : null,
             },
           });
+          this.logger.log(
+            `Subscription created -> ${status} for user ${user.id}`,
+          );
+          await this.auditService.record({
+            action: 'subscription_created',
+            userId: user.id,
+            meta: { status, stripeEventId: event.id },
+          });
         } else {
-          console.log(`No user found for customerId: ${customerId}`);
+          this.logger.warn(
+            `customer.subscription.created with no matching user for customer ${customerId}`,
+          );
         }
         break;
       }
 
       case 'customer.subscription.updated': {
-        console.log('Received customer.subscription.updated event');
         const subscription = event.data.object;
         const customerId = subscription.customer as string;
 
-        // Find user by Stripe customer ID
         const user = await this.databaseService.user.findFirst({
           where: { stripeCustomerId: customerId },
         });
 
         if (user) {
           if (subscription.status === 'active') {
-            console.log(`Updating user ${user.id} to PRO`);
             await this.databaseService.user.update({
               where: { id: user.id },
               data: {
                 subscriptionStatus: 'PRO',
-                // Safely compute period end timestamp from first item in items.data
                 subscriptionCurrentPeriodEnd: (() => {
                   const ts = subscription.items?.data?.[0]?.current_period_end;
                   if (typeof ts === 'number' && ts > 0) {
@@ -154,21 +206,26 @@ export class WebhookController {
                 })(),
               },
             });
+            this.logger.log(`Subscription -> PRO for user ${user.id}`);
           } else if (
             subscription.status === 'canceled' ||
             subscription.status === 'unpaid'
           ) {
-            console.log(`Cancelling subscription for user ${user.id}`);
             await this.subscriptionsService.handleSubscriptionCancelled(
               user.id,
             );
+            this.logger.log(`Subscription cancelled for user ${user.id}`);
+            await this.auditService.record({
+              action: 'subscription_cancelled',
+              userId: user.id,
+              meta: { stripeEventId: event.id },
+            });
           }
         }
         break;
       }
 
       case 'customer.subscription.deleted': {
-        console.log('Received customer.subscription.deleted event');
         const subscription = event.data.object;
         const customerId = subscription.customer as string;
 
@@ -177,21 +234,20 @@ export class WebhookController {
         });
 
         if (user) {
-          console.log(`Deleting subscription for user ${user.id}`);
           await this.subscriptionsService.handleSubscriptionCancelled(user.id);
+          this.logger.log(`Subscription deleted for user ${user.id}`);
         }
         break;
       }
 
       case 'invoice.payment_succeeded': {
-        console.log('Invoice payment succeeded:', event.data.object.id);
-        // The subscription status is already handled in customer.subscription.created
-        // This event confirms the payment, but no additional action needed
+        // Subscription state already handled in customer.subscription.created;
+        // nothing to do here besides acknowledging.
         break;
       }
 
       default:
-        console.log(`Unhandled event type: ${event.type}`);
+        this.logger.debug(`Unhandled Stripe event type: ${event.type}`);
     }
 
     return { received: true };

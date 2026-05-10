@@ -2,6 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { PdfController } from './pdf.controller';
 import { PdfService } from './pdf.service';
 import { BadRequestException } from '@nestjs/common';
+import { AuthGuard } from '../auth/auth.guard';
+import { EmailVerifiedGuard } from '../auth/guards/email-verified.guard';
 
 describe('PdfController - Upload Tests', () => {
   let controller: PdfController;
@@ -24,7 +26,12 @@ describe('PdfController - Upload Tests', () => {
           useValue: mockPdfService,
         },
       ],
-    }).compile();
+    })
+      .overrideGuard(AuthGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(EmailVerifiedGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     controller = module.get<PdfController>(PdfController);
   });
@@ -49,38 +56,36 @@ describe('PdfController - Upload Tests', () => {
         path: '',
       } as unknown as Express.Multer.File;
 
-      const createPdfDto = {
-        userId: 'user123',
-        fileName: 'test.pdf',
-      };
+      const userId = 'user123';
+      const createPdfDto = { fileName: 'test.pdf' };
 
       const expectedResult = {
         id: 'file123',
         url: 'https://supabase.co/storage/pdfs/test.pdf',
         name: 'test.pdf',
-        userId: 'user123',
+        userId,
         message: 'File uploaded successfully',
       };
 
       mockPdfService.uploadPdf.mockResolvedValue(expectedResult);
 
-      const result = await controller.uploadPdf(mockFile, createPdfDto);
+      const result = await controller.uploadPdf(userId, mockFile, createPdfDto);
 
       expect(result).toEqual(expectedResult);
       expect(mockPdfService.uploadPdf).toHaveBeenCalledWith(
         mockFile,
+        userId,
         createPdfDto,
       );
     });
 
     it('should throw BadRequestException when no file is provided', async () => {
-      const createPdfDto = {
-        userId: 'user123',
-        fileName: 'test.pdf',
-      };
+      const userId = 'user123';
+      const createPdfDto = { fileName: 'test.pdf' };
 
       await expect(
         controller.uploadPdf(
+          userId,
           null as unknown as Express.Multer.File,
           createPdfDto,
         ),

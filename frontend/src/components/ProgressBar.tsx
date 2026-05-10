@@ -170,10 +170,15 @@ export function ProgressBar({
           </p>
         </div>
         
-        {/* File Name Badge */}
-        <Badge variant="secondary" className="text-sm px-4 py-1.5 font-medium">
-          <FileText className="w-4 h-4 mr-2" />
-          {fileName}
+        {/* File Name Badge — truncate long filenames so the dialog
+            never blows past its max-width. Full name shown on hover. */}
+        <Badge
+          variant="secondary"
+          className="text-sm px-4 py-1.5 font-medium max-w-full inline-flex items-center min-w-0"
+          title={fileName}
+        >
+          <FileText className="w-4 h-4 mr-2 shrink-0" />
+          <span className="truncate min-w-0">{fileName}</span>
         </Badge>
         
         {/* Connection Status */}

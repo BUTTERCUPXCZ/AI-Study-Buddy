@@ -1,12 +1,14 @@
 import { Module, Global } from '@nestjs/common';
 import { RedisService } from './redis.service';
 import { RedisTestController } from './redis-test.controller';
-import { RedisThrottlerStorage } from '../common/storage/redis-throttler.storage';
+
+const isProd = process.env.NODE_ENV === 'production';
+const controllers = isProd ? [] : [RedisTestController];
 
 @Global()
 @Module({
-  controllers: [RedisTestController],
-  providers: [RedisService, RedisThrottlerStorage],
-  exports: [RedisService, RedisThrottlerStorage],
+  controllers,
+  providers: [RedisService],
+  exports: [RedisService],
 })
 export class RedisModule {}

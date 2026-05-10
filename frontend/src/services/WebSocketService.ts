@@ -34,7 +34,19 @@ interface JobErrorData {
   timestamp: string;
 }
 
-export type JobEventData = JobUpdateData | JobProgressData | JobCompletedData | JobErrorData;
+export interface JobNotesChunkData {
+  jobId: string;
+  chunk: string;
+  accumulated: string;
+  timestamp: string;
+}
+
+export type JobEventData =
+  | JobUpdateData
+  | JobProgressData
+  | JobCompletedData
+  | JobErrorData
+  | JobNotesChunkData;
 
 interface WebSocketEventHandlers {
   onConnect?: () => void;
@@ -44,6 +56,7 @@ interface WebSocketEventHandlers {
   onJobProgress?: (data: JobProgressData) => void;
   onJobCompleted?: (data: JobCompletedData) => void;
   onJobError?: (data: JobErrorData) => void;
+  onJobNotesChunk?: (data: JobNotesChunkData) => void;
 }
 
 interface ConnectionOptions {
@@ -89,7 +102,13 @@ class WebSocketService {
     };
 
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-    this.socket = io(`${apiUrl}/jobs`, defaultOptions);
+    // withCredentials sends the access_token httpOnly cookie so the
+    // server can authenticate the socket on connect. userId is derived
+    // server-side from that cookie — never trust client-supplied values.
+    this.socket = io(`${apiUrl}/jobs`, {
+      ...defaultOptions,
+      withCredentials: true,
+    });
 
     this.setupEventListeners();
 
@@ -154,6 +173,12 @@ class WebSocketService {
     this.socket.on('job:error', (data: JobErrorData) => {
       console.error('Job error:', data);
       this.eventHandlers.onJobError?.(data);
+    });
+
+    // High-frequency partial AI content events. Don't console.log each
+    // chunk — would drown the devtools panel during a 200-chunk stream.
+    this.socket.on('job:notes:chunk', (data: JobNotesChunkData) => {
+      this.eventHandlers.onJobNotesChunk?.(data);
     });
   }
 

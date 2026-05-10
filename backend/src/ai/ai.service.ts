@@ -335,6 +335,90 @@ export class AiService {
   }
 
   /**
+   * Streaming variant of generateNotesFromPDF — emits each Gemini chunk
+   * via onChunk callback so the UI can render text as it generates
+   * (ChatGPT-style typing). Final cleaned content is still saved as a
+   * Note row exactly the same shape as the blocking version.
+   */
+  async generateNotesFromPDFStream(
+    pdfBuffer: Buffer,
+    fileName: string,
+    userId: string,
+    fileId: string,
+    onChunk: (chunkText: string, accumulated: string) => void,
+    mimeType: string = 'application/pdf',
+  ): Promise<{
+    noteId: string;
+    title: string;
+    content: string;
+    summary: string;
+  }> {
+    try {
+      this.logger.log(
+        `[AI] Streaming PDF: ${fileName} (${(pdfBuffer.length / 1024).toFixed(2)}KB)`,
+      );
+      const aiStartTime = Date.now();
+
+      const base64Data = pdfBuffer.toString('base64');
+      const title = this.generateTitleFromFileName(fileName);
+      // PDF binary travels via inlineData below; pdfText placeholder is
+      // empty so the prompt template renders without a source-material
+      // duplicate dump (Gemini reads the PDF directly).
+      const prompt = COMPREHENSIVE_NOTES_PROMPT('');
+
+      this.logger.log('[AI] Streaming from Gemini...');
+      const result = await this.model.generateContentStream([
+        { inlineData: { data: base64Data, mimeType } },
+        prompt,
+      ]);
+
+      let accumulated = '';
+      for await (const chunk of result.stream) {
+        const text = chunk.text();
+        if (!text) continue;
+        accumulated += text;
+        try {
+          onChunk(text, accumulated);
+        } catch (cbErr) {
+          // Callback failures must not abort the generation. Log and
+          // continue — the final Note still saves regardless.
+          this.logger.warn(
+            `[AI] onChunk callback threw: ${cbErr instanceof Error ? cbErr.message : 'unknown'}`,
+          );
+        }
+      }
+
+      const generatedContent = this.cleanGeneratedText(accumulated, 'notes');
+      const aiProcessingTime = Date.now() - aiStartTime;
+      this.logger.log(
+        `[AI] Streamed ${generatedContent.length} chars in ${aiProcessingTime}ms`,
+      );
+
+      const dbStartTime = Date.now();
+      const noteRecord = await this.notesService.createNote(
+        userId,
+        title,
+        generatedContent,
+        fileId,
+      );
+      const dbTime = Date.now() - dbStartTime;
+      this.logger.log(`[DB] Saved in ${dbTime}ms - Note ID: ${noteRecord.id}`);
+
+      const summary = generatedContent.substring(0, 200) + '...';
+      return {
+        noteId: noteRecord.id,
+        title: noteRecord.title,
+        content: noteRecord.content,
+        summary,
+      };
+    } catch (error: unknown) {
+      this.logger.error('[ERROR] Stream generation failed:', error);
+      if (error instanceof Error) throw error;
+      throw new Error('Unknown error in streaming notes generation');
+    }
+  }
+
+  /**
    * Clean generated text by removing markdown code blocks and extra whitespace
    */
   private cleanGeneratedText(

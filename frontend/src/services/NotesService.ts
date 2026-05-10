@@ -22,11 +22,11 @@ export interface CreateNoteResponse {
 
 class NotesService {
   /**
-   * Get all notes for a user
+   * Get all notes for the current user
    */
-  async getUserNotes(userId: string): Promise<Note[]> {
+  async getUserNotes(): Promise<Note[]> {
     try {
-      const response = await api.get(`/notes/user/${userId}`);
+      const response = await api.get(`/notes`);
       return response.data;
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
@@ -35,11 +35,11 @@ class NotesService {
   }
 
   /**
-   * Get a specific note
+   * Get a specific note (must be owned by current user)
    */
-  async getNote(noteId: string, userId: string): Promise<Note> {
+  async getNote(noteId: string): Promise<Note> {
     try {
-      const response = await api.get(`/notes/${noteId}/user/${userId}`);
+      const response = await api.get(`/notes/${noteId}`);
       return response.data;
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
@@ -52,11 +52,10 @@ class NotesService {
    */
   async updateNote(
     noteId: string,
-    userId: string,
     data: { title?: string; content?: string }
   ): Promise<Note> {
     try {
-      const response = await api.put(`/notes/${noteId}/user/${userId}`, data);
+      const response = await api.put(`/notes/${noteId}`, data);
       return response.data;
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
@@ -67,9 +66,9 @@ class NotesService {
   /**
    * Delete a note
    */
-  async deleteNote(noteId: string, userId: string): Promise<void> {
+  async deleteNote(noteId: string): Promise<void> {
     try {
-      await api.delete(`/notes/${noteId}/user/${userId}`);
+      await api.delete(`/notes/${noteId}`);
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
       throw new Error(err.response?.data?.message || 'Failed to delete note');

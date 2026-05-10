@@ -7,10 +7,6 @@ export class GenerateNotesDto {
 
   @IsString()
   @IsNotEmpty()
-  userId: string;
-
-  @IsString()
-  @IsNotEmpty()
   title: string;
 
   @IsString()

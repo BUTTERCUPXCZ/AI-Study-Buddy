@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
+import { createHash } from 'crypto';
 import { CreatePdfExtractJobDto } from '../dto/pdf-extract.dto';
 import { JobsService } from '../jobs.service';
 
@@ -24,6 +25,18 @@ export class PdfExtractQueue {
         `Adding PDF extract job for file: ${data.fileName} (${data.fileId})`,
       );
 
+      // Deterministic jobId: BullMQ deduplicates `add()` calls with the
+      // same jobId, so a network-retried POST /upload doesn't enqueue a
+      // second extraction (and a second Gemini bill). Hash includes the
+      // user, the file id and a step name so two distinct steps over the
+      // same file collide cleanly within the same queue.
+      const jobId =
+        'pdf-extract:' +
+        createHash('sha256')
+          .update(`${data.userId}:${data.fileId}:extract`)
+          .digest('hex')
+          .slice(0, 32);
+
       // Add job to BullMQ queue
       const job = await this.pdfExtractQueue.add(
         'extract-pdf',
@@ -34,6 +47,7 @@ export class PdfExtractQueue {
           userId: data.userId,
         },
         {
+          jobId,
           attempts: 3, // Retry up to 3 times
           backoff: {
             type: 'exponential',

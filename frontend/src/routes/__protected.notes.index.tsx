@@ -8,10 +8,12 @@ import { useQueryClient } from '@tanstack/react-query'
 import AppLayout from '@/components/app-layout'
 import { useAuth } from '@/context/AuthContextDefinition'
   import { useNotes, useDeleteNote } from '@/hooks/useNotes'
-  import { useUploadPdf } from '@/hooks/useUpload'
   import { useJobWebSocket } from '@/hooks/useJobWebSocket'
   import { downloadNotePdf } from '@/lib/pdfUtils'
   import NotesService from '@/services/NotesService'
+  import UploadService from '@/services/UploadService'
+  import { friendlyUploadError } from '@/lib/uploadErrors'
+  import { showToast } from '@/lib/toast'
   import NoteCard from '@/components/notes/NoteCard'
 
   // Lazy load heavy interactive components
@@ -29,11 +31,11 @@ import { useAuth } from '@/context/AuthContextDefinition'
     const queryClient = useQueryClient()
     const { data: notes = [], isLoading: isLoadingNotes } = useNotes(user?.id)
     const { mutateAsync: deleteNote, isPending: isDeleting } = useDeleteNote()
-    const { 
-      uploadAsync,
-      error: uploadError 
-    } = useUploadPdf()
-    
+    // The new POST /upload/stream is consumed via UploadService
+    // directly inside handleGenerateNotes — no useUploadPdf hook
+    // needed for the synchronous flow.
+    const uploadError: Error | null = null
+
     const [open, setOpen] = useState(false)
     const [progressModalOpen, setProgressModalOpen] = useState(false)
     const [selectedFiles, setSelectedFiles] = useState<File[]>([])
@@ -48,100 +50,63 @@ import { useAuth } from '@/context/AuthContextDefinition'
       stage: string;
       status: 'processing' | 'completed' | 'failed';
     } | null>(null)
+    // Live AI text from the synchronous /upload/stream endpoint. The
+    // legacy WS-based `streamedNotes` from useJobWebSocket still wins
+    // for older async uploads, but new uploads write here directly.
+    const [streamingPreview, setStreamingPreview] = useState<string>('')
     
-    // WebSocket should only be enabled during active processing
-    const [wsEnabled, setWsEnabled] = useState(false)
-
     const onJobCompleted = useCallback((noteId?: string, stopTrackingFn?: () => void) => {
-      console.log('[Notes Page] Job completed with noteId:', noteId);
-      
-      // Show success state briefly
       setProcessingJob(prev => prev ? { ...prev, status: 'completed', progress: 100 } : null);
-      
-      // Invalidate queries to refetch fresh data
       queryClient.invalidateQueries({ queryKey: ['notes', user?.id] });
       
-      // If we have a noteId, redirect to the note page immediately
       if (noteId) {
-        console.log('[Notes Page] Redirecting to note:', noteId);
-        
-        // Small delay to show success state, then redirect and close modal
         setTimeout(() => {
           setProgressModalOpen(false);
           navigate({ to: '/notes/$noteId', params: { noteId } });
-          
-          // Clean up everything after redirect
           setProcessingJob(null);
           setSelectedFiles([]);
           setValidationError('');
-          
-          // Disable WebSocket and unsubscribe after redirect completes
-          setWsEnabled(false);
-          if (stopTrackingFn) {
-            console.log('[Notes Page] Stopping WebSocket tracking after redirect');
-            stopTrackingFn();
-          }
-        }, 1500); // Longer delay to show success message
+          stopTrackingFn?.();
+        }, 1500);
       } else {
-        // Fallback: just clear the processing state and close modal
         setTimeout(() => {
           setProgressModalOpen(false);
           setProcessingJob(null);
           setSelectedFiles([]);
           setValidationError('');
-          
-          // Disable WebSocket
-          setWsEnabled(false);
-          if (stopTrackingFn) {
-            console.log('[Notes Page] Stopping WebSocket tracking after completion');
-            stopTrackingFn();
-          }
+          stopTrackingFn?.();
         }, 2000);
       }
-    }, [queryClient, navigate, user?.id]); 
+    }, [queryClient, navigate, user?.id]);
 
-    
     const onJobFailed = useCallback((stopTrackingFn?: () => void) => {
-      console.log('[Notes Page] Job failed');
-      
       setProcessingJob(prev => prev ? { ...prev, status: 'failed' } : null);
-      
       setTimeout(() => {
         setProgressModalOpen(false);
         setProcessingJob(null);
         setSelectedFiles([]);
         setValidationError('');
-        
-        // Disable WebSocket after failure
-        setWsEnabled(false);
-        if (stopTrackingFn) {
-          console.log('[Notes Page] Stopping WebSocket tracking after failure');
-          stopTrackingFn();
-        }
+        stopTrackingFn?.();
       }, 3000);
     }, []);
 
-    
-    const { 
-      jobProgress, 
-      trackJob, 
+    const {
+      jobProgress,
+      streamedNotes,
       stopTracking,
       isConnected,
-      usingPolling 
+      usingPolling
     } = useJobWebSocket({
-      userId: user?.id,
-      enabled: wsEnabled, // Only enable WebSocket during active processing
+      userId: user?.id ?? '',
+      enabled: !!user?.id,
       onJobCompleted: (noteId?: string) => onJobCompleted(noteId, stopTracking),
       onJobFailed: () => onJobFailed(stopTracking),
     });
 
   
     useEffect(() => {
-      if (isConnected) {
-        console.log('✅ WebSocket connected for real-time job tracking');
-      } else if (!isConnected && usingPolling) {
-        console.log('🔄 Using polling fallback for job tracking');
-      }
+      // Connection status is tracked by isConnected/usingPolling
+      // which drive UI indicators in ProcessingDialog
     }, [isConnected, usingPolling]);
 
     // Update processing job with real-time progress
@@ -284,95 +249,148 @@ import { useAuth } from '@/context/AuthContextDefinition'
       if (selectedFiles.length === 0) {
         setValidationError('Please select at least one PDF file')
         return
-      } 
+      }
 
-      // For now, we'll process only the first file
       const file = selectedFiles[0]
+      const baseName = file.name.replace(/\.pdf$/i, '')
+
+      setProcessingJob({
+        jobId: '',
+        fileName: file.name,
+        progress: 5,
+        stage: 'Uploading and feeding to Gemini…',
+        status: 'processing',
+      })
+      setStreamingPreview('')
+      setOpen(false)
+      setProgressModalOpen(true)
 
       try {
-        // Enable WebSocket for this processing session
-        console.log('[Notes Page] Enabling WebSocket for processing');
-        setWsEnabled(true);
-        
-        // Initialize processing job state FIRST
+        await UploadService.uploadAndStreamNotes(file, baseName, {
+          onMeta: () => {
+            setProcessingJob((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    progress: 15,
+                    stage: 'PDF accepted by server…',
+                  }
+                : prev,
+            )
+          },
+          onStatus: ({ stage, message }) => {
+            // Backend tells us exactly what it's doing — surface it
+            // verbatim so the user sees real progress, not just a bar.
+            const progressByStage: Record<string, number> = {
+              uploaded: 20,
+              thinking: 28,
+              streaming: 35,
+              saving: 95,
+            }
+            setProcessingJob((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    progress: progressByStage[stage] ?? prev.progress,
+                    stage: message,
+                  }
+                : prev,
+            )
+          },
+          onChunk: (accumulated) => {
+            setStreamingPreview(accumulated)
+            setProcessingJob((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    // Coarse progress estimate: cap at 90% until done.
+                    progress: Math.min(
+                      35 + Math.floor(accumulated.length / 80),
+                      90,
+                    ),
+                    stage: prev.stage.startsWith('Generating')
+                      ? prev.stage
+                      : 'Generating notes…',
+                  }
+                : prev,
+            )
+          },
+          onDone: ({ noteId }) => {
+            setProcessingJob((prev) =>
+              prev
+                ? { ...prev, progress: 100, stage: 'Done', status: 'completed' }
+                : prev,
+            )
+            queryClient.invalidateQueries({
+              queryKey: ['notes', user.id],
+              refetchType: 'active',
+            })
+            // Quick close + navigate to the saved note.
+            setTimeout(() => {
+              setProgressModalOpen(false)
+              setProcessingJob(null)
+              setStreamingPreview('')
+              setSelectedFiles([])
+              setValidationError('')
+              if (noteId) {
+                navigate({ to: '/notes/$noteId', params: { noteId } })
+              }
+            }, 600)
+          },
+          onError: (message) => {
+            const friendly = friendlyUploadError(message)
+            showToast(`${friendly.title} — ${friendly.hint}`, 'error')
+            setProcessingJob({
+              jobId: '',
+              fileName: file.name,
+              progress: 0,
+              stage: friendly.title,
+              status: 'failed',
+            })
+            setTimeout(() => {
+              setProgressModalOpen(false)
+              setProcessingJob(null)
+              setStreamingPreview('')
+              setSelectedFiles([])
+              setValidationError('')
+            }, 2500)
+          },
+        })
+      } catch (error: unknown) {
+        const rawMessage =
+          (error as { message?: string }).message || 'Unknown error'
+        const friendly = friendlyUploadError(rawMessage)
+        console.error('Failed to generate notes:', error)
+        showToast(`${friendly.title} — ${friendly.hint}`, 'error')
         setProcessingJob({
           jobId: '',
           fileName: file.name,
           progress: 0,
-          stage: 'Initializing upload...',
-          status: 'processing'
-        });
-        
-        // Close the upload drawer and open progress modal
-        setOpen(false)
-        setProgressModalOpen(true)
-        
-        // Upload and process the PDF first to get jobId
-        const result = await uploadAsync({
-          file,
-          userId: user.id,
-          fileName: file.name.replace('.pdf', '')
+          stage: friendly.title,
+          status: 'failed',
         })
-
-        // Track the job with WebSocket/polling IMMEDIATELY
-        // Prefer optimized job ID if available
-        const jobIdToTrack = result?.uploadResult?.optimizedJobId || result?.uploadResult?.jobId;
-        
-        if (jobIdToTrack) {
-          console.log('[NotesIndex] Tracking job:', jobIdToTrack);
-          
-          // Update processing job state with the actual jobId
-          setProcessingJob({
-            jobId: jobIdToTrack,
-            fileName: file.name,
-            progress: 5,
-            stage: 'Upload complete, starting processing...',
-            status: 'processing'
-          });
-          
-          // Subscribe to job-specific room immediately to catch any progress
-          trackJob(jobIdToTrack);
-        } else {
-          console.error('[NotesIndex] No jobId returned from upload');
-          throw new Error('Failed to start processing job');
-        }
-
-        // Success is handled by the WebSocket/polling callbacks
-        
-      } catch (error: unknown) {
-        console.error('Failed to generate notes:', error)
-        
-        // Show error state
-        const errorMessage = (error as { message?: string }).message || 'Unknown error';
-        setProcessingJob({
-          jobId: '',
-          fileName: selectedFiles[0]?.name || 'Unknown',
-          progress: 0,
-          stage: errorMessage,
-          status: 'failed'
-        });
-        
-        // Reset states after showing error
         setTimeout(() => {
-          setProgressModalOpen(false);
-          setProcessingJob(null);
-          stopTracking();
-          setSelectedFiles([]);
-          setValidationError('');
-          
-          // Disable WebSocket and clean up on error
-          setWsEnabled(false);
-          console.log('[Notes Page] WebSocket disabled after upload error');
-        }, 3000);
+          setProgressModalOpen(false)
+          setProcessingJob(null)
+          setStreamingPreview('')
+          stopTracking()
+          setSelectedFiles([])
+          setValidationError('')
+        }, 2500)
       }
     }
 
-    const handleDownloadNote = useCallback(async (noteId: string, title: string, content: string, e: React.MouseEvent) => {
+    // The list payload now ships only the first 500 chars of `content`
+    // (see backend NotesService — saves >100KB per response on a busy
+    // library). We fetch the full note here just-in-time before handing
+    // it to jsPDF so the download is the complete document.
+    const handleDownloadNote = useCallback(async (noteId: string, title: string, _excerpt: string, e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      
+
       try {
-        downloadNotePdf(title, content);
+        const fullNote = await NotesService.getNote(noteId);
+        downloadNotePdf(title, fullNote.content);
         console.log('Downloaded note as PDF:', noteId);
       } catch (error) {
         console.error('Failed to download note:', error);
@@ -411,7 +429,7 @@ import { useAuth } from '@/context/AuthContextDefinition'
       if (user?.id) {
         queryClient.prefetchQuery({
           queryKey: ['note', noteId, user.id],
-          queryFn: () => NotesService.getNote(noteId, user.id),
+          queryFn: () => NotesService.getNote(noteId),
           staleTime: 1000 * 60 * 5, // 5 minutes
         })
       }
@@ -426,17 +444,13 @@ import { useAuth } from '@/context/AuthContextDefinition'
       setProgressModalOpen(open);
       // If closing and job is done, clean up
       if (!open) {
-        // Disable WebSocket when manually closing modal
-        setWsEnabled(false);
-      stopTracking();
-      console.log('[Notes Page] WebSocket disabled - modal closed manually');
-      
-      setTimeout(() => {
-        setProcessingJob(null);
-        setSelectedFiles([]);
-        setValidationError('');
-      }, 300);
-    }
+        stopTracking();
+        setTimeout(() => {
+          setProcessingJob(null);
+          setSelectedFiles([]);
+          setValidationError('');
+        }, 300);
+      }
   }, [processingJob?.status, stopTracking]);
 
   return (
@@ -542,12 +556,13 @@ import { useAuth } from '@/context/AuthContextDefinition'
 
     {/* Progress Modal */}
     <Suspense fallback={null}>
-      <ProcessingDialog 
+      <ProcessingDialog
         open={progressModalOpen}
         onOpenChange={handleProcessingDialogChange}
         processingJob={processingJob}
         isConnected={isConnected}
         usingPolling={usingPolling}
+        streamedNotes={streamingPreview || streamedNotes}
       />
     </Suspense>
 

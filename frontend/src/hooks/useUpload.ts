@@ -19,16 +19,14 @@ export const useUploadPdf = () => {
   });
 
   const uploadMutation = useMutation({
-    mutationFn: async ({ 
-      file, 
-      userId, 
-      fileName 
-    }: { 
-      file: File; 
-      userId: string; 
-      fileName: string 
+    mutationFn: async ({
+      file,
+      fileName,
+    }: {
+      file: File;
+      userId: string;
+      fileName: string;
     }) => {
-      // Reset progress
       setUploadProgress({
         isUploading: true,
         progress: 0,
@@ -36,10 +34,8 @@ export const useUploadPdf = () => {
         error: null,
       });
 
-      // Upload the PDF
-      const uploadResult = await UploadService.uploadPdf(file, userId, fileName);
+      const uploadResult = await UploadService.uploadPdf(file, fileName);
 
-      // Poll for job completion
       const jobResult = await UploadService.pollJobStatus(
         uploadResult.jobId,
         (progress, stage) => {
@@ -54,18 +50,15 @@ export const useUploadPdf = () => {
       return { uploadResult, jobResult };
     },
     onSuccess: (_, variables) => {
-      // Invalidate notes query to refetch the updated list
       queryClient.invalidateQueries({ queryKey: ['notes', variables.userId] });
-      
-      // Mark upload as complete and stop showing the modal
+
       setUploadProgress({
         isUploading: false,
         progress: 100,
         stage: 'completed',
         error: null,
       });
-      
-      // Reset after a brief delay
+
       setTimeout(() => {
         setUploadProgress({
           isUploading: false,
@@ -104,20 +97,14 @@ export const useUploadPdf = () => {
   };
 };
 
-/**
- * Hook to fetch all files for a user
- */
 export const useUserFiles = (userId: string) => {
   return useQuery({
     queryKey: ['files', userId],
-    queryFn: () => UploadService.getUserFiles(userId),
+    queryFn: () => UploadService.getUserFiles(),
     enabled: !!userId,
   });
 };
 
-/**
- * Hook to fetch a single file by ID
- */
 export const useFile = (fileId: string) => {
   return useQuery({
     queryKey: ['file', fileId],
@@ -126,19 +113,14 @@ export const useFile = (fileId: string) => {
   });
 };
 
-/**
- * Hook to delete a file
- */
 export const useDeleteFile = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ fileId, userId }: { fileId: string; userId: string }) =>
-      UploadService.deleteFile(fileId, userId),
+    mutationFn: ({ fileId }: { fileId: string; userId: string }) =>
+      UploadService.deleteFile(fileId),
     onSuccess: (_, variables) => {
-      // Invalidate files query to refetch the updated list
       queryClient.invalidateQueries({ queryKey: ['files', variables.userId] });
-      // Also invalidate notes as they might be affected
       queryClient.invalidateQueries({ queryKey: ['notes', variables.userId] });
     },
   });

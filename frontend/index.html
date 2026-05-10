@@ -2,6 +2,18 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!--
+      Defense-in-depth CSP. The authoritative CSP is set by the backend's
+      Helmet middleware on API responses. This meta tag scopes the
+      frontend bundle itself.
+      'unsafe-inline' on style-src is required by Tailwind/Shadcn runtime
+      classes; we accept it because there is no inline <script>.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' https://js.stripe.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; connect-src 'self' http: https: ws: wss:; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'"
+    />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
     <link rel="icon" type="image/svg+xml" href="/logo_svg.svg" />
     <link rel="icon" type="image/png" sizes="32x32" href="/logo.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/logo.png" />

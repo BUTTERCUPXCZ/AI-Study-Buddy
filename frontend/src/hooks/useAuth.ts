@@ -3,6 +3,29 @@ import { api } from '../lib/api';
 import { type RegisterData, type LoginData } from '../types/auth.ts';
 import authService, { type AuthResponse } from '../services/AuthService';
 
+class RateLimitError extends Error {
+  retryAfter: number;
+  isRateLimited = true as const;
+  constructor(message: string, retryAfter: number) {
+    super(message);
+    this.name = 'RateLimitError';
+    this.retryAfter = retryAfter;
+  }
+}
+
+function extractAuthError(error: unknown): Error {
+  const errData = (error as { response?: { data?: { message?: string; isRateLimited?: boolean; retryAfter?: number } } })?.response?.data;
+  const message = errData?.message || 'Request failed';
+
+  if (errData?.isRateLimited && errData.retryAfter) {
+    return new RateLimitError(message, errData.retryAfter);
+  }
+
+  return new Error(message);
+}
+
+export { RateLimitError };
+
 export const useRegister = () => {
   return useMutation<AuthResponse, Error, RegisterData>({
     mutationFn: async (userData) => {
@@ -10,9 +33,7 @@ export const useRegister = () => {
         const res = await api.post<AuthResponse>('/auth/register', userData);
         return res.data;
       } catch (error: unknown) {
-        // Surface backend message (e.g. "This email already exists. Use another one.") so the UI can show it
-        const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Registration failed';
-        throw new Error(message);
+        throw extractAuthError(error);
       }
     },
   });
@@ -27,18 +48,24 @@ export const useLogin = () => {
         const res = await api.post<AuthResponse>('/auth/login', credentials);
         return res.data;
       } catch (error: unknown) {
-        // Surface backend message (e.g. "Account does not exist") so the UI can show it
-        const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Login failed';
-        throw new Error(message);
+        throw extractAuthError(error);
       }
     },
     onSuccess: (data) => {
-      // Cookie is set automatically by the backend
-      // Set user data immediately in cache to avoid refetch
       if (data.user) {
         queryClient.setQueryData(['auth', 'user'], data.user);
       }
       queryClient.invalidateQueries({ queryKey: ['auth'] });
+      // Drop any user-scoped caches left behind by a previous session in
+      // this tab. Without this, the post-login navigate to /notes can
+      // hand the page a stale empty array (staleTime: 5min,
+      // refetchOnMount: false) and the user sees "No study notes yet"
+      // until they hard-refresh.
+      queryClient.removeQueries({ queryKey: ['notes'] });
+      queryClient.removeQueries({ queryKey: ['quizzes'] });
+      queryClient.removeQueries({ queryKey: ['files'] });
+      queryClient.removeQueries({ queryKey: ['note'] });
+      queryClient.removeQueries({ queryKey: ['quiz'] });
     },
   });
 };
@@ -83,6 +110,12 @@ export const useOAuthCallback = () => {
     onSuccess: () => {
       // Invalidate user query to refetch user data
       queryClient.invalidateQueries({ queryKey: ['auth', 'user'] });
+      // Same fresh-data guarantee as email/password login.
+      queryClient.removeQueries({ queryKey: ['notes'] });
+      queryClient.removeQueries({ queryKey: ['quizzes'] });
+      queryClient.removeQueries({ queryKey: ['files'] });
+      queryClient.removeQueries({ queryKey: ['note'] });
+      queryClient.removeQueries({ queryKey: ['quiz'] });
     },
   });
 };

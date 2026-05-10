@@ -14,10 +14,6 @@ export class GenerateQuizDto {
 
   @IsString()
   @IsNotEmpty()
-  userId: string;
-
-  @IsString()
-  @IsNotEmpty()
   title: string;
 
   @IsString()
