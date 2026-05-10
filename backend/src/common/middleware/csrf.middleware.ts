@@ -82,8 +82,8 @@ export class CsrfMiddleware implements NestMiddleware {
       return next();
     }
 
-    const cookie = (req as Request & { cookies?: Record<string, string> })
-      .cookies?.[TOKEN_COOKIE];
+    const cookieMap = req.cookies as Record<string, string> | undefined;
+    const cookie = cookieMap?.[TOKEN_COOKIE];
     const headerVal = req.headers[TOKEN_HEADER];
     const header = Array.isArray(headerVal) ? headerVal[0] : headerVal;
 

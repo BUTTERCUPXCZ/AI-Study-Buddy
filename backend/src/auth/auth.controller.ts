@@ -33,7 +33,7 @@ export class AuthController {
     @Req() request: express.Request,
   ) {
     const result = await this.authService.Register(createAuthDto);
-    await this.auditService.record({
+    this.auditService.record({
       action: 'register',
       target: createAuthDto.email,
       request,
@@ -55,7 +55,7 @@ export class AuthController {
         response,
         request.ip,
       );
-      await this.auditService.record({
+      this.auditService.record({
         action: 'login',
         userId: result.user?.id,
         target: createAuthDto.email,
@@ -63,7 +63,7 @@ export class AuthController {
       });
       return result;
     } catch (err) {
-      await this.auditService.record({
+      this.auditService.record({
         action: 'login_failed',
         target: createAuthDto.email,
         request,
@@ -97,7 +97,7 @@ export class AuthController {
   }
 
   @Post('logout')
-  async logout(
+  logout(
     @Res({ passthrough: true }) response: express.Response,
     @Req() request: express.Request,
   ) {
@@ -110,7 +110,7 @@ export class AuthController {
 
     // Best-effort audit; the cookie may be invalid here so we don't try
     // to resolve userId — the IP/UA is enough to correlate the action.
-    await this.auditService.record({ action: 'logout', request });
+    this.auditService.record({ action: 'logout', request });
 
     return { message: 'Logged out successfully' };
   }
@@ -150,7 +150,7 @@ export class AuthController {
       accessToken,
       response,
     );
-    await this.auditService.record({
+    this.auditService.record({
       action: 'oauth_login',
       userId: result.user?.id,
       request,

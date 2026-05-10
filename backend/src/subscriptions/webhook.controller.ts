@@ -122,7 +122,7 @@ export class WebhookController {
             subscriptionId,
             userId,
           );
-          await this.auditService.record({
+          this.auditService.record({
             action: 'subscription_checkout_completed',
             userId,
             target: subscriptionId,
@@ -169,7 +169,7 @@ export class WebhookController {
           this.logger.log(
             `Subscription created -> ${status} for user ${user.id}`,
           );
-          await this.auditService.record({
+          this.auditService.record({
             action: 'subscription_created',
             userId: user.id,
             meta: { status, stripeEventId: event.id },
@@ -215,7 +215,7 @@ export class WebhookController {
               user.id,
             );
             this.logger.log(`Subscription cancelled for user ${user.id}`);
-            await this.auditService.record({
+            this.auditService.record({
               action: 'subscription_cancelled',
               userId: user.id,
               meta: { stripeEventId: event.id },
