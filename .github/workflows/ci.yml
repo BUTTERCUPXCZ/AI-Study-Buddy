@@ -100,7 +100,8 @@ jobs:
       - name: Prisma schema validate + format check
         working-directory: ./backend
         env:
-          DIRECT_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+          DIRECT_URL: postgresql://ci:ci@localhost:5432/ci
         run: |
           npx prisma format --check
           npx prisma validate
