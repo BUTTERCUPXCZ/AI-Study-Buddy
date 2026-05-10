@@ -1,10 +1,12 @@
-import { Link, Outlet, useRouterState } from '@tanstack/react-router'
+import { Link, Outlet, useRouterState, useNavigate } from '@tanstack/react-router'
 import { useAuth } from '@/context/AuthContextDefinition'
+import { useLogout } from '@/hooks/useAuth'
 import {
   Activity,
   CreditCard,
   FileText,
   LayoutDashboard,
+  LogOut,
   ShieldCheck,
   Users,
 } from 'lucide-react'
@@ -61,6 +63,8 @@ export default function AdminLayout() {
   const { user } = useAuth() as { user: AuthedUser | null }
   const role = user?.role ?? 'USER'
   const { location } = useRouterState()
+  const navigate = useNavigate()
+  const logout = useLogout()
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -98,12 +102,18 @@ export default function AdminLayout() {
         <div className="mt-auto p-2 text-xs text-muted-foreground border-t pt-3">
           <div className="font-medium truncate">{user?.fullname}</div>
           <div className="truncate">{user?.email}</div>
-          <Link
-            to="/library"
-            className="mt-2 inline-block text-primary hover:underline"
+          <button
+            onClick={() => {
+              logout.mutate(undefined, {
+                onSuccess: () => void navigate({ to: '/login' }),
+              })
+            }}
+            disabled={logout.isPending}
+            className="mt-2 flex items-center gap-1.5 text-destructive hover:underline disabled:opacity-50"
           >
-            ← back to app
-          </Link>
+            <LogOut className="h-3.5 w-3.5" />
+            {logout.isPending ? 'Signing out…' : 'Sign out'}
+          </button>
         </div>
       </aside>
       <main className="flex-1 overflow-auto">
