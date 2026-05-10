@@ -22,35 +22,35 @@ enum UserRole {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  Fullname  String
-  email     String   @unique
-  supabaseId String   @unique
-  password  String
+  id            String  @id @default(cuid())
+  Fullname      String
+  email         String  @unique
+  supabaseId    String  @unique
+  password      String
   emailVerified Boolean @default(false)
 
   // RBAC — single role per user. Permissions map from role server-side
   // in `backend/src/auth/rbac.ts`. USER is the default for every new
   // signup.
-  role      UserRole @default(USER)
+  role        UserRole  @default(USER)
   // Bumped by AuditService.record on login / oauth_login. Powers the
   // admin "active in last X days" query without scanning AuditLog.
   lastLoginAt DateTime?
 
   // Subscription fields
-  subscriptionStatus String @default("FREE") // "FREE" or "PRO"
-  stripeCustomerId String? @unique
-  stripeSubscriptionId String? @unique
+  subscriptionStatus           String    @default("FREE") // "FREE" or "PRO"
+  stripeCustomerId             String?   @unique
+  stripeSubscriptionId         String?   @unique
   subscriptionCurrentPeriodEnd DateTime?
 
   // Usage tracking
   attemptsUsed Int @default(0) // Track how many attempts user has used
 
-  notes     Note[]
-  quizzes   Quiz[]
-  files     File[]
-  uploads   Upload[]
-  jobs      Job[]
+  notes        Note[]
+  quizzes      Quiz[]
+  files        File[]
+  uploads      Upload[]
+  jobs         Job[]
   chatSessions ChatSession[]
 
   @@index([role])
@@ -58,17 +58,16 @@ model User {
 }
 
 model Note {
-  id        String   @id @default(cuid())
-  title     String
-  content   String
-  source    String?  // Optional: track source file or PDF
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  quizzes   Quiz[]
+  id           String        @id @default(cuid())
+  title        String
+  content      String
+  source       String? // Optional: track source file or PDF
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  userId       String
+  user         User          @relation(fields: [userId], references: [id])
+  quizzes      Quiz[]
   chatSessions ChatSession[]
-
 
   @@index([userId])
   @@index([userId, createdAt])
@@ -82,29 +81,29 @@ model Quiz {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   userId    String
-  noteId    String?  // Link quiz to a note
+  noteId    String? // Link quiz to a note
   user      User     @relation(fields: [userId], references: [id])
   note      Note?    @relation(fields: [noteId], references: [id])
-
-  @@index([userId])
-  @@index([noteId])
-  @@index([userId, createdAt])
   // GIN index on the JSON column lives in a manual migration
   // (20260505_add_quiz_questions_gin_index). Prisma can't model
   // expression / functional indexes natively, so the schema notes its
   // existence here to keep the docs honest.
+
+  @@index([userId])
+  @@index([noteId])
+  @@index([userId, createdAt])
 }
 
 model ChatSession {
-  id        String   @id @default(cuid())
-  title     String?  // Optional title for the chat session
+  id        String        @id @default(cuid())
+  title     String? // Optional title for the chat session
   messages  ChatMessage[]
-  noteId    String?  // Link chat to a note for context
-  note      Note?    @relation(fields: [noteId], references: [id])
+  noteId    String? // Link chat to a note for context
+  note      Note?         @relation(fields: [noteId], references: [id])
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  user      User          @relation(fields: [userId], references: [id])
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
 
   @@index([userId])
   @@index([noteId])
@@ -112,23 +111,23 @@ model ChatSession {
 }
 
 model ChatMessage {
-  id        String   @id @default(cuid())
-  role      String   // 'user' or 'assistant'
+  id        String      @id @default(cuid())
+  role      String // 'user' or 'assistant'
   content   String
   sessionId String
   session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+  createdAt DateTime    @default(now())
 
   @@index([sessionId])
   @@index([sessionId, createdAt])
 }
 
 model File {
-  id        String   @id @default(cuid())
-  url       String
-  name      String
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  id     String @id @default(cuid())
+  url    String
+  name   String
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
 
   @@index([userId])
 }
@@ -166,11 +165,11 @@ enum JobStatus {
 model AuditLog {
   id        String   @id @default(cuid())
   userId    String?
-  action    String   // e.g. 'login', 'logout', 'login_failed', 'oauth_login', 'file_delete', 'subscription_change'
-  target    String?  // optional: id of resource acted upon
+  action    String // e.g. 'login', 'logout', 'login_failed', 'oauth_login', 'file_delete', 'subscription_change'
+  target    String? // optional: id of resource acted upon
   ip        String?
   userAgent String?
-  meta      Json?    // optional structured detail; never log secrets/PII payloads
+  meta      Json? // optional structured detail; never log secrets/PII payloads
   createdAt DateTime @default(now())
 
   @@index([userId])
@@ -212,4 +211,3 @@ model Job {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 }
-
