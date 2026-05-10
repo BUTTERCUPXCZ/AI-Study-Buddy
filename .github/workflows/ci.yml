@@ -117,7 +117,7 @@ jobs:
           fetch-depth: 0
 
       - name: gitleaks scan
-        uses: gitleaks/gitleaks-action@cb7149b9b57195b609c63e8518d2c37a489a5e21 # v2.3.7
+        uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Block the PR on any finding rather than just reporting.
