@@ -96,12 +96,14 @@ jobs:
 
       # S14 — schema drift detection. Catches PRs that change `schema.prisma`
       # without an accompanying migration, which would silently fail on a
-      # fresh `prisma migrate deploy`.\
-      - name: Prisma schema validate + format check
+      # fresh `prisma migrate deploy`. `prisma format --check` covers syntax
+      # and formatting; the earlier `prisma generate` step would already
+      # fail on a structurally broken schema, so `prisma validate` (which
+      # demands DATABASE_URL/DIRECT_URL env vars even for offline checks)
+      # would only duplicate that coverage.
+      - name: Prisma schema format check
         working-directory: ./backend
-        run: |
-          npx prisma format --check
-          npx prisma validate
+        run: npx prisma format --check
 
   # S14 — secrets scan. Runs on the diff for every PR plus the full repo
   # on push to main. Catches accidentally committed AWS keys, .env values,
