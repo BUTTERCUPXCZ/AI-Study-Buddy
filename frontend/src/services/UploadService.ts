@@ -101,14 +101,37 @@ class UploadService {
     const csrfMatch = document.cookie.match(/csrf_token=([^;]+)/);
     const csrfToken = csrfMatch ? decodeURIComponent(csrfMatch[1]) : '';
 
-    const response = await fetch(`${baseURL}/upload/stream`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: csrfToken ? { 'X-CSRF-Token': csrfToken } : undefined,
-      body: formData,
-    });
+    // Hard ceiling on a single upload. Past this, something is wrong
+    // (backend hung, network black-hole, …) — abort and surface a
+    // friendly error rather than letting the modal sit forever.
+    const HARD_TIMEOUT_MS = 5 * 60 * 1000;
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(
+      () => controller.abort(),
+      HARD_TIMEOUT_MS,
+    );
+
+    let response: Response;
+    try {
+      response = await fetch(`${baseURL}/upload/stream`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: csrfToken ? { 'X-CSRF-Token': csrfToken } : undefined,
+        body: formData,
+        signal: controller.signal,
+      });
+    } catch (err) {
+      window.clearTimeout(timeoutId);
+      if ((err as { name?: string })?.name === 'AbortError') {
+        throw new Error(
+          'Upload timed out after 5 minutes. Please try a smaller PDF or try again.',
+        );
+      }
+      throw err;
+    }
 
     if (!response.ok) {
+      window.clearTimeout(timeoutId);
       // Validation error (415, 413, etc.) — body is plain JSON, not SSE.
       const text = await response.text();
       let message = 'Upload failed';
@@ -122,12 +145,18 @@ class UploadService {
     }
 
     if (!response.body) {
+      window.clearTimeout(timeoutId);
       throw new Error('Streaming not supported in this browser');
     }
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder('utf-8');
     let buffer = '';
+    // Track whether the stream produced a terminal frame (`done` or
+    // `error`). If it ends without one — e.g. the backend's socket was
+    // killed by a proxy / Node requestTimeout / Render restart — the
+    // caller's onError MUST fire so the modal isn't stuck forever.
+    let terminal: 'done' | 'error' | null = null;
 
     try {
       while (true) {
@@ -169,6 +198,7 @@ class UploadService {
               callbacks.onChunk(String(event.accumulated ?? ''));
               break;
             case 'done':
+              terminal = 'done';
               callbacks.onDone({
                 noteId: String(event.noteId ?? ''),
                 title: String(event.title ?? ''),
@@ -176,12 +206,20 @@ class UploadService {
               });
               break;
             case 'error':
+              terminal = 'error';
               callbacks.onError?.(String(event.message ?? 'Generation failed'));
               break;
           }
         }
       }
+
+      if (!terminal) {
+        callbacks.onError?.(
+          'Connection ended before generation finished. Please retry.',
+        );
+      }
     } finally {
+      window.clearTimeout(timeoutId);
       reader.releaseLock();
     }
   }

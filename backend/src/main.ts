@@ -215,6 +215,23 @@ async function bootstrap() {
     server.keepAliveTimeout = 5_000; // close idle keep-alive after 5s
   }
 
+  // Long-lived SSE / streaming routes — the 30 s requestTimeout above would
+  // unconditionally kill the connection mid-response in production, where
+  // Supabase Storage + Gemini round-trips routinely eat 60–120 s end-to-end.
+  // `req.setTimeout(0)` overrides the server-wide setting per-request, so
+  // every other endpoint still gets the 30 s slow-loris protection.
+  const STREAMING_PATHS = ['/upload/stream'];
+  app.use((req: Request, _res: Response, next: NextFunction) => {
+    if (
+      STREAMING_PATHS.some(
+        (p) => req.path === p || req.path.startsWith(p + '/'),
+      )
+    ) {
+      req.setTimeout(0);
+    }
+    next();
+  });
+
   await app.listen(process.env.PORT ?? 3000);
   Logger.log(`Server listening on port ${process.env.PORT ?? 3000}`);
 }
