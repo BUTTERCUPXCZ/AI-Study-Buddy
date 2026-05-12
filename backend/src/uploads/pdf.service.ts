@@ -210,6 +210,11 @@ export class PdfService {
     createPdfDto: CreatePdfDto,
     res: Response,
   ): Promise<void> {
+    // ---- Cheap, synchronous validations -------------------------------
+    // These all throw BadRequestException, which the ExceptionFilter turns
+    // into a JSON 4xx response. They must happen BEFORE we flip into SSE
+    // mode — once SSE headers are flushed the response is committed and
+    // every error has to be an `error` SSE frame, not an HTTP status.
     if (!file) {
       throw new BadRequestException('No file provided');
     }
@@ -251,33 +256,20 @@ export class PdfService {
       throw new BadRequestException('Invalid filename');
     }
 
-    // Save to Supabase + DB BEFORE opening the stream so any storage
-    // failure surfaces as a clean 4xx, not a half-written SSE frame.
-    const { data: uploadData, error: uploadError } = await this.supabase.storage
-      .from(this.bucketName)
-      .upload(uniqueFileName, file.buffer, {
-        contentType: file.mimetype,
-        upsert: false,
-      });
-
-    if (uploadError) {
-      throw new BadRequestException(`Upload failed: ${uploadError.message}`);
-    }
-
-    const fileRecord = await this.databaseService.file.create({
-      data: {
-        name: createPdfDto.fileName,
-        url: uploadData.path,
-        userId,
-      },
-    });
-
-    // Now flip into SSE mode. Once the first byte goes out, the response
-    // is committed — any error from here on becomes a stream `error`
-    // event, not an HTTP status.
+    // ---- Flip into SSE mode IMMEDIATELY -------------------------------
+    // Prod symptom we're fixing: in dev Supabase upload takes ~2 s so the
+    // client never noticed that no SSE bytes flow during it; in prod the
+    // upload can take 15-30 s, the 30 s Node requestTimeout fires before
+    // the first byte goes out, the socket dies, and the UI sits forever
+    // at progress: 5. By flushing headers + emitting a `validated` status
+    // frame here we guarantee the client sees motion within ~1 s and the
+    // SSE response is committed even if Supabase is slow.
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache, no-transform');
     res.setHeader('Connection', 'keep-alive');
+    // Disables proxy response buffering (nginx / Render ingress). Without
+    // this, intermediaries hold the SSE response until enough bytes
+    // accumulate, defeating the whole "stream tokens" UX.
     res.setHeader('X-Accel-Buffering', 'no');
     res.flushHeaders?.();
 
@@ -285,27 +277,84 @@ export class PdfService {
       res.write(`data: ${JSON.stringify(payload)}\n\n`);
     };
 
-    writeEvent({
-      type: 'meta',
-      fileId: fileRecord.id,
-      fileName: fileRecord.name,
-    });
+    // Keep-alive comment frame every 15 s while the response is open.
+    // Browsers and SSE clients ignore comment lines (starts with `:`),
+    // but they keep the TCP connection warm so Cloudflare / Render don't
+    // close it as "idle" during the slowest segments (large Supabase
+    // upload, first Gemini token). Cleared in the finally block below.
+    const keepAlive = setInterval(() => {
+      try {
+        res.write(`: ping\n\n`);
+      } catch {
+        // socket may have closed underneath us; ignore.
+      }
+    }, 15_000);
+    // Don't keep the Node event loop alive on this timer alone.
+    keepAlive.unref?.();
 
-    // Surface stage messages so the user sees what the backend is
-    // doing (matches the lines that show up in server logs).
     writeEvent({
       type: 'status',
-      stage: 'uploaded',
-      message: `Uploaded ${(file.size / 1024).toFixed(0)} KB. Contacting Gemini…`,
+      stage: 'validated',
+      message: 'PDF validated. Saving to storage…',
     });
 
     try {
+      // ---- Supabase Storage upload -----------------------------------
+      const storageStart = Date.now();
+      const { data: uploadData, error: uploadError } =
+        await this.supabase.storage
+          .from(this.bucketName)
+          .upload(uniqueFileName, file.buffer, {
+            contentType: file.mimetype,
+            upsert: false,
+          });
+      this.logger.log(
+        `[uploadAndStreamNotes] supabase_upload_ms=${Date.now() - storageStart} ` +
+          `size=${file.size} userId=${userId}`,
+      );
+
+      if (uploadError) {
+        writeEvent({
+          type: 'error',
+          message: `Storage upload failed: ${uploadError.message}`,
+        });
+        return;
+      }
+
+      writeEvent({
+        type: 'status',
+        stage: 'stored',
+        message: 'Saved. Recording in your library…',
+      });
+
+      const fileRecord = await this.databaseService.file.create({
+        data: {
+          name: createPdfDto.fileName,
+          url: uploadData.path,
+          userId,
+        },
+      });
+
+      writeEvent({
+        type: 'meta',
+        fileId: fileRecord.id,
+        fileName: fileRecord.name,
+      });
+
+      writeEvent({
+        type: 'status',
+        stage: 'uploaded',
+        message: `Uploaded ${(file.size / 1024).toFixed(0)} KB. Contacting Gemini…`,
+      });
+
       writeEvent({
         type: 'status',
         stage: 'thinking',
         message: 'Gemini is reading your PDF…',
       });
 
+      // ---- Gemini streaming generation --------------------------------
+      const geminiStart = Date.now();
       let firstChunkSeen = false;
       const result = await this.aiService.generateNotesFromPDFStream(
         file.buffer,
@@ -321,12 +370,13 @@ export class PdfService {
               message: 'Generating notes…',
             });
           }
-          // Send accumulated text on every chunk — frontend renders the
-          // whole buffer each tick (cheap for <50KB notes) and never
-          // has to handle out-of-order or missing chunks.
           writeEvent({ type: 'chunk', accumulated });
         },
         'application/pdf',
+      );
+      this.logger.log(
+        `[uploadAndStreamNotes] gemini_stream_ms=${Date.now() - geminiStart} ` +
+          `userId=${userId} fileId=${fileRecord.id}`,
       );
 
       writeEvent({
@@ -352,6 +402,7 @@ export class PdfService {
         message: err instanceof Error ? err.message : 'Generation failed',
       });
     } finally {
+      clearInterval(keepAlive);
       res.end();
     }
   }

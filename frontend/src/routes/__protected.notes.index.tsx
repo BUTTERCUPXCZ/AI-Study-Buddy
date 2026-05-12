@@ -281,7 +281,12 @@ import { useAuth } from '@/context/AuthContextDefinition'
           onStatus: ({ stage, message }) => {
             // Backend tells us exactly what it's doing — surface it
             // verbatim so the user sees real progress, not just a bar.
+            // `validated` / `stored` arrive within ~1s and ~5–30s
+            // respectively, so the modal moves off 5% even when the
+            // Supabase storage hop is slow on Render free tier.
             const progressByStage: Record<string, number> = {
+              validated: 10,
+              stored: 18,
               uploaded: 20,
               thinking: 28,
               streaming: 35,

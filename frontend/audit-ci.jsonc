@@ -1,0 +1,39 @@
+// S14 — frontend vulnerability gate config.
+//
+// audit-ci wraps `npm audit` and lets us scope exceptions to specific
+// advisory IDs (npm audit alone has no per-advisory allow-list). The CI
+// step in .github/workflows/ci.yml runs:
+//
+//     npx audit-ci --config audit-ci.jsonc
+//
+// Any high-or-critical advisory that is NOT on the allowlist below
+// fails the build.
+{
+  "$schema": "https://raw.githubusercontent.com/IBM/audit-ci/main/docs/schema.json",
+  "moderate": false,
+  "high": true,
+  "critical": true,
+
+  // Allowlisted advisories — each entry MUST cite the advisory ID, the
+  // reason it is safe to ignore here, and a re-review date.
+  "allowlist": [
+    // GHSA-rmmr-r34h-pfm5 — Malware in @tanstack/history.
+    //
+    // The malicious publishes were specifically versions 1.161.9 and
+    // 1.161.12, both since unpublished from the npm registry. This repo
+    // resolves @tanstack/history to 1.133.28 (pre-malware, predates the
+    // compromised releases by ~30 minor versions). The advisory's
+    // `vulnerable_version_range: ">= 0"` is GitHub's blanket flag while
+    // their investigation continues, NOT a statement that every version
+    // is malicious.
+    //
+    // A separate guard step in CI (`scripts/check-tanstack-history.mjs`)
+    // hard-fails if the resolved version IS 1.161.9 or 1.161.12, so this
+    // allowlist can't accidentally let real malware through.
+    //
+    // Re-review: 2026-08-12 (3 months). If GitHub has by then added a
+    // `first_patched_version`, drop this allowlist entry. If the
+    // advisory is still open, file an issue + extend the date.
+    "GHSA-rmmr-r34h-pfm5"
+  ]
+}
