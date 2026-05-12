@@ -7,6 +7,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { RegisterDto } from './dto/Register-dto';
+import { RegisterResponseDto } from './dto/Register-response.dto';
 import { LoginDto } from './dto/Login-dto';
 import { DatabaseService } from '../database/database.service';
 import { ConfigService } from '@nestjs/config';
@@ -318,7 +319,7 @@ export class AuthService {
     };
   }
 
-  async Register(registerDto: RegisterDto) {
+  async Register(registerDto: RegisterDto): Promise<RegisterResponseDto> {
     const existingUser = await this.databaseService.user.findUnique({
       where: { email: registerDto.email },
     });
@@ -353,6 +354,20 @@ export class AuthService {
       throw new UnauthorizedException('User registration failed');
     }
 
+    // If Supabase returns a session on signup, the project has "Confirm email"
+    // disabled — that breaks the verify-email flow (user is auto-confirmed)
+    // and silently turns this into an account-takeover risk because the
+    // backend would never enforce the EmailVerifiedGuard. Log loudly and
+    // refuse to leak the session back to the client; the client still routes
+    // to /emailVerify and the user gets a chance to fix the config.
+    if (data.session) {
+      this.logger.warn({
+        event: 'register_supabase_returned_session',
+        userId: supabaseUser.id,
+        hint: 'Supabase project has "Confirm email" disabled — flip it ON in Auth → Providers → Email.',
+      });
+    }
+
     const newUser = await this.databaseService.user.create({
       data: {
         supabaseId: supabaseUser.id,
@@ -368,6 +383,11 @@ export class AuthService {
 
     return {
       message: 'User registered successfully. Please verify your email.',
+      user: {
+        id: newUser.id,
+        email: newUser.email,
+        emailVerified: newUser.emailVerified,
+      },
     };
   }
   async Login(loginDto: LoginDto, response: any, requestIp?: string) {
