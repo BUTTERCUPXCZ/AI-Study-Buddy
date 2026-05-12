@@ -49,9 +49,18 @@ jobs:
 
       # S14 — vulnerability gate. Fails the PR on any new high or critical
       # advisory in the resolved frontend dependency tree.
-      - name: npm audit (high+)
+      #
+      # Uses audit-ci instead of bare `npm audit` so we can scope
+      # exceptions to specific advisory IDs (npm audit has no
+      # per-advisory allow-list). Current allowlist is documented in
+      # frontend/audit-ci.jsonc.
+      - name: Guard — no known-malicious @tanstack/history version
         working-directory: ./frontend
-        run: npm audit --audit-level=high
+        run: npm run audit:guard
+
+      - name: audit-ci (high+)
+        working-directory: ./frontend
+        run: npm run audit:ci
 
   backend:
     name: Build backend
