@@ -13,6 +13,7 @@ import {
 import express from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/Register-dto';
+import { RegisterResponseDto } from './dto/Register-response.dto';
 import { LoginDto } from './dto/Login-dto';
 import { Provider } from '@supabase/supabase-js';
 import { Throttle } from '../common/decorators/throttle.decorator';
@@ -31,7 +32,7 @@ export class AuthController {
   async register(
     @Body() createAuthDto: RegisterDto,
     @Req() request: express.Request,
-  ) {
+  ): Promise<RegisterResponseDto> {
     const result = await this.authService.Register(createAuthDto);
     this.auditService.record({
       action: 'register',

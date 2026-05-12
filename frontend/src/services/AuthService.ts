@@ -10,6 +10,18 @@ export interface AuthResponse {
   };
 }
 
+// Strict shape returned by POST /auth/register. Distinct from AuthResponse so
+// a Supabase config change (e.g. email-confirm disabled) can't silently slip a
+// session payload through and bypass the email-verify flow.
+export interface RegisterResponse {
+  message: string;
+  user: {
+    id: string;
+    email: string;
+    emailVerified: boolean;
+  };
+}
+
 export interface OAuthUrlResponse {
   url: string;
   provider: string;

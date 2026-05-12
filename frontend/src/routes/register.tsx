@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -21,6 +21,7 @@ export const Route = createFileRoute('/register')({
 function RouteComponent() {
   const [oauthLoading, setOauthLoading] = useState(false)
   const [oauthError, setOauthError] = useState<string>('')
+  const [submittedEmail, setSubmittedEmail] = useState<string | null>(null)
   const navigate = useNavigate()
   const { isRateLimited, retryAfter, startCooldown } = useRateLimit()
   
@@ -43,39 +44,33 @@ function RouteComponent() {
   const {
     register,
     handleSubmit,
-    watch,
     formState: { errors },
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
   })
 
-  const { mutate, isPending, isSuccess, error, data, } = useRegister()
-
-  // Redirect to email verification page after successful registration
-  useEffect(() => {
-    if (isSuccess && data) {
-      const email = watch('email')
-      const timer = setTimeout(() => {
-        navigate({ to: '/emailVerify', search: { email } })
-      }, 2000)
-
-      return () => clearTimeout(timer)
-    }
-  }, [isSuccess, data, watch, navigate])
+  const { mutate, isPending, isSuccess, error, data } = useRegister()
 
   const onSubmit = (formData: RegisterFormData) => {
     if (isRateLimited) return
-    mutate({
-      Fullname: formData.fullname,
-      email: formData.email,
-      password: formData.password,
-    }, {
-      onError: (err) => {
-        if (err instanceof RateLimitError) {
-          startCooldown(err.retryAfter)
-        }
-      }
-    })
+    setSubmittedEmail(formData.email)
+    mutate(
+      {
+        Fullname: formData.fullname,
+        email: formData.email,
+        password: formData.password,
+      },
+      {
+        onSuccess: () => {
+          navigate({ to: '/emailVerify', search: { email: formData.email } })
+        },
+        onError: (err) => {
+          if (err instanceof RateLimitError) {
+            startCooldown(err.retryAfter)
+          }
+        },
+      },
+    )
   }
 
   const handleOAuthSignup = async (provider: 'google' | 'github') => {
@@ -207,12 +202,19 @@ function RouteComponent() {
                 </p>
               </div>
             )}
-            {isSuccess && data && (
+            {isSuccess && submittedEmail && (
               <div className="bg-green-50 border border-green-200 rounded-lg p-4 mt-4">
                 <p className="text-sm font-medium text-green-700">Registration successful!</p>
                 <p className="text-sm text-green-600 mt-1">
-                  {data.message} Redirecting to email verification...
+                  {data?.message ?? 'Please verify your email to continue.'}
                 </p>
+                <Link
+                  to="/emailVerify"
+                  search={{ email: submittedEmail }}
+                  className="text-sm text-blue-600 hover:underline font-semibold mt-2 inline-block"
+                >
+                  Continue to email verification →
+                </Link>
               </div>
             )}
 

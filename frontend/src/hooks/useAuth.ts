@@ -1,7 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { type RegisterData, type LoginData } from '../types/auth.ts';
-import authService, { type AuthResponse } from '../services/AuthService';
+import authService, {
+  type AuthResponse,
+  type RegisterResponse,
+} from '../services/AuthService';
 
 class RateLimitError extends Error {
   retryAfter: number;
@@ -15,22 +18,40 @@ class RateLimitError extends Error {
 
 function extractAuthError(error: unknown): Error {
   const errData = (error as { response?: { data?: { message?: string; isRateLimited?: boolean; retryAfter?: number } } })?.response?.data;
-  const message = errData?.message || 'Request failed';
 
   if (errData?.isRateLimited && errData.retryAfter) {
-    return new RateLimitError(message, errData.retryAfter);
+    return new RateLimitError(errData.message || 'Request failed', errData.retryAfter);
   }
 
-  return new Error(message);
+  // Server returned a non-2xx with a JSON body — surface the server message.
+  if (errData?.message) {
+    return new Error(errData.message);
+  }
+
+  // Already an Error thrown by the caller (e.g. shape-validation in
+  // useRegister). Preserve its message instead of clobbering with the
+  // generic "Request failed".
+  if (error instanceof Error) {
+    return error;
+  }
+
+  return new Error('Request failed');
 }
 
 export { RateLimitError };
 
 export const useRegister = () => {
-  return useMutation<AuthResponse, Error, RegisterData>({
+  return useMutation<RegisterResponse, Error, RegisterData>({
     mutationFn: async (userData) => {
       try {
-        const res = await api.post<AuthResponse>('/auth/register', userData);
+        const res = await api.post<RegisterResponse>('/auth/register', userData);
+        // Defensive shape check. If the backend ever stops returning a `user`
+        // (e.g. someone reverts the typed DTO, or Supabase email-confirm gets
+        // disabled and the controller starts forwarding a session), surface a
+        // hard error instead of silently degrading the verify-email flow.
+        if (!res.data || typeof res.data.message !== 'string' || !res.data.user?.email) {
+          throw new Error('Register endpoint returned an unexpected response shape');
+        }
         return res.data;
       } catch (error: unknown) {
         throw extractAuthError(error);
